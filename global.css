@@ -1,0 +1,6 @@
+/* stylelint-disable */
+/* postcss-disable-next-line */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* stylelint-enable */
