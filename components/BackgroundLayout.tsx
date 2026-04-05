@@ -14,7 +14,7 @@ export default function BackgroundLayout({ children }: BackgroundLayoutProps) {
       end={{ x: 1, y: 1 }}
       style={{ flex: 1 }}
     >
-      <SafeAreaView className="flex-1" edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* Decorative Ambient Glows */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           {/* Top-right amber glow */}
@@ -40,6 +40,9 @@ export default function BackgroundLayout({ children }: BackgroundLayoutProps) {
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   glowTopRight: {
     position: 'absolute',
     top: -200,

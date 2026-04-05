@@ -1,10 +1,12 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
+import LotusLoader from '@/components/ui/LotusLoader';
+import { supabase } from '@/lib/supabase';
+import { useEffect, useState } from 'react';
+import { Alert, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
 
 interface DailyQuoteSettingsProps {
-  user: { full_name?: string; email?: string } | null;
+  user: { id: string; full_name?: string; email?: string } | null;
   // Optional callbacks: if provided, will be called instead of performing network actions here
   onSendTest?: () => Promise<void> | void;
   onToggle?: (enabled: boolean) => Promise<void> | void;
@@ -17,20 +19,42 @@ export default function DailyQuoteSettings({ user, onSendTest, onToggle }: Daily
   const [dailyEnabled, setDailyEnabled] = useState(false);
 
   useEffect(() => {
-    // load preferences stub — replace with real loader when available
     let mounted = true;
+
     (async () => {
-      if (!user) return;
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
-      // TODO: wire to real preferences (base44) if available
-      await new Promise((r) => setTimeout(r, 250));
-      if (mounted) setDailyEnabled(false);
-      setIsLoading(false);
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('daily_notification_enabled')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (!mounted) return;
+
+        if (!error && typeof data?.daily_notification_enabled === 'boolean') {
+          setDailyEnabled(data.daily_notification_enabled);
+        } else {
+          setDailyEnabled(false);
+        }
+      } catch {
+        if (!mounted) return;
+        setDailyEnabled(false);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
     })();
+
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [user?.id]);
 
   const sendDailyQuoteEmail = async () => {
     if (!user) return;
@@ -43,7 +67,7 @@ export default function DailyQuoteSettings({ user, onSendTest, onToggle }: Daily
         await new Promise((r) => setTimeout(r, 700));
         Alert.alert('Daily quote', `Daily quote sent to ${user.email} (simulated)`);
       }
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Unable to send quote');
     } finally {
       setIsSendingTest(false);
@@ -51,12 +75,25 @@ export default function DailyQuoteSettings({ user, onSendTest, onToggle }: Daily
   };
 
   const toggleDailyQuote = async () => {
-    if (!user) return;
+    if (!user?.id) return;
     setIsSaving(true);
     const newValue = !dailyEnabled;
     try {
-      if (onToggle) await onToggle(newValue);
-      else await new Promise((r) => setTimeout(r, 400));
+      if (onToggle) {
+        await onToggle(newValue);
+      } else {
+        const { error } = await supabase.from('profiles').upsert(
+          {
+            id: user.id,
+            daily_notification_enabled: newValue,
+          },
+          { onConflict: 'id' }
+        );
+
+        if (error) {
+          throw error;
+        }
+      }
 
       setDailyEnabled(newValue);
 
@@ -64,7 +101,7 @@ export default function DailyQuoteSettings({ user, onSendTest, onToggle }: Daily
         // send first quote when enabling
         sendDailyQuoteEmail();
       }
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Unable to update preference');
     } finally {
       setIsSaving(false);
@@ -77,7 +114,7 @@ export default function DailyQuoteSettings({ user, onSendTest, onToggle }: Daily
     <ThemedView style={styles.container}>
       {isLoading ? (
         <View style={styles.loadingRow}>
-          <ActivityIndicator size="small" color="#f59e0b" />
+          <LotusLoader size={30} color="#D4AF37" strokeWidth={2.4} duration={1100} />
         </View>
       ) : (
         <>
@@ -89,7 +126,7 @@ export default function DailyQuoteSettings({ user, onSendTest, onToggle }: Daily
           <View style={styles.row}>
             <View style={styles.info}>
               <ThemedText style={styles.label}>Daily Email Notifications</ThemedText>
-              <ThemedText style={styles.subLabel}>{dailyEnabled ? 'Active — 8:00 AM EST' : 'Inactive'}</ThemedText>
+              <ThemedText style={styles.subLabel}>{dailyEnabled ? 'Active — 8:00 AM local time' : 'Inactive'}</ThemedText>
             </View>
 
             <View style={styles.control}>
@@ -106,7 +143,7 @@ export default function DailyQuoteSettings({ user, onSendTest, onToggle }: Daily
           {dailyEnabled && (
             <TouchableOpacity style={styles.actionBtn} onPress={sendDailyQuoteEmail} disabled={isSendingTest}>
               {isSendingTest ? (
-                <ActivityIndicator color="#111827" />
+                <LotusLoader size={18} color="#111827" strokeWidth={2.2} duration={1000} />
               ) : (
                 <ThemedText style={styles.actionText}>Send Quote Now</ThemedText>
               )}

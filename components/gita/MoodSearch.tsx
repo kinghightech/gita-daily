@@ -1,21 +1,30 @@
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Brain, Flame, Heart, Leaf, Moon, Shield, Sun, Zap } from 'lucide-react-native';
-import { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
-
-interface Verse {
-  id: string;
-  chapter: number;
-  verse: number;
-  english?: string;
-  hindi?: string;
-  speaker?: string;
-}
+import { Fonts } from '@/constants/theme';
+import { Verse } from '@/Data/mockverses';
+import LotusLoader from '@/components/ui/LotusLoader';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+    Brain,
+    Flame,
+    Heart,
+    Leaf,
+    Moon,
+    Shield,
+    Sparkles,
+    Sun,
+    Zap,
+} from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+    Pressable,
+    StyleSheet,
+    Text,
+    View,
+} from 'react-native';
 
 interface MoodSearchProps {
   verses: Verse[];
   onVerseSelect: (verse: Verse) => void;
+  disableInteractions?: boolean;
 }
 
 const MOOD_VERSES: Record<string, Array<{ chapter: number; verse: number }>> = {
@@ -70,26 +79,37 @@ const MOOD_VERSES: Record<string, Array<{ chapter: number; verse: number }>> = {
 };
 
 const MOODS = [
-  { id: 'anxious', label: 'Anxious', icon: Brain, color: '#a855f7' },
-  { id: 'sad', label: 'Sad', icon: Moon, color: '#3b82f6' },
-  { id: 'angry', label: 'Angry', icon: Flame, color: '#ef4444' },
-  { id: 'confused', label: 'Confused', icon: Zap, color: '#eab308' },
-  { id: 'peaceful', label: 'Seeking Peace', icon: Leaf, color: '#22c55e' },
-  { id: 'motivated', label: 'Need Motivation', icon: Sun, color: '#f59e0b' },
-  { id: 'fearful', label: 'Fearful', icon: Shield, color: '#6b7280' },
-  { id: 'grateful', label: 'Grateful', icon: Heart, color: '#ec4899' },
+  { id: 'anxious', label: 'Anxious', icon: Brain, gradient: ['#a855f7', '#4f46e5'] },
+  { id: 'sad', label: 'Sad', icon: Moon, gradient: ['#3b82f6', '#4f46e5'] },
+  { id: 'angry', label: 'Angry', icon: Flame, gradient: ['#ef4444', '#dc2626'] },
+  { id: 'confused', label: 'Confused', icon: Zap, gradient: ['#f59e0b', '#d97706'] },
+  { id: 'peaceful', label: 'Seeking Peace', icon: Leaf, gradient: ['#22c55e', '#15803d'] },
+  { id: 'motivated', label: 'Need Motivation', icon: Sun, gradient: ['#f59e0b', '#ea580c'] },
+  { id: 'fearful', label: 'Fearful', icon: Shield, gradient: ['#64748b', '#334155'] },
+  { id: 'grateful', label: 'Grateful', icon: Heart, gradient: ['#ec4899', '#be185d'] },
 ];
 
-export default function MoodSearch({ verses, onVerseSelect }: MoodSearchProps) {
+export default function MoodSearch({
+  verses,
+  onVerseSelect,
+  disableInteractions = false,
+}: MoodSearchProps) {
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [suggestedVerse, setSuggestedVerse] = useState<Verse | null>(null);
   const lastShownRef = useRef<Record<string, number>>({});
 
+  useEffect(() => {
+    if (disableInteractions) {
+      setSelectedMood(null);
+      setIsLoading(false);
+    }
+  }, [disableInteractions]);
+
   const findVerseForMood = (moodId: string) => {
+    if (disableInteractions || verses.length === 0) return;
+
     setSelectedMood(moodId);
     setIsLoading(true);
-    setSuggestedVerse(null);
 
     const moodVerses = MOOD_VERSES[moodId] || [];
     const lastIndex = lastShownRef.current[moodId] ?? -1;
@@ -109,7 +129,7 @@ export default function MoodSearch({ verses, onVerseSelect }: MoodSearchProps) {
         if (tryVerse) {
           lastShownRef.current[moodId] = (nextIndex + i) % moodVerses.length;
           setTimeout(() => {
-            setSuggestedVerse(tryVerse);
+            onVerseSelect(tryVerse);
             setIsLoading(false);
           }, 500);
           return;
@@ -120,19 +140,21 @@ export default function MoodSearch({ verses, onVerseSelect }: MoodSearchProps) {
     lastShownRef.current[moodId] = nextIndex;
 
     setTimeout(() => {
-      setSuggestedVerse(
-        foundVerse || verses[Math.floor(Math.random() * verses.length)]
-      );
+      const nextVerse = foundVerse || verses[Math.floor(Math.random() * verses.length)];
+      onVerseSelect(nextVerse);
       setIsLoading(false);
     }, 500);
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText style={styles.title}>✨ Find Wisdom for Your Mood</ThemedText>
-      <ThemedText style={styles.description}>
+    <View style={styles.container}>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>Find Wisdom for Your Mood</Text>
+      </View>
+
+      <Text style={styles.description}>
         How are you feeling today? Select a mood to find a relevant verse. Click again for another verse.
-      </ThemedText>
+      </Text>
 
       <View style={styles.moodGrid}>
         {MOODS.map((mood) => {
@@ -142,24 +164,24 @@ export default function MoodSearch({ verses, onVerseSelect }: MoodSearchProps) {
           return (
             <Pressable
               key={mood.id}
+              disabled={disableInteractions}
               onPress={() => findVerseForMood(mood.id)}
-              style={[
-                styles.moodBtn,
-                isSelected && [styles.moodBtnActive, { backgroundColor: mood.color }],
-              ]}
-            >
-              <IconComponent
-                size={20}
-                color={isSelected ? '#ffffff' : 'rgba(251, 191, 36, 0.7)'}
-              />
-              <ThemedText
-                style={[
-                  styles.moodLabel,
-                  isSelected && styles.moodLabelActive,
-                ]}
-              >
-                {mood.label}
-              </ThemedText>
+              style={styles.moodBtnWrap}>
+              {isSelected ? (
+                <LinearGradient
+                  colors={mood.gradient as [string, string]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.moodBtn, styles.moodBtnSelected]}>
+                  <IconComponent size={20} color="#ffffff" />
+                  <Text numberOfLines={2} style={[styles.moodLabel, styles.moodLabelSelected]}>{mood.label}</Text>
+                </LinearGradient>
+              ) : (
+                <View style={styles.moodBtn}>
+                  <IconComponent size={20} color="#fbbf24" />
+                  <Text numberOfLines={2} style={styles.moodLabel}>{mood.label}</Text>
+                </View>
+              )}
             </Pressable>
           );
         })}
@@ -167,124 +189,91 @@ export default function MoodSearch({ verses, onVerseSelect }: MoodSearchProps) {
 
       {isLoading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#f59e0b" />
-          <ThemedText style={styles.loadingText}>Finding wisdom for you...</ThemedText>
+          <LotusLoader size={80} color="#D4AF37" strokeWidth={2.4} duration={1100} />
+          <Text style={styles.loadingText}>Finding wisdom for you...</Text>
         </View>
       )}
-
-      {suggestedVerse && !isLoading && (
-        <View style={styles.verseCard}>
-          <ThemedText style={styles.verseHeader}>
-            Chapter {suggestedVerse.chapter}, Verse {suggestedVerse.verse}
-            {suggestedVerse.speaker && (
-              <ThemedText style={styles.speaker}> — {suggestedVerse.speaker}</ThemedText>
-            )}
-          </ThemedText>
-          <ThemedText style={styles.verseText}>&quot;{suggestedVerse.english}&quot;</ThemedText>
-          <Pressable
-            onPress={() => onVerseSelect(suggestedVerse)}
-            style={styles.viewBtn}
-          >
-            <ThemedText style={styles.viewBtnText}>View Full Verse</ThemedText>
-          </Pressable>
-        </View>
-      )}
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     borderRadius: 16,
-    padding: 16,
-    marginVertical: 8,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    padding: 18,
+    marginVertical: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    shadowColor: '#000000',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   title: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#fcd34d',
-    marginBottom: 8,
+    color: '#fef3c7',
+    fontFamily: Fonts.serif,
   },
   description: {
-    fontSize: 13,
-    color: '#fbbf24',
-    marginBottom: 12,
+    marginTop: 12,
+    fontSize: 14,
+    lineHeight: 22,
+    color: 'rgba(251,191,36,0.6)',
+    marginBottom: 14,
   },
   moodGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  moodBtnWrap: {
+    width: '24%',
+    marginBottom: 10,
   },
   moodBtn: {
-    width: '23%',
+    height: 92,
     paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    paddingHorizontal: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    gap: 6,
   },
-  moodBtnActive: {
-    backgroundColor: '#f59e0b',
+  moodBtnSelected: {
+    shadowColor: '#000000',
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
   },
   moodLabel: {
     fontSize: 11,
+    lineHeight: 14,
     color: 'rgba(251, 191, 36, 0.7)',
     textAlign: 'center',
+    maxWidth: 76,
   },
-  moodLabelActive: {
+  moodLabelSelected: {
     color: '#ffffff',
-    fontWeight: '600',
   },
   loadingContainer: {
-    paddingVertical: 24,
+    paddingVertical: 18,
     alignItems: 'center',
     gap: 8,
   },
   loadingText: {
-    fontSize: 13,
-    color: 'rgba(251, 191, 36, 0.7)',
-  },
-  verseCard: {
-    marginTop: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
-  },
-  verseHeader: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#f59e0b',
-    marginBottom: 8,
-  },
-  speaker: {
-    fontSize: 12,
-    color: 'rgba(251, 191, 36, 0.5)',
-  },
-  verseText: {
-    fontSize: 13,
-    color: '#fcd34d',
-    fontStyle: 'italic',
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  viewBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: '#f59e0b',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  viewBtnText: {
-    color: '#111827',
-    fontWeight: '700',
-    fontSize: 13,
+    color: 'rgba(251, 191, 36, 0.7)',
   },
 });

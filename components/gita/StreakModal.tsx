@@ -1,16 +1,16 @@
-import React, { useMemo } from "react";
-import {
-  View,
-  Text,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Share,
-  ScrollView,
-  useWindowDimensions,
-} from "react-native";
-import { X, Flame, Trophy, Share2, Calendar } from "lucide-react-native";
-import { GitaColors } from "@/constants/theme";
+import { LinearGradient } from 'expo-linear-gradient';
+import { Calendar, Flame, Share2, Trophy, X } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+    Easing,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
+} from 'react-native-reanimated';
 
 interface StreakModalProps {
   open: boolean;
@@ -22,142 +22,317 @@ interface StreakModalProps {
   } | null;
 }
 
-export default function StreakModal({
-  open,
-  onClose,
-  preferences,
-}: StreakModalProps) {
-  const streak = preferences?.streak_count ?? 0;
-  const longest = preferences?.longest_streak ?? 0;
-  const weeks = Math.floor(streak / 7);
-  const { height: winHeight } = useWindowDimensions();
+type CalendarDay = {
+  date: Date;
+  isToday: boolean;
+  isActive: boolean;
+  isCurrentMonth: boolean;
+};
 
-  const calendarDays = useMemo(() => {
-    const days: {
-      date: Date;
-      dateStr: string;
-      isToday: boolean;
-      isActive: boolean;
-      dayOfWeek: number;
-    }[] = [];
+const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+export default function StreakModal({ open, onClose, preferences }: StreakModalProps) {
+  const { height: screenHeight } = useWindowDimensions();
+  const [isMounted, setIsMounted] = useState(open);
+  const closeFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollOffsetY = useSharedValue(0);
+  const canDrag = useSharedValue(true);
+  const overlayOpacity = useSharedValue(0);
+  const sheetTranslateY = useSharedValue(screenHeight);
+
+  const streak = Math.max(0, preferences?.streak_count ?? 0);
+  const longest = Math.max(streak, preferences?.longest_streak ?? 0);
+  const weeksInRow = Math.floor(streak / 7);
+  const sheetHeight = Math.round(screenHeight * 0.85);
+
+  const closeModal = useCallback(() => {
+    if (open) onClose();
+  }, [onClose, open]);
+
+  const { monthLabel, calendarWeeks } = useMemo(() => {
+    const calendarCells: CalendarDay[] = [];
     const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
-    for (let i = 34; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      const dateStr = d.toISOString().split("T")[0];
-      const daysDiff = Math.floor(
-        (new Date(todayStr).getTime() - new Date(dateStr).getTime()) /
-          (1000 * 60 * 60 * 24)
-      );
-      const isActive = daysDiff < streak;
-      days.push({
-        date: d,
-        dateStr,
-        isToday: dateStr === todayStr,
-        isActive,
-        dayOfWeek: d.getDay(),
-      });
+    today.setHours(0, 0, 0, 0);
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const monthStart = new Date(year, month, 1);
+    const monthDays = new Date(year, month + 1, 0).getDate();
+    const leadingDays = monthStart.getDay();
+    const prevMonthDays = new Date(year, month, 0).getDate();
+
+    const streakStart = new Date(today);
+    streakStart.setDate(today.getDate() - Math.max(streak - 1, 0));
+
+    const toCell = (date: Date, isCurrentMonth: boolean): CalendarDay => {
+      const cellDate = new Date(date);
+      cellDate.setHours(0, 0, 0, 0);
+
+      return {
+        date: cellDate,
+        isToday: cellDate.getTime() === today.getTime(),
+        isActive: streak > 0 && cellDate >= streakStart && cellDate <= today,
+        isCurrentMonth,
+      };
+    };
+
+    for (let i = 0; i < leadingDays; i++) {
+      const day = prevMonthDays - leadingDays + i + 1;
+      calendarCells.push(toCell(new Date(year, month - 1, day), false));
     }
-    return days;
+
+    for (let day = 1; day <= monthDays; day++) {
+      calendarCells.push(toCell(new Date(year, month, day), true));
+    }
+
+    let trailingDay = 1;
+    while (calendarCells.length % 7 !== 0 || calendarCells.length < 35) {
+      calendarCells.push(toCell(new Date(year, month + 1, trailingDay), false));
+      trailingDay += 1;
+    }
+
+    const weeks: CalendarDay[][] = [];
+    for (let i = 0; i < calendarCells.length; i += 7) {
+      weeks.push(calendarCells.slice(i, i + 7));
+    }
+
+    const label = today.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+    return { monthLabel: label.toUpperCase(), calendarWeeks: weeks };
   }, [streak]);
 
-  const handleShare = async () => {
+  const dragDownGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetY(6)
+        .failOffsetX([-22, 22])
+        .onBegin(() => {
+          canDrag.value = scrollOffsetY.value <= 0;
+        })
+        .onUpdate((event) => {
+          if (!canDrag.value || event.translationY <= 0) return;
+
+          const dragY = Math.min(event.translationY, sheetHeight);
+          sheetTranslateY.value = dragY;
+          overlayOpacity.value = Math.max(0.18, 1 - dragY / sheetHeight);
+        })
+        .onEnd((event) => {
+          if (!canDrag.value) return;
+
+          const shouldClose = event.translationY > sheetHeight * 0.18 || event.velocityY > 950;
+
+          if (shouldClose) {
+            runOnJS(closeModal)();
+            return;
+          }
+
+          overlayOpacity.value = withTiming(1, { duration: 120, easing: Easing.out(Easing.cubic) });
+          sheetTranslateY.value = withSpring(0, {
+            damping: 28,
+            stiffness: 260,
+            mass: 1,
+          });
+        }),
+    [canDrag, closeModal, overlayOpacity, scrollOffsetY, sheetHeight, sheetTranslateY]
+  );
+
+  useEffect(() => {
+    if (open) {
+      setIsMounted(true);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
+    if (open) {
+      if (closeFallbackTimerRef.current) {
+        clearTimeout(closeFallbackTimerRef.current);
+        closeFallbackTimerRef.current = null;
+      }
+
+      overlayOpacity.value = 0;
+      sheetTranslateY.value = screenHeight;
+      overlayOpacity.value = withTiming(1, { duration: 180, easing: Easing.out(Easing.cubic) });
+      sheetTranslateY.value = withSpring(0, {
+        damping: 28,
+        stiffness: 260,
+        mass: 1,
+      });
+      return;
+    }
+
+    if (closeFallbackTimerRef.current) {
+      clearTimeout(closeFallbackTimerRef.current);
+      closeFallbackTimerRef.current = null;
+    }
+
+    overlayOpacity.value = withTiming(0, { duration: 180, easing: Easing.in(Easing.cubic) });
+    sheetTranslateY.value = withTiming(
+      screenHeight,
+      { duration: 220, easing: Easing.in(Easing.cubic) },
+      (finished) => {
+        if (finished) runOnJS(setIsMounted)(false);
+      }
+    );
+
+    // Fallback: if timing callback gets interrupted, still unmount modal.
+    closeFallbackTimerRef.current = setTimeout(() => {
+      setIsMounted(false);
+      closeFallbackTimerRef.current = null;
+    }, 280);
+  }, [isMounted, open, overlayOpacity, screenHeight, sheetTranslateY]);
+
+  useEffect(() => {
+    return () => {
+      if (closeFallbackTimerRef.current) {
+        clearTimeout(closeFallbackTimerRef.current);
+        closeFallbackTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) {
+      overlayOpacity.value = 0;
+      sheetTranslateY.value = screenHeight;
+    }
+  }, [isMounted, overlayOpacity, screenHeight, sheetTranslateY]);
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: sheetTranslateY.value }],
+  }));
+
+  const shareStreak = async () => {
     try {
       await Share.share({
-        title: "My Gita Streak",
-        message: `🔥 I'm on a ${streak}-day streak reading the Bhagavad Gita on Gita Daily!\n\n"You have a right to perform your duties, but not to the fruits of your actions." — BG 2.47`,
+        title: 'My Gita Daily Streak',
+        message:
+          streak > 0
+            ? `I am on a ${streak}-day Bhagavad Gita reading streak in Gita Daily.`
+            : 'I just started my Bhagavad Gita reading streak in Gita Daily.',
       });
-    } catch {}
+    } catch {
+      // User canceled share sheet.
+    }
   };
 
-  if (!open) return null;
+  if (!isMounted) return null;
 
   return (
-    <Modal
-      visible={open}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable
-          style={[styles.sheet, { maxHeight: winHeight * 0.88 }]}
-          onPress={(e) => e.stopPropagation()}
-        >
-          <View style={styles.dragHandle} />
-          <View style={styles.sheetHeader}>
-            <Pressable onPress={handleShare} hitSlop={12} style={styles.headerBtn}>
-              <Share2 size={22} color={GitaColors.goldMuted} />
-            </Pressable>
-            <Pressable onPress={onClose} hitSlop={12} style={styles.headerBtn}>
-              <X size={22} color={GitaColors.goldMuted} />
-            </Pressable>
-          </View>
+    <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
+      <Animated.View style={[styles.overlay, overlayStyle]}>
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={closeModal} />
 
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.streakCircle}>
-              <Flame size={32} color="white" />
-            </View>
-            <Text style={styles.streakLabel}>CURRENT STREAK</Text>
-            <Text style={styles.streakValue}>{streak}</Text>
-            <Text style={styles.streakSub}>days in a row</Text>
-
-            <View style={styles.statsRow}>
-              <View style={styles.statBlock}>
-                <Trophy size={18} color={GitaColors.gold} />
-                <Text style={styles.statValue}>{longest}</Text>
-                <Text style={styles.statLabel}>Best streak</Text>
-              </View>
-              <View style={[styles.statBlock, styles.statBlockRight]}>
-                <Calendar size={18} color={GitaColors.teal} />
-                <Text style={styles.statValue}>{weeks}</Text>
-                <Text style={styles.statLabel}>Weeks in a row</Text>
-              </View>
-            </View>
-
-            <Text style={styles.calendarTitle}>LAST 5 WEEKS</Text>
-            <View style={styles.weekdayRow}>
-              {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
-                <Text key={i} style={styles.weekdayCell}>
-                  {d}
-                </Text>
-              ))}
-            </View>
-            <View style={styles.calendarGrid}>
-              {calendarDays[0] &&
-                Array.from({ length: calendarDays[0].dayOfWeek }).map((_, i) => (
-                  <View key={`pad-${i}`} style={styles.calCell} />
-                ))}
-              {calendarDays.map((day, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.calCell,
-                    day.isToday && styles.calCellToday,
-                    day.isActive && !day.isToday && styles.calCellActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.calCellText,
-                      day.isToday && styles.calCellTextToday,
-                      day.isActive && !day.isToday && styles.calCellTextActive,
-                    ]}
-                  >
-                    {day.date.getDate()}
-                  </Text>
+        <View style={styles.bottomWrap} pointerEvents="box-none">
+          <Animated.View style={[styles.sheet, { height: sheetHeight }, sheetStyle]}>
+            <LinearGradient
+              colors={['#0f172a', '#111f45']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.sheetGradient}
+            >
+              <GestureDetector gesture={dragDownGesture}>
+                <View style={styles.dragArea}>
+                  <View style={styles.dragHandle} />
                 </View>
-              ))}
-            </View>
-            <View style={{ height: 40 }} />
-          </ScrollView>
-        </Pressable>
-      </Pressable>
+              </GestureDetector>
+
+              <Pressable style={[styles.headerIconBtn, styles.headerLeft]} onPress={shareStreak} hitSlop={12}>
+                <Share2 size={20} color="rgba(252,211,77,0.5)" />
+              </Pressable>
+              <Pressable style={[styles.headerIconBtn, styles.headerRight]} onPress={closeModal} hitSlop={12}>
+                <X size={20} color="rgba(252,211,77,0.5)" />
+              </Pressable>
+
+              <ScrollView
+                style={styles.scroll}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                bounces={false}
+                overScrollMode="never"
+                scrollEventThrottle={16}
+                onScroll={(event) => {
+                  scrollOffsetY.value = event.nativeEvent.contentOffset.y;
+                }}
+              >
+                <View style={styles.currentHeader}>
+                  <LinearGradient
+                    colors={['#fbbf24', '#f97316']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.flameWrap}
+                  >
+                    <Flame size={28} color="#ffffff" />
+                  </LinearGradient>
+
+                  <Text style={styles.currentLabel}>CURRENT STREAK</Text>
+                  <Text style={styles.currentValue}>{streak}</Text>
+                  <Text style={styles.currentSub}>days in a row</Text>
+                </View>
+
+                <View style={styles.statsRow}>
+                  <View style={[styles.statBlock, styles.statDivider]}>
+                    <Trophy size={16} color="#fbbf24" />
+                    <Text style={styles.statValue}>{longest}</Text>
+                    <Text style={styles.statLabel}>Best streak</Text>
+                  </View>
+
+                  <View style={styles.statBlock}>
+                    <Calendar size={16} color="#22d3ee" />
+                    <Text style={styles.statValue}>{weeksInRow}</Text>
+                    <Text style={styles.statLabel}>Weeks in a row</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.calendarTitle}>{monthLabel}</Text>
+
+                <View style={styles.weekdayRow}>
+                  {WEEKDAY_LABELS.map((day, index) => (
+                    <Text key={`${day}-${index}`} style={styles.weekdayText}>
+                      {day}
+                    </Text>
+                  ))}
+                </View>
+
+                <View style={styles.calendarWrap}>
+                  {calendarWeeks.map((week, weekIndex) => (
+                    <View key={`week-${weekIndex}`} style={styles.weekRow}>
+                      {week.map((day, dayIndex) => {
+                        const dayStyle = day.isToday
+                          ? styles.dayToday
+                          : day.isActive
+                            ? styles.dayActive
+                            : day.isCurrentMonth
+                              ? styles.dayInactive
+                              : styles.dayOutOfMonth;
+
+                        const textStyle = day.isToday
+                          ? styles.dayTextToday
+                          : day.isActive
+                            ? styles.dayTextActive
+                            : day.isCurrentMonth
+                              ? styles.dayTextInactive
+                              : styles.dayTextOutOfMonth;
+
+                        return (
+                          <View key={`day-${weekIndex}-${dayIndex}-${day.date.getTime()}`} style={[styles.dayCell, dayStyle]}>
+                            <Text style={[styles.dayTextBase, textStyle]}>{day.date.getDate()}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ))}
+                </View>
+
+                <View style={styles.bottomSpace} />
+              </ScrollView>
+            </LinearGradient>
+          </Animated.View>
+        </View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -165,131 +340,197 @@ export default function StreakModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "flex-end",
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  bottomWrap: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   sheet: {
-    backgroundColor: GitaColors.bg,
+    width: '100%',
+    maxWidth: 448,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: GitaColors.goldBorder,
+    borderColor: 'rgba(251,191,36,0.3)',
     borderBottomWidth: 0,
+    shadowColor: '#000000',
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 18,
+  },
+  sheetGradient: {
+    flex: 1,
   },
   dragHandle: {
     width: 40,
     height: 4,
-    borderRadius: 2,
-    backgroundColor: GitaColors.textMuted,
-    alignSelf: "center",
-    marginTop: 12,
+    borderRadius: 999,
+    backgroundColor: '#475569',
+    alignSelf: 'center',
+    marginTop: 10,
   },
-  sheetHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 24,
+  dragArea: {
+    alignSelf: 'stretch',
+    height: 74,
+    justifyContent: 'flex-start',
+  },
+  headerIconBtn: {
+    position: 'absolute',
+    top: 14,
+    padding: 6,
     zIndex: 10,
   },
-  headerBtn: { padding: 4 },
-  scroll: { flex: 1 },
-  scrollContent: {
-    paddingTop: 56,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    alignItems: "center",
+  headerLeft: {
+    left: 12,
   },
-  streakCircle: {
+  headerRight: {
+    right: 12,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingTop: 8,
+    paddingBottom: 22,
+  },
+  currentHeader: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 4,
+    paddingBottom: 16,
+  },
+  flameWrap: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: GitaColors.orange,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#f59e0b',
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    marginBottom: 10,
   },
-  streakLabel: {
-    color: GitaColors.goldMuted,
+  currentLabel: {
+    color: 'rgba(252,211,77,0.7)',
     fontSize: 11,
-    letterSpacing: 2,
+    letterSpacing: 2.2,
+    fontWeight: '600',
   },
-  streakValue: {
-    color: GitaColors.text,
-    fontSize: 40,
-    fontWeight: "800",
+  currentValue: {
+    color: '#fdf6e3',
+    fontSize: 42,
+    fontWeight: '800',
+    lineHeight: 46,
+    marginTop: 2,
+    fontFamily: 'serif',
   },
-  streakSub: { color: GitaColors.textMuted, fontSize: 14, marginTop: 2 },
+  currentSub: {
+    color: 'rgba(252,211,77,0.6)',
+    fontSize: 13,
+    marginTop: 1,
+  },
   statsRow: {
-    flexDirection: "row",
-    width: "100%",
+    flexDirection: 'row',
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: GitaColors.goldBorder,
-    marginTop: 20,
+    borderColor: 'rgba(251,191,36,0.2)',
   },
   statBlock: {
     flex: 1,
-    paddingVertical: 16,
-    alignItems: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  statDivider: {
     borderRightWidth: 1,
-    borderColor: GitaColors.goldBorder,
+    borderColor: 'rgba(251,191,36,0.2)',
   },
-  statBlockRight: { borderRightWidth: 0 },
   statValue: {
-    color: GitaColors.text,
+    color: '#fdf6e3',
     fontSize: 20,
-    fontWeight: "800",
-    marginTop: 4,
+    fontWeight: '700',
+    marginTop: 3,
   },
-  statLabel: { color: GitaColors.textMuted, fontSize: 12, marginTop: 2 },
-  calendarTitle: {
-    color: GitaColors.goldMuted,
+  statLabel: {
+    color: 'rgba(252,211,77,0.6)',
     fontSize: 11,
-    letterSpacing: 1,
-    alignSelf: "flex-start",
-    marginTop: 20,
-    marginBottom: 8,
+    marginTop: 2,
+  },
+  calendarTitle: {
+    color: 'rgba(252,211,77,0.5)',
+    fontSize: 11,
+    letterSpacing: 1.4,
+    fontWeight: '600',
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 8,
   },
   weekdayRow: {
-    flexDirection: "row",
-    width: "100%",
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    gap: 8,
     marginBottom: 6,
   },
-  weekdayCell: {
+  weekdayText: {
     flex: 1,
-    textAlign: "center",
-    color: GitaColors.textMuted,
-    fontSize: 11,
+    textAlign: 'center',
+    color: 'rgba(252,211,77,0.4)',
+    fontSize: 12,
+    fontWeight: '600',
   },
-  calendarGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    width: "100%",
-    gap: 4,
+  calendarWrap: {
+    paddingHorizontal: 20,
   },
-  calCell: {
-    width: "13%",
+  weekRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  dayCell: {
+    flex: 1,
     aspectRatio: 1,
-    maxWidth: 40,
-    borderRadius: 8,
-    backgroundColor: "rgba(30,41,59,0.8)",
-    alignItems: "center",
-    justifyContent: "center",
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  calCellToday: {
-    backgroundColor: GitaColors.gold,
-    borderWidth: 2,
-    borderColor: "rgba(251,191,36,0.8)",
+  dayInactive: {
+    backgroundColor: 'rgba(30,41,59,0.6)',
   },
-  calCellActive: {
-    backgroundColor: GitaColors.orange,
+  dayOutOfMonth: {
+    backgroundColor: 'rgba(30,41,59,0.35)',
   },
-  calCellText: { color: GitaColors.textMuted, fontSize: 12 },
-  calCellTextToday: { color: "#0F172A", fontWeight: "800" },
-  calCellTextActive: { color: "white" },
+  dayActive: {
+    backgroundColor: '#f59e0b',
+  },
+  dayToday: {
+    backgroundColor: '#fbbf24',
+    borderWidth: 3,
+    borderColor: '#fcd34d',
+  },
+  dayTextBase: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  dayTextInactive: {
+    color: '#64748b',
+  },
+  dayTextOutOfMonth: {
+    color: 'rgba(100,116,139,0.58)',
+  },
+  dayTextActive: {
+    color: '#ffffff',
+  },
+  dayTextToday: {
+    color: '#0f172a',
+    fontWeight: '800',
+  },
+  bottomSpace: {
+    height: 30,
+  },
 });

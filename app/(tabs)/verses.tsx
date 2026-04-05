@@ -1,133 +1,362 @@
-import BackgroundLayout from "@/components/BackgroundLayout";
-import { GitaColors } from "@/constants/theme";
+import BackgroundLayout from '@/components/BackgroundLayout';
+import MoodSearch from '@/components/gita/MoodSearch';
+import QuoteCard from '@/components/gita/QuoteCard';
+import LotusLoader from '@/components/ui/LotusLoader';
+import { Fonts } from '@/constants/theme';
+import { MOCK_VERSES, Verse } from '@/Data/mockverses';
+import { BookOpen, ChevronDown, Filter, Search } from 'lucide-react-native';
+import { FAVORITES_UPDATED_EVENT, fetchUserFavorites } from '@/lib/favorites';
+import { fetchCurrentUserAndProfile } from '@/lib/profile';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  BookOpen,
-  Brain,
-  ChevronDown,
-  Filter,
-  Flame,
-  Heart,
-  Leaf,
-  Moon,
-  Search,
-  Shield,
-  Sparkles,
-  Sun,
-  Zap,
-} from "lucide-react-native";
-import { useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+    DeviceEventEmitter,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
+} from 'react-native';
 
-const MOODS = [
-  { id: "anxious", label: "Anxious", icon: Brain },
-  { id: "sad", label: "Sad", icon: Moon },
-  { id: "angry", label: "Angry", icon: Flame },
-  { id: "confused", label: "Confused", icon: Zap },
-  { id: "peace", label: "Seeking Peace", icon: Leaf },
-  { id: "motivation", label: "Need Motivation", icon: Sun },
-  { id: "fearful", label: "Fearful", icon: Shield },
-  { id: "grateful", label: "Grateful", icon: Heart },
+type ChapterFilter = 'all' | number;
+
+const PLACEHOLDER_VERSES: Verse[] = [
+  {
+    id: 'placeholder-1',
+    chapter: 1,
+    verse: 47,
+    english: 'Placeholder quote alpha for scroll testing only.',
+    hindi: 'placeholder',
+    speaker: 'Sanjaya',
+  },
+  {
+    id: 'placeholder-2',
+    chapter: 1,
+    verse: 1,
+    english: 'Placeholder quote beta to test long scrolling behavior.',
+    hindi: 'placeholder',
+    speaker: 'Dhritarashtra',
+  },
+  {
+    id: 'placeholder-3',
+    chapter: 1,
+    verse: 21,
+    english: 'Placeholder quote gamma with italic serif visual alignment.',
+    hindi: 'placeholder',
+    speaker: 'Arjuna',
+  },
+  {
+    id: 'placeholder-4',
+    chapter: 2,
+    verse: 11,
+    english: 'Placeholder quote delta for card height consistency.',
+    hindi: 'placeholder',
+    speaker: 'Krishna',
+  },
+  {
+    id: 'placeholder-5',
+    chapter: 2,
+    verse: 13,
+    english: 'Placeholder quote epsilon showing truncated two-line text.',
+    hindi: 'placeholder',
+    speaker: 'Krishna',
+  },
+  {
+    id: 'placeholder-6',
+    chapter: 2,
+    verse: 17,
+    english: 'Placeholder quote zeta used to verify list card scrolling.',
+    hindi: 'placeholder',
+    speaker: 'Krishna',
+  },
+  {
+    id: 'placeholder-7',
+    chapter: 3,
+    verse: 30,
+    english: 'Placeholder quote eta for UI-only layout testing.',
+    hindi: 'placeholder',
+    speaker: 'Krishna',
+  },
+  {
+    id: 'placeholder-8',
+    chapter: 4,
+    verse: 7,
+    english: 'Placeholder quote theta to increase vertical content length.',
+    hindi: 'placeholder',
+    speaker: 'Krishna',
+  },
+  {
+    id: 'placeholder-9',
+    chapter: 5,
+    verse: 10,
+    english: 'Placeholder quote iota for repeated card style validation.',
+    hindi: 'placeholder',
+    speaker: 'Krishna',
+  },
+  {
+    id: 'placeholder-10',
+    chapter: 6,
+    verse: 5,
+    english: 'Placeholder quote kappa to verify footer stays below list.',
+    hindi: 'placeholder',
+    speaker: 'Krishna',
+  },
+  {
+    id: 'placeholder-11',
+    chapter: 8,
+    verse: 6,
+    english: 'Placeholder quote lambda for style-only testing.',
+    hindi: 'placeholder',
+    speaker: 'Krishna',
+  },
+  {
+    id: 'placeholder-12',
+    chapter: 9,
+    verse: 22,
+    english: 'Placeholder quote mu to stress-test internal scroll area.',
+    hindi: 'placeholder',
+    speaker: 'Krishna',
+  },
 ];
 
-const MOCK_VERSES = [
-  { id: "1.47", ref: "1.47", text: "Sanjaya said: Having thus spoken in the midst of the...", speaker: "Sanjaya" },
-  { id: "1.1", ref: "1.1", text: "Dhritarashtra said: O Sanjaya, what did my sons...", speaker: "Dhritarashtra" },
-  { id: "1.21", ref: "1.21", text: "Arjuna said: O Infallible One, please draw my chario...", speaker: "Arjuna" },
-];
+const ALL_VERSES: Verse[] = [...MOCK_VERSES, ...PLACEHOLDER_VERSES];
 
 export default function VersesScreen() {
-  const [search, setSearch] = useState("");
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [selectedChapter, setSelectedChapter] = useState<ChapterFilter>('all');
+  const [isChapterOpen, setIsChapterOpen] = useState(false);
+  const [selectedVerse, setSelectedVerse] = useState<Verse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [user, setUser] = useState<{ id: string; full_name: string | null; email: string | null } | null>(null);
+  const [favoriteVerseIds, setFavoriteVerseIds] = useState<string[]>([]);
+  const pageScrollRef = useRef<ScrollView>(null);
+  const selectedVerseBoxYRef = useRef(0);
+
+  const refreshUserContext = useCallback(async () => {
+    try {
+      const { user, profile } = await fetchCurrentUserAndProfile();
+      if (user) {
+        setUser({ id: user.id, full_name: profile?.full_name ?? user.auth_name, email: user.email });
+        const favs = await fetchUserFavorites(user.id);
+        setFavoriteVerseIds(favs);
+      }
+    } catch (error) {
+      console.error('Error refreshing user context in verses.tsx:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 500);
+    refreshUserContext();
+    return () => clearTimeout(timer);
+  }, [refreshUserContext]);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshUserContext();
+      return () => {};
+    }, [refreshUserContext])
+  );
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(
+      FAVORITES_UPDATED_EVENT,
+      (data: { verseId: string; liked: boolean }) => {
+        setFavoriteVerseIds((prev) => {
+          if (data.liked) {
+            return prev.includes(data.verseId) ? prev : [...prev, data.verseId];
+          } else {
+            return prev.filter((id) => id !== data.verseId);
+          }
+        });
+      }
+    );
+
+    return () => {
+      sub.remove();
+    };
+  }, []);
+
+  const chapters = useMemo(
+    () => [...new Set(ALL_VERSES.map((verse) => verse.chapter))].sort((a, b) => a - b),
+    []
+  );
+
+  const filteredVerses = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return ALL_VERSES.filter((verse) => {
+      const matchesChapter = selectedChapter === 'all' || verse.chapter === selectedChapter;
+
+      const verseRef = `${verse.chapter}.${verse.verse}`;
+      const matchesSearch =
+        query.length === 0 ||
+        verseRef.includes(query) ||
+        verse.english.toLowerCase().includes(query) ||
+        verse.speaker?.toLowerCase().includes(query);
+
+      return matchesChapter && matchesSearch;
+    });
+  }, [search, selectedChapter]);
+
+  const selectChapter = (chapter: ChapterFilter) => {
+    setSelectedChapter(chapter);
+    setIsChapterOpen(false);
+  };
+
+  const handleVerseSelect = (verse: Verse) => {
+    if (verse.english) {
+      setSelectedVerse(verse);
+
+      setTimeout(() => {
+        pageScrollRef.current?.scrollTo({
+          y: Math.max(selectedVerseBoxYRef.current - 16, 0),
+          animated: true,
+        });
+      }, 120);
+    }
+  };
 
   return (
     <BackgroundLayout>
       <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Find Wisdom for Your Mood */}
-        <View style={styles.moodSection}>
-          <View style={styles.moodHeader}>
-            <Sparkles size={24} color={GitaColors.gold} />
-            <Text style={styles.moodTitle}>Find Wisdom for Your Mood</Text>
+        ref={pageScrollRef}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+        <View style={styles.container}>
+          <View style={styles.headerBlock}>
+            <Text style={styles.title}>All Verses</Text>
+            <Text style={styles.subtitle}>Explore the complete collection of wisdom</Text>
           </View>
-          <Text style={styles.moodHint}>
-            How are you feeling today? Select a mood to find a relevant verse.
-            Click again for another verse.
-          </Text>
-          <View style={styles.moodGrid}>
-            {MOODS.map((m) => {
-              const Icon = m.icon;
-              return (
-                <Pressable key={m.id} style={styles.moodChip}>
-                  <Icon size={22} color={GitaColors.gold} />
-                  <Text style={styles.moodChipText}>{m.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
 
-        {/* Dotted separator */}
-        <View style={styles.dottedSep} />
+          <View style={styles.filtersSection}>
+            <View style={[styles.searchInputWrap, isSearchFocused && styles.searchInputWrapFocused]}>
+              <Search size={16} color="rgba(251,191,36,0.5)" />
+              <TextInput
+                style={styles.searchInput}
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search verses or type 2.47..."
+                placeholderTextColor="rgba(251,191,36,0.3)"
+                selectionColor="#fbbf24"
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+              />
+            </View>
 
-        {/* Select a Verse placeholder */}
-        <View style={styles.selectSection}>
-          <BookOpen size={48} color={GitaColors.gold} />
-          <Text style={styles.selectTitle}>Select a Verse</Text>
-          <Text style={styles.selectHint}>
-            Click on any verse from the list to view it in detail with
-            translations and audio
-          </Text>
-        </View>
-
-        {/* All Verses list */}
-        <Text style={styles.listTitle}>All Verses</Text>
-        <Text style={styles.subtitle}>
-          Explore the complete collection of wisdom
-        </Text>
-
-        <View style={styles.searchRow}>
-          <Search size={20} color={GitaColors.textMuted} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search verses or type 2.47..."
-            placeholderTextColor={GitaColors.textMuted}
-            value={search}
-            onChangeText={setSearch}
-          />
-        </View>
-
-        <Pressable
-          style={styles.filterRow}
-          onPress={() => setFilterOpen(!filterOpen)}
-        >
-          <Filter size={20} color={GitaColors.textMuted} />
-          <Text style={styles.filterText}>All Chapters</Text>
-          <ChevronDown size={20} color={GitaColors.textMuted} />
-        </Pressable>
-
-        <View style={styles.list}>
-          {MOCK_VERSES.map((v) => (
-            <Pressable key={v.id} style={styles.verseCard}>
-              <View style={styles.verseRefWrap}>
-                <Text style={styles.verseRef}>{v.ref}</Text>
-              </View>
-              <View style={styles.verseContent}>
-                <Text style={styles.verseText} numberOfLines={2}>
-                  {v.text}
+            <View style={styles.chapterWrap}>
+              <Pressable style={styles.chapterTrigger} onPress={() => setIsChapterOpen((prev) => !prev)}>
+                <Filter size={16} color="rgba(251,191,36,0.5)" />
+                <Text style={styles.chapterTriggerText}>
+                  {selectedChapter === 'all' ? 'All Chapters' : `Chapter ${selectedChapter}`}
                 </Text>
-                <Text style={styles.verseSpeaker}>— {v.speaker}</Text>
+                <ChevronDown size={20} color="rgba(251,191,36,0.5)" />
+              </Pressable>
+
+              {isChapterOpen && (
+                <View style={styles.chapterMenu}>
+                  <Pressable style={styles.chapterMenuItem} onPress={() => selectChapter('all')}>
+                    <Text style={styles.chapterMenuItemText}>All Chapters</Text>
+                  </Pressable>
+                  {chapters.map((chapter) => (
+                    <Pressable
+                      key={chapter}
+                      style={styles.chapterMenuItem}
+                      onPress={() => selectChapter(chapter)}>
+                      <Text style={styles.chapterMenuItemText}>Chapter {chapter}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.versesSection}>
+            {isLoading ? (
+              <View style={styles.loadingWrap}>
+                <LotusLoader size={110} color="#D4AF37" strokeWidth={2.8} duration={1200} />
+                <Text style={styles.loadingText}>Loading verses...</Text>
               </View>
-            </Pressable>
-          ))}
+            ) : filteredVerses.length === 0 ? (
+              <View style={styles.emptyWrap}>
+                <BookOpen size={48} color="rgba(251,191,36,0.3)" />
+                <Text style={styles.emptyText}>No verses found</Text>
+              </View>
+            ) : (
+              <View style={styles.listCard}>
+                <ScrollView
+                  style={styles.listScroll}
+                  contentContainerStyle={styles.listScrollContent}
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled>
+                  {filteredVerses.map((verse) => {
+                    const isSelected = selectedVerse?.id === verse.id;
+
+                    return (
+                      <Pressable
+                        key={verse.id}
+                        onPress={() => handleVerseSelect(verse)}
+                        style={({ pressed }) => [
+                          styles.verseItem,
+                          isSelected && styles.verseItemSelected,
+                          pressed && styles.verseItemPressed,
+                        ]}>
+                        <View style={styles.verseRefCircle}>
+                          <Text style={styles.verseRefText}>
+                            {verse.chapter}.{verse.verse}
+                          </Text>
+                        </View>
+
+                        <View style={styles.verseContent}>
+                          <Text style={styles.verseEnglish}>
+                            &quot;{verse.english}&quot;
+                          </Text>
+                          {verse.speaker ? <Text style={styles.verseSpeaker}>— {verse.speaker}</Text> : null}
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+
+          <Text style={styles.footerCount}>{filteredVerses.length} verses found</Text>
+
+          <MoodSearch verses={ALL_VERSES} onVerseSelect={handleVerseSelect} />
+
+          <View
+            style={styles.selectedVerseBox}
+            onLayout={(event) => {
+              selectedVerseBoxYRef.current = event.nativeEvent.layout.y;
+            }}>
+            {selectedVerse ? (
+              <QuoteCard
+                verse={selectedVerse}
+                user={user}
+                preferences={{ favorite_verses: favoriteVerseIds }}
+                onFavoriteToggle={(verseId, isLiked) => {
+                  setFavoriteVerseIds(prev => {
+                    if (isLiked) return prev.includes(verseId) ? prev : [...prev, verseId];
+                    return prev.filter(id => id !== verseId);
+                  });
+                }}
+                isToday={false}
+              />
+            ) : (
+              <View style={styles.selectedVerseEmpty}>
+                <View style={styles.selectedVerseIconCircle}>
+                  <BookOpen size={32} color="rgba(251,191,36,0.4)" />
+                </View>
+                <Text style={styles.selectedVerseTitle}>Select a Verse</Text>
+                <Text style={styles.selectedVerseDescription}>
+                  Click on any verse from the list to view it in detail with translations and audio
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
       </ScrollView>
     </BackgroundLayout>
@@ -135,155 +364,255 @@ export default function VersesScreen() {
 }
 
 const styles = StyleSheet.create({
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 120,
+  },
   container: {
-    paddingHorizontal: 20,
-    paddingTop: 56,
-    paddingBottom: 100,
+    width: '100%',
+    maxWidth: 720,
+    alignSelf: 'center',
+    gap: 14,
+  },
+
+  selectedVerseBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 22,
+  },
+  selectedVerseEmpty: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  selectedVerseIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(51,65,85,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+  selectedVerseTitle: {
+    color: '#fef3c7',
+    fontSize: 18,
+    fontWeight: '500',
+    fontFamily: Fonts.serif,
+    marginBottom: 10,
+  },
+  selectedVerseDescription: {
+    color: 'rgba(251,191,36,0.5)',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 22,
+    maxWidth: 460,
+  },
+  selectedVerseContent: {
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  selectedVerseRef: {
+    color: '#fbbf24',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  selectedVerseSpeaker: {
+    color: 'rgba(251,191,36,0.5)',
+    fontSize: 12,
+  },
+  selectedVerseText: {
+    color: '#fef3c7',
+    fontSize: 14,
+    fontStyle: 'italic',
+    fontFamily: Fonts.serif,
+    lineHeight: 23,
+    textAlign: 'center',
+  },
+
+  headerBlock: {
+    marginTop: 6,
+    marginBottom: 4,
+    alignItems: 'center',
   },
   title: {
-    color: GitaColors.gold,
-    fontSize: 28,
-    fontWeight: "700",
-    textAlign: "center",
+    color: '#fef3c7',
+    fontSize: 30,
+    fontWeight: '700',
+    fontFamily: Fonts.serif,
   },
   subtitle: {
-    color: GitaColors.goldMuted,
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: 4,
+    marginTop: 6,
+    color: 'rgba(251,191,36,0.6)',
+    fontSize: 16,
+    textAlign: 'center',
   },
-  moodSection: { marginBottom: 20 },
-  moodHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+
+  filtersSection: {
     gap: 10,
-  },
-  moodTitle: {
-    color: GitaColors.gold,
-    fontSize: 22,
-    fontWeight: "800",
-  },
-  moodHint: {
-    color: GitaColors.goldMuted,
-    fontSize: 14,
-    marginTop: 8,
-    lineHeight: 20,
-  },
-  moodGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    marginTop: 16,
-  },
-  moodChip: {
-    width: "22%",
-    minWidth: 72,
-    backgroundColor: GitaColors.bgCard,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: GitaColors.goldBorder,
-  },
-  moodChipText: {
-    color: GitaColors.gold,
-    fontSize: 12,
-    fontWeight: "600",
     marginTop: 6,
-    textAlign: "center",
   },
-  dottedSep: {
-    height: 1,
-    borderStyle: "dashed",
+  searchInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
-    borderColor: GitaColors.goldBorder,
-    marginBottom: 24,
-  },
-  selectSection: {
-    alignItems: "center",
-    marginBottom: 28,
-  },
-  selectTitle: {
-    color: GitaColors.gold,
-    fontSize: 20,
-    fontWeight: "800",
-    marginTop: 12,
-  },
-  selectHint: {
-    color: GitaColors.goldMuted,
-    fontSize: 14,
-    textAlign: "center",
-    marginTop: 6,
-    paddingHorizontal: 24,
-  },
-  listTitle: {
-    color: GitaColors.gold,
-    fontSize: 24,
-    fontWeight: "700",
-  },
-  searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: GitaColors.bgCard,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 14,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginTop: 20,
+    paddingVertical: 13,
+    gap: 10,
+  },
+  searchInputWrapFocused: {
+    borderColor: 'rgba(251,191,36,0.5)',
   },
   searchInput: {
     flex: 1,
-    color: GitaColors.text,
+    color: '#fef3c7',
     fontSize: 16,
     paddingVertical: 0,
   },
-  filterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: GitaColors.bgCard,
+
+  chapterWrap: {
+    position: 'relative',
+    zIndex: 5,
+  },
+  chapterTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 14,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginTop: 10,
+    paddingVertical: 13,
   },
-  filterText: {
+  chapterTriggerText: {
     flex: 1,
-    color: GitaColors.textMuted,
+    color: '#fef3c7',
     fontSize: 16,
+    textAlign: 'center',
+    marginRight: 14,
   },
-  list: { marginTop: 20, gap: 12 },
-  verseCard: {
-    flexDirection: "row",
-    backgroundColor: GitaColors.bgCard,
+  chapterMenu: {
+    marginTop: 8,
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.2)',
     borderRadius: 14,
-    padding: 14,
-    alignItems: "flex-start",
+    overflow: 'hidden',
+  },
+  chapterMenuItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(251,191,36,0.1)',
+  },
+  chapterMenuItemText: {
+    color: '#fef3c7',
+    fontSize: 15,
+  },
+
+  versesSection: {
+    marginTop: 8,
+  },
+  listScroll: {
+    maxHeight: 620,
+  },
+  listScrollContent: {
+    gap: 12,
+    paddingBottom: 8,
+  },
+  loadingWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 44,
     gap: 12,
   },
-  verseRefWrap: {
-    backgroundColor: GitaColors.gold,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  loadingText: {
+    color: 'rgba(251,191,36,0.7)',
+    fontSize: 16,
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 44,
+    gap: 14,
+  },
+  emptyText: {
+    color: 'rgba(251,191,36,0.6)',
+    fontSize: 16,
+  },
+
+  listCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 24,
+    padding: 14,
+    shadowColor: '#000000',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  verseItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 10,
-    minWidth: 44,
-    alignItems: "center",
+    padding: 14,
   },
-  verseRef: {
-    color: GitaColors.bg,
+  verseItemSelected: {
+    backgroundColor: 'rgba(251,191,36,0.2)',
+    borderWidth: 2,
+    borderColor: '#fbbf24',
+  },
+  verseItemPressed: {
+    transform: [{ scale: 0.985 }],
+  },
+  verseRefCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(71,85,105,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verseRefText: {
+    color: '#fbbf24',
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: '600',
   },
-  verseContent: { flex: 1 },
-  verseText: {
-    color: GitaColors.text,
+  verseContent: {
+    flex: 1,
+  },
+  verseEnglish: {
+    color: '#fef3c7',
     fontSize: 15,
-    lineHeight: 22,
+    fontFamily: Fonts.serif,
+    fontStyle: 'italic',
+    lineHeight: 24,
   },
   verseSpeaker: {
-    color: GitaColors.gold,
-    fontSize: 13,
-    marginTop: 4,
+    marginTop: 6,
+    color: 'rgba(251,191,36,0.6)',
+    fontSize: 12,
+  },
+
+  footerCount: {
+    marginTop: 8,
+    textAlign: 'center',
+    color: 'rgba(251,191,36,0.5)',
+    fontSize: 14,
   },
 });
+

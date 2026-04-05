@@ -1,182 +1,335 @@
-// @ts-nocheck
-import { motion } from 'framer-motion';
-import { Lock } from 'lucide-react';
+import { Lock } from 'lucide-react-native';
+import { memo, useEffect, useRef } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle, Ellipse } from 'react-native-svg';
 
-export default function LotusLevel({ level, isCompleted, isLocked, isActive, onClick, size = "lg" }) {
-    const sizeClasses = size === "lg" ? "w-20 h-20" : "w-14 h-14";
-    
-    return (
-        <motion.button
-            onClick={() => !isLocked && onClick(level)}
-            disabled={isLocked}
-            whileHover={!isLocked ? { scale: 1.15, y: -3 } : {}}
-            whileTap={!isLocked ? { scale: 0.95 } : {}}
-            className={`relative group ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
-        >
-            {/* Water ripple effect */}
-            {!isLocked && (
-                <>
-                    <motion.div
-                        className="absolute inset-0 rounded-full bg-cyan-300/30"
-                        animate={{ scale: [1, 1.5, 1], opacity: [0.4, 0, 0.4] }}
-                        transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                    />
-                    <motion.div
-                        className="absolute inset-0 rounded-full bg-cyan-200/20"
-                        animate={{ scale: [1, 1.8, 1], opacity: [0.3, 0, 0.3] }}
-                        transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                    />
-                </>
-            )}
-            
-            {/* Lotus Image */}
-            <div className={`relative ${sizeClasses} ${isLocked ? 'opacity-50 grayscale' : ''}`}>
-                <svg viewBox="0 0 100 90" className="w-full h-full drop-shadow-xl">
-                    {/* Lily pad / leaf base */}
-                    <ellipse
-                        cx="50"
-                        cy="78"
-                        rx="38"
-                        ry="10"
-                        className={`${isCompleted ? 'fill-emerald-400' : 'fill-emerald-500'}`}
-                    />
-                    <ellipse
-                        cx="50"
-                        cy="78"
-                        rx="28"
-                        ry="7"
-                        className={`${isCompleted ? 'fill-emerald-300' : 'fill-emerald-400'} opacity-70`}
-                    />
-                    
-                    {/* Outer petals - more spread */}
-                    {[-40, -25, -10, 10, 25, 40].map((angle, i) => (
-                        <ellipse
-                            key={`outer-${i}`}
-                            cx="50"
-                            cy="48"
-                            rx="8"
-                            ry="28"
-                            transform={`rotate(${angle} 50 65)`}
-                            className={`${
-                                isCompleted 
-                                    ? 'fill-amber-200' 
-                                    : isActive 
-                                        ? 'fill-pink-100' 
-                                        : 'fill-pink-50'
-                            } ${!isLocked && 'group-hover:fill-pink-200'} transition-colors duration-300`}
-                        />
-                    ))}
-                    
-                    {/* Middle petals */}
-                    {[-30, -15, 0, 15, 30].map((angle, i) => (
-                        <ellipse
-                            key={`mid-${i}`}
-                            cx="50"
-                            cy="45"
-                            rx="7"
-                            ry="24"
-                            transform={`rotate(${angle} 50 62)`}
-                            className={`${
-                                isCompleted 
-                                    ? 'fill-amber-300' 
-                                    : isActive 
-                                        ? 'fill-pink-200' 
-                                        : 'fill-pink-100'
-                            } ${!isLocked && 'group-hover:fill-pink-300'} transition-colors duration-300`}
-                        />
-                    ))}
-                    
-                    {/* Inner petals */}
-                    {[-20, -7, 7, 20].map((angle, i) => (
-                        <ellipse
-                            key={`inner-${i}`}
-                            cx="50"
-                            cy="42"
-                            rx="6"
-                            ry="20"
-                            transform={`rotate(${angle} 50 58)`}
-                            className={`${
-                                isCompleted 
-                                    ? 'fill-amber-400' 
-                                    : isActive 
-                                        ? 'fill-pink-300' 
-                                        : 'fill-pink-200'
-                            } ${!isLocked && 'group-hover:fill-pink-400'} transition-colors duration-300`}
-                        />
-                    ))}
-                    
-                    {/* Center petals */}
-                    {[-12, 0, 12].map((angle, i) => (
-                        <ellipse
-                            key={`center-${i}`}
-                            cx="50"
-                            cy="40"
-                            rx="5"
-                            ry="16"
-                            transform={`rotate(${angle} 50 54)`}
-                            className={`${
-                                isCompleted 
-                                    ? 'fill-amber-500' 
-                                    : isActive 
-                                        ? 'fill-pink-400' 
-                                        : 'fill-pink-300'
-                            } ${!isLocked && 'group-hover:fill-pink-500'} transition-colors duration-300`}
-                        />
-                    ))}
-                    
-                    {/* Center */}
-                    <circle
-                        cx="50"
-                        cy="45"
-                        r="10"
-                        className={`${
-                            isCompleted 
-                                ? 'fill-yellow-400' 
-                                : isActive 
-                                    ? 'fill-yellow-300' 
-                                    : 'fill-yellow-200'
-                        } transition-colors duration-300`}
-                    />
-                    
-                    {/* Center details */}
-                    {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => (
-                        <circle
-                            key={`dot-${i}`}
-                            cx={50 + 5 * Math.cos(angle * Math.PI / 180)}
-                            cy={45 + 5 * Math.sin(angle * Math.PI / 180)}
-                            r="1.5"
-                            className="fill-amber-600"
-                        />
-                    ))}
-                </svg>
-                
-                {/* Level number or lock */}
-                <div className="absolute inset-0 flex items-center justify-center" style={{ marginTop: '-6px' }}>
-                    {isLocked ? (
-                        <Lock className="w-4 h-4 text-slate-400" />
-                    ) : (
-                        <span className={`text-sm font-bold ${
-                            isCompleted ? 'text-amber-800' : 'text-pink-800'
-                        }`}>
-                            {level}
-                        </span>
-                    )}
-                </div>
-            </div>
-            
-            {/* Glow effect for completed */}
-            {isCompleted && (
-                <div className="absolute inset-0 rounded-full bg-amber-400/50 blur-lg -z-10" />
-            )}
-            
-            {/* Active glow */}
-            {isActive && !isCompleted && (
-                <motion.div 
-                    className="absolute inset-0 rounded-full bg-pink-400/40 blur-lg -z-10"
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.6, 0.4] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                />
-            )}
-        </motion.button>
-    );
+interface LotusLevelProps {
+  level: number;
+  isCompleted: boolean;
+  isLocked: boolean;
+  isActive: boolean;
+  onPress: (level: number) => void;
+  allowPressWhenLocked?: boolean;
+  size?: 'lg' | 'sm';
 }
+
+const OUTER_ANGLES = [-40, -25, -10, 10, 25, 40];
+const MID_ANGLES = [-30, -15, 0, 15, 30];
+const INNER_ANGLES = [-20, -7, 7, 20];
+const CENTER_ANGLES = [-12, 0, 12];
+const DOT_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
+
+function LotusLevel({
+  level,
+  isCompleted,
+  isLocked,
+  isActive,
+  onPress,
+  allowPressWhenLocked = false,
+  size = 'lg',
+}: LotusLevelProps) {
+  const rippleAnim1 = useRef(new Animated.Value(1)).current;
+  const rippleAnim2 = useRef(new Animated.Value(1)).current;
+  const glowAnim = useRef(new Animated.Value(1)).current;
+  const rippleLoop1Ref = useRef<Animated.CompositeAnimation | null>(null);
+  const rippleLoop2Ref = useRef<Animated.CompositeAnimation | null>(null);
+  const glowLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  useEffect(() => {
+    rippleAnim1.setValue(1);
+    rippleAnim2.setValue(1);
+    glowAnim.setValue(1.1); // Slight static glow for active levels
+
+    return () => {
+      // Nothing to cleanup as we've removed loops
+    };
+  }, [isLocked, isActive, isCompleted, glowAnim, rippleAnim1, rippleAnim2]);
+
+  const containerSize = size === 'lg' ? 80 : 56;
+  const svgSize = size === 'lg' ? 80 : 56;
+
+  // Color scheme based on state
+  const getPetalColors = () => {
+    if (isCompleted) {
+      return {
+        outer: '#fde68a', // amber-200
+        mid: '#fcd34d',   // amber-300
+        inner: '#fbbf24', // amber-400
+        center: '#f59e0b', // amber-500
+        core: '#fbbf24',  // yellow-400
+      };
+    }
+    if (isActive) {
+      return {
+        outer: '#fbcfe8', // pink-200
+        mid: '#f9a8d4',   // pink-300
+        inner: '#f472b6', // pink-400
+        center: '#ec4899', // pink-500
+        core: '#fde047',  // yellow-300
+      };
+    }
+    return {
+      outer: '#fce7f3', // pink-50
+      mid: '#fbcfe8',   // pink-100
+      inner: '#f9a8d4', // pink-200
+      center: '#f472b6', // pink-300
+      core: '#fef08a',  // yellow-200
+    };
+  };
+
+  const colors = getPetalColors();
+  const leafColor = isCompleted ? '#6ee7b7' : '#34d399'; // emerald-300 or emerald-400
+
+  return (
+    <Pressable
+      onPressIn={
+        isLocked && !allowPressWhenLocked
+          ? undefined
+          : () => onPress(level)
+      }
+      style={({ pressed }) => [
+        styles.container,
+        { width: containerSize, height: containerSize },
+        pressed && (!isLocked || allowPressWhenLocked) && styles.pressed,
+      ]}
+      disabled={isLocked && !allowPressWhenLocked}
+    >
+      {/* Water ripple effect */}
+      {!isLocked && (
+        <>
+          <Animated.View
+            style={[
+              styles.ripple,
+              {
+                transform: [
+                  { scale: rippleAnim1 },
+                ],
+                opacity: rippleAnim1.interpolate({
+                  inputRange: [1, 1.5],
+                  outputRange: [0.4, 0],
+                }),
+              },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.ripple,
+              {
+                transform: [
+                  { scale: rippleAnim2 },
+                ],
+                opacity: rippleAnim2.interpolate({
+                  inputRange: [1, 1.8],
+                  outputRange: [0.3, 0],
+                }),
+              },
+            ]}
+          />
+        </>
+      )}
+
+      {/* Lotus flower SVG */}
+      <View
+        style={[
+          styles.lotusContainer,
+          { width: svgSize, height: svgSize },
+          isLocked && styles.locked,
+        ]}
+      >
+        <Svg viewBox="0 0 100 90" width={svgSize} height={svgSize * 0.9}>
+          {/* Lily pad / leaf base */}
+          <Ellipse cx="50" cy="78" rx="38" ry="10" fill={leafColor} />
+          <Ellipse
+            cx="50"
+            cy="78"
+            rx="28"
+            ry="7"
+            fill={leafColor}
+            opacity="0.7"
+          />
+
+          {/* Outer petals */}
+          {OUTER_ANGLES.map((angle, i) => (
+            <Ellipse
+              key={`outer-${i}`}
+              cx="50"
+              cy="48"
+              rx="8"
+              ry="28"
+              fill={colors.outer}
+              transform={`rotate(${angle} 50 65)`}
+            />
+          ))}
+
+          {/* Middle petals */}
+          {MID_ANGLES.map((angle, i) => (
+            <Ellipse
+              key={`mid-${i}`}
+              cx="50"
+              cy="45"
+              rx="7"
+              ry="24"
+              fill={colors.mid}
+              transform={`rotate(${angle} 50 62)`}
+            />
+          ))}
+
+          {/* Inner petals */}
+          {INNER_ANGLES.map((angle, i) => (
+            <Ellipse
+              key={`inner-${i}`}
+              cx="50"
+              cy="42"
+              rx="6"
+              ry="20"
+              fill={colors.inner}
+              transform={`rotate(${angle} 50 58)`}
+            />
+          ))}
+
+          {/* Center petals */}
+          {CENTER_ANGLES.map((angle, i) => (
+            <Ellipse
+              key={`center-${i}`}
+              cx="50"
+              cy="40"
+              rx="5"
+              ry="16"
+              fill={colors.center}
+              transform={`rotate(${angle} 50 54)`}
+            />
+          ))}
+
+          {/* Center */}
+          <Circle cx="50" cy="45" r="10" fill={colors.core} />
+
+          {/* Center details */}
+          {DOT_ANGLES.map((angle, i) => {
+            const radians = (angle * Math.PI) / 180;
+            return (
+              <Circle
+                key={`dot-${i}`}
+                cx={50 + 5 * Math.cos(radians)}
+                cy={45 + 5 * Math.sin(radians)}
+                r="1.5"
+                fill="#d97706"
+              />
+            );
+          })}
+        </Svg>
+
+        {/* Level number or lock overlay */}
+        <View style={styles.overlay}>
+          {isLocked ? (
+            <Lock size={size === 'lg' ? 16 : 12} color="rgba(148,163,184,0.8)" />
+          ) : (
+            <Text
+              style={[
+                styles.levelNumber,
+                { fontSize: size === 'lg' ? 14 : 11 },
+                isCompleted && styles.levelNumberCompleted,
+              ]}
+            >
+              {level}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      {/* Completed glow */}
+      {isCompleted && <View style={styles.completedGlow} />}
+
+      {/* Active glow */}
+      {isActive && !isCompleted && (
+        <Animated.View
+          style={[
+            styles.activeGlow,
+            {
+              transform: [{ scale: glowAnim }],
+              opacity: glowAnim.interpolate({
+                inputRange: [1, 1.2],
+                outputRange: [0.4, 0.6],
+              }),
+            },
+          ]}
+        />
+      )}
+    </Pressable>
+  );
+}
+
+function areEqual(prev: LotusLevelProps, next: LotusLevelProps) {
+  return (
+    prev.level === next.level &&
+    prev.isCompleted === next.isCompleted &&
+    prev.isLocked === next.isLocked &&
+    prev.isActive === next.isActive &&
+    prev.allowPressWhenLocked === next.allowPressWhenLocked &&
+    prev.size === next.size &&
+    prev.onPress === next.onPress
+  );
+}
+
+export default memo(LotusLevel, areEqual);
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.95 }],
+  },
+  ripple: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: 9999,
+    backgroundColor: 'rgba(103,232,249,0.3)',
+  },
+  lotusContainer: {
+    position: 'relative',
+  },
+  locked: {
+    opacity: 0.5,
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -6,
+  },
+  levelNumber: {
+    fontWeight: '700',
+    color: '#831843', // pink-900
+  },
+  levelNumberCompleted: {
+    color: '#78350f', // amber-900
+  },
+  completedGlow: {
+    position: 'absolute',
+    top: -8,
+    left: -8,
+    right: -8,
+    bottom: -8,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(251,191,36,0.5)',
+    zIndex: -1,
+  },
+  activeGlow: {
+    position: 'absolute',
+    top: -8,
+    left: -8,
+    right: -8,
+    bottom: -8,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(244,114,182,0.4)',
+    zIndex: -1,
+  },
+});

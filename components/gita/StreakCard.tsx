@@ -3,31 +3,31 @@ import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 type Props = {
-  streak?: number;
-  lastVisit?: string; // ISO date
+  streak_count?: number;
+  last_opened_at?: string | null; // ISO date
 };
 
-export default function StreakCard({ streak = 0, lastVisit }: Props) {
+export default function StreakCard({ streak_count = 0, last_opened_at }: Props) {
   const streakLost = useMemo(() => {
-    if (!lastVisit) return false;
+    if (!last_opened_at) return false;
     const today = new Date().toISOString().split("T")[0];
-    const lastStr = lastVisit.split("T")[0];
+    const lastStr = last_opened_at.split("T")[0];
     if (lastStr === today) return false;
     const diffMs = new Date(today).getTime() - new Date(lastStr).getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     return diffDays > 1;
-  }, [lastVisit]);
+  }, [last_opened_at]);
 
-  const isOnFire = streak >= 7;
+  const isOnFire = streak_count >= 7;
 
   return (
     <View style={[styles.card, streakLost ? styles.cardLost : styles.cardOk]}>
       <View style={styles.row}>
-        <View style={[styles.iconWrap, streakLost ? styles.iconLost : streak > 0 ? styles.iconHot : styles.iconOff]}>
+        <View style={[styles.iconWrap, streakLost ? styles.iconLost : streak_count > 0 ? styles.iconHot : styles.iconOff]}>
           {streakLost ? (
             <HeartCrack color="rgba(252,165,165,0.95)" size={26} />
           ) : (
-            <Flame color={streak > 0 ? "white" : "rgba(148,163,184,0.9)"} size={26} />
+            <Flame color={streak_count > 0 ? "white" : "rgba(148,163,184,0.9)"} size={26} />
           )}
         </View>
 
@@ -42,7 +42,7 @@ export default function StreakCard({ streak = 0, lastVisit }: Props) {
             <>
               <Text style={styles.label}>DAILY STREAK</Text>
               <Text style={styles.value}>
-                {streak} <Text style={styles.valueUnit}>days</Text>
+                {streak_count} <Text style={styles.valueUnit}>days</Text>
               </Text>
             </>
           )}
@@ -58,12 +58,12 @@ export default function StreakCard({ streak = 0, lastVisit }: Props) {
         ) : null}
       </View>
 
-      {!streakLost && streak > 0 ? (
+      {!streakLost && streak_count > 0 ? (
         <View style={styles.barRow}>
-          {Array.from({ length: Math.min(streak, 7) }).map((_, i) => (
+          {Array.from({ length: Math.min(streak_count, 7) }).map((_, i) => (
             <View key={`on-${i}`} style={styles.barOn} />
           ))}
-          {Array.from({ length: Math.max(0, 7 - streak) }).map((_, i) => (
+          {Array.from({ length: Math.max(0, 7 - streak_count) }).map((_, i) => (
             <View key={`off-${i}`} style={styles.barOff} />
           ))}
         </View>

@@ -1,16 +1,13 @@
 import { Fonts } from '@/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Heart,
-  HelpCircle,
-  LoaderCircle,
-  Share2,
-  Volume2,
-  VolumeX,
-  X,
+    Heart,
+    Share2,
+    Volume2,
 } from 'lucide-react-native';
-import { useCallback, useRef, useState } from 'react';
-import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { FAVORITES_UPDATED_EVENT, toggleFavoriteVerse } from '@/lib/favorites';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Animated, DeviceEventEmitter, Pressable, Share, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
 
 interface QuoteCardProps {
   verse: {
@@ -22,9 +19,9 @@ interface QuoteCardProps {
     speaker?: string;
     meaning?: string;
   } | null;
-  user: { full_name?: string; email?: string } | null;
+  user: { id: string; full_name: string | null; email: string | null } | null;
   preferences: { preferred_language?: string; favorite_verses?: string[] } | null;
-  onFavoriteToggle?: (verseId: string) => void;
+  onFavoriteToggle?: (verseId: string, isLiked: boolean) => void;
   isToday?: boolean;
 }
 
@@ -35,18 +32,38 @@ export default function QuoteCard({
   onFavoriteToggle,
   isToday = false,
 }: QuoteCardProps) {
-  const [activeLanguage] = useState(preferences?.preferred_language || 'english');
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [showExplanation, setShowExplanation] = useState(false);
-  const [explanation, setExplanation] = useState('');
-  const [isExplaining, setIsExplaining] = useState(false);
+  const activeLanguage = preferences?.preferred_language || 'english';
   const [optimisticFavorite, setOptimisticFavorite] = useState<boolean | null>(null);
+  const [tapHeartPoint, setTapHeartPoint] = useState<{ x: number; y: number; nonce: number } | null>(null);
   const lastTapRef = useRef(0);
+  const tapHeartScale = useRef(new Animated.Value(0.35)).current;
+  const tapHeartOpacity = useRef(new Animated.Value(0)).current;
+  const hideTapHeartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isFavorite =
     optimisticFavorite !== null
       ? optimisticFavorite
       : (preferences?.favorite_verses?.includes(verse?.id ?? '') ?? false);
+
+  useEffect(() => {
+    if (!verse?.id) return;
+
+    const subscription = DeviceEventEmitter.addListener(
+      FAVORITES_UPDATED_EVENT,
+      (data: { verseId: string; liked: boolean }) => {
+        if (data.verseId === verse.id) {
+          setOptimisticFavorite(data.liked);
+        }
+      }
+    );
+
+    return () => {
+      subscription.remove();
+      if (hideTapHeartTimeoutRef.current) {
+        clearTimeout(hideTapHeartTimeoutRef.current);
+      }
+    };
+  }, [verse?.id]);
 
   const getQuoteText = () => {
     const text =
@@ -56,26 +73,27 @@ export default function QuoteCard({
     return text ?? '';
   };
 
-  const explainVerse = useCallback(() => {
-    if (explanation) {
-      setShowExplanation(true);
-      return;
-    }
-    setIsExplaining(true);
-    setShowExplanation(true);
-    if (verse?.meaning) {
-      setExplanation(verse.meaning);
-    } else {
-      setExplanation('Explanation not available. Add verse meanings to enable explanations.');
-    }
-    setIsExplaining(false);
-  }, [explanation, verse?.meaning]);
+  const handleFavorite = useCallback(async () => {
+    if (!verse || !user?.id) return;
 
-  const handleFavorite = useCallback(() => {
-    if (!user || !onFavoriteToggle || !verse) return;
-    setOptimisticFavorite(!isFavorite);
-    onFavoriteToggle(verse.id);
-  }, [user, onFavoriteToggle, verse, isFavorite]);
+    const currentlyLiked = isFavorite;
+    const nextFavorite = !currentlyLiked;
+    
+    // 1. Optimistic Update
+    setOptimisticFavorite(nextFavorite);
+
+    // 2. Persist to DB
+    try {
+      const successStatus = await toggleFavoriteVerse(user.id, verse.id, currentlyLiked);
+      if (onFavoriteToggle) {
+        onFavoriteToggle(verse.id, successStatus);
+      }
+    } catch (error) {
+      // Revert on error
+      setOptimisticFavorite(currentlyLiked);
+      console.error('Favorite toggle failed:', error);
+    }
+  }, [onFavoriteToggle, verse, isFavorite, user?.id]);
 
   const handleShare = useCallback(async () => {
     if (!verse) return;
@@ -92,22 +110,65 @@ export default function QuoteCard({
     }
   }, [verse]);
 
-  const handleCardDoubleTap = useCallback(() => {
+  const showTapHeart = useCallback((x: number, y: number) => {
+    if (hideTapHeartTimeoutRef.current) {
+      clearTimeout(hideTapHeartTimeoutRef.current);
+    }
+
+    setTapHeartPoint({ x, y, nonce: Date.now() });
+    tapHeartScale.setValue(0.35);
+    tapHeartOpacity.setValue(0);
+
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(tapHeartScale, {
+          toValue: 1.15,
+          duration: 170,
+          useNativeDriver: true,
+        }),
+        Animated.timing(tapHeartOpacity, {
+          toValue: 1,
+          duration: 140,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(tapHeartScale, {
+          toValue: 1,
+          duration: 120,
+          useNativeDriver: true,
+        }),
+        Animated.timing(tapHeartOpacity, {
+          toValue: 0,
+          duration: 260,
+          delay: 220,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      setTapHeartPoint(null);
+    });
+  }, [tapHeartOpacity, tapHeartScale]);
+
+  const handleQuoteDoubleTap = useCallback((event: GestureResponderEvent) => {
     const now = Date.now();
     const diff = now - lastTapRef.current;
+    const { locationX, locationY } = event.nativeEvent;
 
     if (diff < 400 && diff > 0) {
-      // double tap
-      if (user && onFavoriteToggle && verse && !isFavorite) {
-        setOptimisticFavorite(true);
-        onFavoriteToggle(verse.id);
+      showTapHeart(locationX, locationY);
+
+      if (verse && !isFavorite && user?.id) {
+        // Double tap always ensures "liked" if not already liked
+        void handleFavorite();
       }
+
       lastTapRef.current = 0;
       return;
     }
 
     lastTapRef.current = now;
-  }, [user, onFavoriteToggle, isFavorite, verse]);
+  }, [isFavorite, handleFavorite, showTapHeart, verse, user?.id]);
 
   const speakQuote = useCallback(() => {
     // keep your existing behavior
@@ -130,7 +191,7 @@ export default function QuoteCard({
         style={styles.card}
       >
         {/* Header */}
-        <Pressable style={styles.pressable} onPress={handleCardDoubleTap}>
+        <Pressable style={styles.pressable}>
           <LinearGradient
             colors={['rgba(20,30,55,1)', 'rgba(20,60,160,0.55)', 'rgba(20,30,55,1)']}
             start={{ x: 0, y: 0 }}
@@ -154,73 +215,47 @@ export default function QuoteCard({
         </Pressable>
 
         {/* Quote */}
-        <View style={styles.quoteBlock}>
-          <Text style={[styles.quoteText, activeLanguage === 'hindi' && styles.quoteHindi]}>
-            &quot;{getQuoteText()}&quot;
-          </Text>
-        </View>
-
-        {/* Explanation panel (optional UI, keep it) */}
-        {showExplanation && (
-          <View style={styles.explanationBox}>
-            <Pressable
-              style={styles.closeBtn}
-              onPress={() => setShowExplanation(false)}
-              hitSlop={8}
-            >
-              <X color="rgba(212,175,55,0.65)" size={18} />
-            </Pressable>
-
-            <View style={styles.explanationHeader}>
-              <HelpCircle color="rgba(212,175,55,0.95)" size={18} />
-              <Text style={styles.explanationTitle}>Meaning &amp; Explanation</Text>
-            </View>
-
-            {isExplaining ? (
-              <View style={styles.loadingRow}>
-                <LoaderCircle color="rgba(212,175,55,0.75)" size={16} />
-                <Text style={styles.loadingText}>Understanding the verse...</Text>
-              </View>
-            ) : (
-              <Text style={styles.explanationText}>{explanation}</Text>
-            )}
+        <Pressable style={styles.quoteTapArea} onPress={handleQuoteDoubleTap}>
+          <View style={styles.quoteBlock}>
+            <Text style={[styles.quoteText, activeLanguage === 'hindi' && styles.quoteHindi]}>
+              &quot;{getQuoteText()}&quot;
+            </Text>
           </View>
-        )}
 
-        {/* Action buttons (bigger pills + more spacing) */}
-        <View style={styles.actions}>
-          <Pressable style={[styles.iconBtn, isSpeaking && styles.iconBtnActive]} onPress={speakQuote}>
-            {isSpeaking ? (
-              <VolumeX color="#0a101e" size={20} />
-            ) : (
-              <Volume2 color="rgba(212,175,55,0.95)" size={20} />
-            )}
-          </Pressable>
-
-          {user && onFavoriteToggle && (
-            <Pressable style={[styles.iconBtn, isFavorite && styles.favoriteBtn]} onPress={handleFavorite}>
-              <Heart
-                color={isFavorite ? '#fbbf24' : 'rgba(212,175,55,0.95)'}
-                size={20}
-                fill={isFavorite ? '#fbbf24' : 'transparent'}
-              />
-            </Pressable>
+          {tapHeartPoint && (
+            <Animated.View
+              key={`tap-heart-${tapHeartPoint.nonce}`}
+              pointerEvents="none"
+              style={[
+                styles.tapHeart,
+                {
+                  left: tapHeartPoint.x - 22,
+                  top: tapHeartPoint.y - 22,
+                  opacity: tapHeartOpacity,
+                  transform: [{ scale: tapHeartScale }],
+                },
+              ]}
+            >
+              <Heart size={44} color="#FE2C55" fill="#FE2C55" />
+            </Animated.View>
           )}
+        </Pressable>
+
+        <View style={styles.actions}>
+          <Pressable style={styles.iconBtn} onPress={speakQuote}>
+            <Volume2 color="rgba(212,175,55,0.95)" size={20} />
+          </Pressable>
 
           <Pressable style={styles.iconBtn} onPress={handleShare}>
             <Share2 color="rgba(212,175,55,0.95)" size={20} />
           </Pressable>
 
-          <Pressable
-            style={[styles.iconBtn, showExplanation && styles.iconBtnActive]}
-            onPress={explainVerse}
-            disabled={isExplaining}
-          >
-            {isExplaining ? (
-              <LoaderCircle color="rgba(212,175,55,0.75)" size={20} />
-            ) : (
-              <HelpCircle color="rgba(212,175,55,0.95)" size={20} />
-            )}
+          <Pressable style={[styles.iconBtn, isFavorite && styles.favoriteBtn]} onPress={handleFavorite}>
+            <Heart
+              color={isFavorite ? '#FE2C55' : 'rgba(212,175,55,0.95)'}
+              size={20}
+              fill={isFavorite ? '#FE2C55' : 'transparent'}
+            />
           </Pressable>
         </View>
       </LinearGradient>
@@ -233,7 +268,7 @@ const GOLD = 'rgba(212,175,55,0.65)'; // slightly “richer” gold than your ol
 const styles = StyleSheet.create({
   wrapper: {
     width: '100%',
-    maxWidth: 720,
+    maxWidth: 760,
     alignSelf: 'center',
   },
 
@@ -247,7 +282,7 @@ const styles = StyleSheet.create({
   pressable: { width: '100%' },
 
   header: {
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(251,191,36,0.2)',
@@ -267,7 +302,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(251,191,36,0.6)',
   },
   todayLabel: {
-    color: 'rgba(251,191,36,0.9)',
+    color: '#fbbf24',
     fontSize: 12,
     letterSpacing: 4.8,
     fontWeight: '300',
@@ -275,7 +310,7 @@ const styles = StyleSheet.create({
   },
 
   chapterVerse: {
-    color: 'rgba(254,243,199,1)',
+    color: '#fef3c7',
     fontSize: 20,
     fontWeight: '500',
     letterSpacing: 0.5,
@@ -290,24 +325,30 @@ const styles = StyleSheet.create({
     fontWeight: '300',
   },
 
-  quoteBlock: {
-    paddingTop: 28,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
+  quoteTapArea: {
+    position: 'relative',
   },
 
-  quoteInner: {
-    paddingHorizontal: 8,
-    paddingVertical: 12,
+  quoteBlock: {
+    paddingTop: 34,
+    paddingBottom: 26,
+    paddingHorizontal: 22,
+    minHeight: 212,
+    justifyContent: 'center',
   },
 
   quoteText: {
-    color: 'rgba(254,243,199,1)',
-    fontSize: 24,
-    lineHeight: 39,
+    color: '#fef3c7',
+    fontSize: 26,
+    lineHeight: 38,
     textAlign: 'center',
     fontStyle: 'italic',
     fontFamily: Fonts.serif,
+    fontWeight: '400',
+  },
+
+  tapHeart: {
+    position: 'absolute',
   },
 
   quoteHindi: {
@@ -316,60 +357,12 @@ const styles = StyleSheet.create({
     fontFamily: undefined,
   },
 
-  explanationBox: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    backgroundColor: 'rgba(30,41,59,0.5)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.2)',
-  },
-
-  closeBtn: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    zIndex: 1,
-    padding: 4,
-  },
-
-  explanationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
-  },
-
-  explanationTitle: {
-    color: 'rgba(251,191,36,0.9)',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-
-  loadingText: {
-    color: 'rgba(212,175,55,0.75)',
-    fontSize: 14,
-  },
-
-  explanationText: {
-    color: 'rgba(255,244,210,0.88)',
-    fontSize: 14,
-    lineHeight: 22,
-  },
-
   actions: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 12,          // more space like website
-    paddingTop: 10,
-    paddingBottom: 18,
+    gap: 14,
+    paddingTop: 4,
+    paddingBottom: 20,
     paddingHorizontal: 18,
   },
 
@@ -380,14 +373,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: GOLD,
     backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingHorizontal: 22,
+    paddingVertical: 9,
     minHeight: 44,
-  },
-
-  iconBtnActive: {
-    backgroundColor: 'rgba(212,175,55,0.95)',
-    borderColor: 'rgba(212,175,55,0.95)',
   },
 
   favoriteBtn: {
