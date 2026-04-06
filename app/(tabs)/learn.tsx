@@ -9,7 +9,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Calendar, Check, ChevronRight, Flower2, Sparkles, X } from 'lucide-react-native';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, DeviceEventEmitter, Dimensions, Easing, InteractionManager, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { TouchableOpacity,  Animated, DeviceEventEmitter, Dimensions, Easing, InteractionManager, Modal, Pressable, ScrollView, StyleSheet, Text, View  } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 type LearnTab = 'lotus' | 'festivals';
@@ -98,14 +98,14 @@ export default function LearnScreen() {
               },
             ]}
           />
-          <Pressable style={styles.topTab} onPress={() => switchTab('lotus')}>
+          <TouchableOpacity activeOpacity={0.7} style={styles.topTab} onPress={() => switchTab('lotus')}>
             <Flower2 size={15} color={tab === 'lotus' ? 'white' : 'rgba(255,255,255,0.5)'} />
             <Text style={[styles.topTabText, tab === 'lotus' && styles.topTabTextActive]}>Lotus Path</Text>
-          </Pressable>
-          <Pressable style={styles.topTab} onPress={() => switchTab('festivals')}>
+          </TouchableOpacity>
+          <TouchableOpacity activeOpacity={0.7} style={styles.topTab} onPress={() => switchTab('festivals')}>
             <Calendar size={15} color={tab === 'festivals' ? 'white' : 'rgba(255,255,255,0.5)'} />
             <Text style={[styles.topTabText, tab === 'festivals' && styles.topTabTextActive]}>Festivals</Text>
-          </Pressable>
+          </TouchableOpacity>
         </View>
       </View>
       <View style={styles.tabContentWrap}>
@@ -318,7 +318,7 @@ function LotusPathView() {
                 <View style={styles.levelBadge}><Text style={styles.levelBadgeText}>LEVEL {selectedLevelId}</Text></View>
                 <Text style={styles.modalTitle}>{selectedLevelData?.title}</Text>
               </View>
-              <Pressable onPress={() => setIsModalVisible(false)}><X color="rgba(255,255,255,0.4)" size={22} /></Pressable>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setIsModalVisible(false)}><X color="rgba(255,255,255,0.4)" size={22} /></TouchableOpacity>
             </View>
 
             {lessonState === 'reading' && (
@@ -328,10 +328,10 @@ function LotusPathView() {
                   {selectedLevelData?.reading.replace(/\\n/g, '\n')}
                 </Text>
                 
-                <Pressable style={[styles.primaryButton, { marginTop: 24 }]} onPress={() => setLessonState('quiz')}>
+                <TouchableOpacity activeOpacity={0.7} style={[styles.primaryButton, { marginTop: 24 }]} onPress={() => setLessonState('quiz')}>
                   <Text style={styles.primaryButtonText}>Take Quick Quiz</Text>
                   <ChevronRight size={18} color="white" />
-                </Pressable>
+                </TouchableOpacity>
               </ScrollView>
             )}
 
@@ -354,21 +354,21 @@ function LotusPathView() {
                       if (show) bc = isCorrect ? '#22c55e' : '#ef4444';
                       else if (isSelected) bc = GitaColors.gold;
                       return (
-                        <Pressable key={idx} style={[styles.optionBtn, { backgroundColor: bg, borderColor: bc }]} onPress={() => handleOptionPress(idx)}>
+                        <TouchableOpacity activeOpacity={0.7} key={idx} style={[styles.optionBtn, { backgroundColor: bg, borderColor: bc }]} onPress={() => handleOptionPress(idx)}>
                           <View style={styles.optionRow}>
                             <View style={[styles.optionLetter, show && isCorrect && styles.optionLetterCorrect, show && !isCorrect && isSelected && styles.optionLetterWrong]}><Text style={styles.optionLetterText}>{String.fromCharCode(65+idx)}</Text></View>
                             <Text style={styles.optionText}>{opt}</Text>
                           </View>
                           {show && isCorrect && <Check size={18} color="#22c55e" />}
                           {show && !isCorrect && isSelected && <X size={18} color="#ef4444" />}
-                        </Pressable>
+                        </TouchableOpacity>
                       );
                     })}
                   </View>
                 </ScrollView>
 
                 {!isSubmitted ? (
-                  <Pressable
+                  <TouchableOpacity activeOpacity={0.7}
                     style={[
                       styles.primaryButton, 
                       { marginTop: 12, opacity: selectedOptionIndex === null ? 0.6 : 1 }
@@ -377,9 +377,9 @@ function LotusPathView() {
                     onPress={submitAnswer}
                   >
                     <Text style={styles.primaryButtonText}>Submit Answer</Text>
-                  </Pressable>
+                  </TouchableOpacity>
                 ) : (
-                  <Pressable
+                  <TouchableOpacity activeOpacity={0.7}
                     style={[styles.primaryButton, { marginTop: 12 }]}
                     onPress={goToNextQuestion}
                   >
@@ -387,7 +387,7 @@ function LotusPathView() {
                       {currentQuestionIndex + 1 < totalQuestions ? 'Next Question' : 'See Results'}
                     </Text>
                     <ChevronRight size={18} color="white" />
-                  </Pressable>
+                  </TouchableOpacity>
                 )}
               </View>
             )}
@@ -429,9 +429,9 @@ function LotusPathView() {
                   <Text style={styles.scoreLabel}>YOUR SCORE</Text>
                   <Text style={[styles.scoreValue, quizScore >= Math.ceil(totalQuestions*2/3) ? styles.scorePass : { color: 'white' }]}>{quizScore} / {totalQuestions}</Text>
                 </View>
-                <Pressable style={[styles.primaryButton, { width: '100%', marginTop: 24 }]} onPress={finishLesson}>
+                <TouchableOpacity activeOpacity={0.7} style={[styles.primaryButton, { width: '100%', marginTop: 24 }]} onPress={finishLesson}>
                   <Text style={styles.primaryButtonText}>{quizScore >= Math.ceil(totalQuestions*2/3) ? 'Continue' : 'Try Again'}</Text>
-                </Pressable>
+                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -488,13 +488,13 @@ function FestivalsView({ onSelectFestival }: { onSelectFestival: (f: Festival) =
         <Text style={styles.festYear}>2026</Text>
         
         <View style={styles.monthRow}>
-          <Pressable p-4 onPress={prevMonth} hitSlop={20}>
+          <TouchableOpacity activeOpacity={0.7} p-4 onPress={prevMonth} hitSlop={20}>
             <Text style={styles.monthArrow}>‹</Text>
-          </Pressable>
+          </TouchableOpacity>
           <Text style={styles.monthText}>{monthName} 2026</Text>
-          <Pressable p-4 onPress={nextMonth} hitSlop={20}>
+          <TouchableOpacity activeOpacity={0.7} p-4 onPress={nextMonth} hitSlop={20}>
             <Text style={styles.monthArrow}>›</Text>
-          </Pressable>
+          </TouchableOpacity>
         </View>
 
         {loading ? (
@@ -509,7 +509,7 @@ function FestivalsView({ onSelectFestival }: { onSelectFestival: (f: Festival) =
         ) : (
           <View style={styles.festivalList}>
             {filtered.map((fest) => (
-              <Pressable 
+              <TouchableOpacity activeOpacity={0.7} 
                 key={fest.id} 
                 style={styles.festivalItemCard}
                 onPress={() => onSelectFestival(fest)}
@@ -524,7 +524,7 @@ function FestivalsView({ onSelectFestival }: { onSelectFestival: (f: Festival) =
                     <Text style={styles.festItemDateText}>{fest.month} {getOrdinalDay(new Date(fest.main_date).getUTCDate())}</Text>
                   </View>
                 </View>
-              </Pressable>
+              </TouchableOpacity>
             ))}
           </View>
         )}
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
   modalBody: { color: 'rgba(255,255,255,0.9)', fontSize: 18, lineHeight: 26 },
   richTextContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 24 },
   boldKeyword: { fontWeight: '900', color: GitaColors.gold },
-  primaryButton: { backgroundColor: GitaColors.orange, borderRadius: 14, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  primaryButton: { backgroundColor: 'rgba(251,191,36,0.85)', borderRadius: 14, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   primaryButtonText: { color: 'white', fontSize: 16, fontWeight: '800' },
   quizProgressHeader: { marginBottom: 20 },
   quizProgressText: { color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 6 },

@@ -4,12 +4,13 @@ import QuoteCard from '@/components/gita/QuoteCard';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts } from '@/constants/theme';
 import { MOCK_VERSES, Verse } from '@/Data/mockverses';
+import { fetchAllGitaVerses } from '@/lib/verses';
 import { BookOpen, ChevronDown, Filter, Search } from 'lucide-react-native';
 import { FAVORITES_UPDATED_EVENT, fetchUserFavorites } from '@/lib/favorites';
 import { fetchCurrentUserAndProfile } from '@/lib/profile';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
+import { TouchableOpacity, 
     DeviceEventEmitter,
     Pressable,
     ScrollView,
@@ -17,7 +18,7 @@ import {
     Text,
     TextInput,
     View,
-} from 'react-native';
+ } from 'react-native';
 
 type ChapterFilter = 'all' | number;
 
@@ -120,7 +121,7 @@ const PLACEHOLDER_VERSES: Verse[] = [
   },
 ];
 
-const ALL_VERSES: Verse[] = [...MOCK_VERSES, ...PLACEHOLDER_VERSES];
+const LOCAL_VERSES: Verse[] = [...MOCK_VERSES, ...PLACEHOLDER_VERSES];
 
 export default function VersesScreen() {
   const [search, setSearch] = useState('');
@@ -131,6 +132,7 @@ export default function VersesScreen() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [user, setUser] = useState<{ id: string; full_name: string | null; email: string | null } | null>(null);
   const [favoriteVerseIds, setFavoriteVerseIds] = useState<string[]>([]);
+  const [supabaseVerses, setSupabaseVerses] = useState<Verse[]>([]);
   const pageScrollRef = useRef<ScrollView>(null);
   const selectedVerseBoxYRef = useRef(0);
 
@@ -148,9 +150,25 @@ export default function VersesScreen() {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    refreshUserContext();
-    return () => clearTimeout(timer);
+    const loadAll = async () => {
+      refreshUserContext();
+      try {
+        const gitaVerses = await fetchAllGitaVerses();
+        const mapped: Verse[] = gitaVerses.map(v => ({
+          id: v.id,
+          chapter: v.chapter_number,
+          verse: v.verse_number,
+          english: v.english,
+          hindi: v.hindi || '',
+          speaker: v.speaker || undefined,
+        }));
+        setSupabaseVerses(mapped);
+      } catch (err) {
+        console.error('Error fetching gita verses:', err);
+      }
+      setIsLoading(false);
+    };
+    loadAll();
   }, [refreshUserContext]);
 
   useFocusEffect(
@@ -179,9 +197,16 @@ export default function VersesScreen() {
     };
   }, []);
 
+  const ALL_VERSES = useMemo(() => {
+    // Deduplicate by id: Supabase verses take priority
+    const supaIds = new Set(supabaseVerses.map(v => v.id));
+    const filtered = LOCAL_VERSES.filter(v => !supaIds.has(v.id));
+    return [...supabaseVerses, ...filtered];
+  }, [supabaseVerses]);
+
   const chapters = useMemo(
     () => [...new Set(ALL_VERSES.map((verse) => verse.chapter))].sort((a, b) => a - b),
-    []
+    [ALL_VERSES]
   );
 
   const filteredVerses = useMemo(() => {
@@ -199,7 +224,7 @@ export default function VersesScreen() {
 
       return matchesChapter && matchesSearch;
     });
-  }, [search, selectedChapter]);
+  }, [search, selectedChapter, ALL_VERSES]);
 
   const selectChapter = (chapter: ChapterFilter) => {
     setSelectedChapter(chapter);
@@ -247,26 +272,26 @@ export default function VersesScreen() {
             </View>
 
             <View style={styles.chapterWrap}>
-              <Pressable style={styles.chapterTrigger} onPress={() => setIsChapterOpen((prev) => !prev)}>
+              <TouchableOpacity activeOpacity={0.7} style={styles.chapterTrigger} onPress={() => setIsChapterOpen((prev) => !prev)}>
                 <Filter size={16} color="rgba(251,191,36,0.5)" />
                 <Text style={styles.chapterTriggerText}>
                   {selectedChapter === 'all' ? 'All Chapters' : `Chapter ${selectedChapter}`}
                 </Text>
                 <ChevronDown size={20} color="rgba(251,191,36,0.5)" />
-              </Pressable>
+              </TouchableOpacity>
 
               {isChapterOpen && (
                 <View style={styles.chapterMenu}>
-                  <Pressable style={styles.chapterMenuItem} onPress={() => selectChapter('all')}>
+                  <TouchableOpacity activeOpacity={0.7} style={styles.chapterMenuItem} onPress={() => selectChapter('all')}>
                     <Text style={styles.chapterMenuItemText}>All Chapters</Text>
-                  </Pressable>
+                  </TouchableOpacity>
                   {chapters.map((chapter) => (
-                    <Pressable
+                    <TouchableOpacity activeOpacity={0.7}
                       key={chapter}
                       style={styles.chapterMenuItem}
                       onPress={() => selectChapter(chapter)}>
                       <Text style={styles.chapterMenuItemText}>Chapter {chapter}</Text>
-                    </Pressable>
+                    </TouchableOpacity>
                   ))}
                 </View>
               )}
@@ -295,13 +320,12 @@ export default function VersesScreen() {
                     const isSelected = selectedVerse?.id === verse.id;
 
                     return (
-                      <Pressable
+                      <TouchableOpacity activeOpacity={0.7}
                         key={verse.id}
                         onPress={() => handleVerseSelect(verse)}
-                        style={({ pressed }) => [
+                        style={[
                           styles.verseItem,
                           isSelected && styles.verseItemSelected,
-                          pressed && styles.verseItemPressed,
                         ]}>
                         <View style={styles.verseRefCircle}>
                           <Text style={styles.verseRefText}>
@@ -315,7 +339,7 @@ export default function VersesScreen() {
                           </Text>
                           {verse.speaker ? <Text style={styles.verseSpeaker}>— {verse.speaker}</Text> : null}
                         </View>
-                      </Pressable>
+                      </TouchableOpacity>
                     );
                   })}
                 </ScrollView>

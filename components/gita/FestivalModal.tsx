@@ -82,34 +82,25 @@ export default function FestivalModal({ festival, onClose }: FestivalModalProps)
             style={styles.sheetGradient}
           >
             <View style={styles.header}>
-              <View style={styles.headerLeftActions}>
-                <Pressable style={styles.shareBtn} onPress={handleShare}>
-                  <Share2 size={20} color={GitaColors.gold} />
-                </Pressable>
-                <Pressable 
-                  style={[styles.favoriteBtn, isFavorite && styles.favoriteBtnActive]} 
-                  onPress={toggleFavorite}
-                >
-                  <Heart size={20} color={isFavorite ? '#FE2C55' : 'rgba(255,255,255,0.4)'} fill={isFavorite ? '#FE2C55' : 'transparent'} />
-                </Pressable>
-              </View>
-
               <View style={styles.headerTitleRow}>
-                <Text style={styles.iconEmoji}>{getFestivalSymbol(festival.name, festival.icon_emoji)}</Text>
                 <View style={styles.titleInfo}>
-                  <Text style={styles.festivalName}>{festival.name.toUpperCase()}</Text>
+                  <Text style={styles.festivalName} numberOfLines={2}>
+                    {festival.name.toUpperCase()}
+                  </Text>
                   <Text style={styles.deityName}>{festival.deity}</Text>
                 </View>
               </View>
               
-              <View style={styles.dateBadge}>
-                <Text style={styles.dateBadgeMonth}>{festival.month}</Text>
-                <Text style={styles.dateBadgeMain}>{festival.main_day_info}</Text>
+              <View style={styles.headerRightGroup}>
+                <View style={styles.dateBadge}>
+                  <Text style={styles.dateBadgeMonth}>{festival.month}</Text>
+                  <Text style={styles.dateBadgeMain}>{festival.main_day_info}</Text>
+                </View>
+                
+                <Pressable style={styles.closeBtn} onPress={closeModal}>
+                  <X size={20} color="rgba(255,255,255,0.4)" />
+                </Pressable>
               </View>
-              
-              <Pressable style={styles.closeBtn} onPress={closeModal}>
-                <X size={20} color="rgba(255,255,255,0.4)" />
-              </Pressable>
             </View>
 
             <ScrollView 
@@ -227,10 +218,11 @@ const styles = StyleSheet.create({
   },
   festivalName: {
     color: GitaColors.gold,
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
     letterSpacing: 0.5,
     fontFamily: 'serif',
+    flexShrink: 1,
   },
   deityName: {
     color: 'rgba(251,191,36,0.7)',
@@ -281,11 +273,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(254,44,85,0.2)',
     borderWidth: 1,
   },
+  headerRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   closeBtn: {
     padding: 8,
     backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 12,
-    marginLeft: 10,
   },
   scroll: {
     flex: 1,

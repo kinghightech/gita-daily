@@ -14,12 +14,12 @@ import {
     Zap,
 } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import {
+import { TouchableOpacity, 
     Pressable,
     StyleSheet,
     Text,
     View,
-} from 'react-native';
+ } from 'react-native';
 
 interface MoodSearchProps {
   verses: Verse[];
@@ -162,7 +162,7 @@ export default function MoodSearch({
           const isSelected = selectedMood === mood.id;
 
           return (
-            <Pressable
+            <TouchableOpacity activeOpacity={0.7}
               key={mood.id}
               disabled={disableInteractions}
               onPress={() => findVerseForMood(mood.id)}
@@ -182,7 +182,7 @@ export default function MoodSearch({
                   <Text numberOfLines={2} style={styles.moodLabel}>{mood.label}</Text>
                 </View>
               )}
-            </Pressable>
+            </TouchableOpacity>
           );
         })}
       </View>

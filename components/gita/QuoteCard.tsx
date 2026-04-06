@@ -7,7 +7,7 @@ import {
 } from 'lucide-react-native';
 import { FAVORITES_UPDATED_EVENT, toggleFavoriteVerse } from '@/lib/favorites';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, DeviceEventEmitter, Pressable, Share, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native';
+import { TouchableOpacity,  Alert, Animated, DeviceEventEmitter, Pressable, Share, StyleSheet, Text, View, type GestureResponderEvent  } from 'react-native';
 
 interface QuoteCardProps {
   verse: {
@@ -191,7 +191,7 @@ export default function QuoteCard({
         style={styles.card}
       >
         {/* Header */}
-        <Pressable style={styles.pressable}>
+        <TouchableOpacity activeOpacity={0.7} style={styles.pressable}>
           <LinearGradient
             colors={['rgba(20,30,55,1)', 'rgba(20,60,160,0.55)', 'rgba(20,30,55,1)']}
             start={{ x: 0, y: 0 }}
@@ -212,10 +212,10 @@ export default function QuoteCard({
 
             {verse.speaker && <Text style={styles.speaker}>Spoken by {verse.speaker}</Text>}
           </LinearGradient>
-        </Pressable>
+        </TouchableOpacity>
 
         {/* Quote */}
-        <Pressable style={styles.quoteTapArea} onPress={handleQuoteDoubleTap}>
+        <TouchableOpacity activeOpacity={0.7} style={styles.quoteTapArea} onPress={handleQuoteDoubleTap}>
           <View style={styles.quoteBlock}>
             <Text style={[styles.quoteText, activeLanguage === 'hindi' && styles.quoteHindi]}>
               &quot;{getQuoteText()}&quot;
@@ -239,24 +239,24 @@ export default function QuoteCard({
               <Heart size={44} color="#FE2C55" fill="#FE2C55" />
             </Animated.View>
           )}
-        </Pressable>
+        </TouchableOpacity>
 
         <View style={styles.actions}>
-          <Pressable style={styles.iconBtn} onPress={speakQuote}>
+          <TouchableOpacity activeOpacity={0.7} style={styles.iconBtn} onPress={speakQuote}>
             <Volume2 color="rgba(212,175,55,0.95)" size={20} />
-          </Pressable>
+          </TouchableOpacity>
 
-          <Pressable style={styles.iconBtn} onPress={handleShare}>
+          <TouchableOpacity activeOpacity={0.7} style={styles.iconBtn} onPress={handleShare}>
             <Share2 color="rgba(212,175,55,0.95)" size={20} />
-          </Pressable>
+          </TouchableOpacity>
 
-          <Pressable style={[styles.iconBtn, isFavorite && styles.favoriteBtn]} onPress={handleFavorite}>
+          <TouchableOpacity activeOpacity={0.7} style={[styles.iconBtn, isFavorite && styles.favoriteBtn]} onPress={handleFavorite}>
             <Heart
               color={isFavorite ? '#FE2C55' : 'rgba(212,175,55,0.95)'}
               size={20}
               fill={isFavorite ? '#FE2C55' : 'transparent'}
             />
-          </Pressable>
+          </TouchableOpacity>
         </View>
       </LinearGradient>
     </View>

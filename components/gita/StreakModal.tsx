@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Calendar, Flame, Share2, Trophy, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { TouchableOpacity,  Modal, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions  } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
     Easing,
@@ -224,7 +224,7 @@ export default function StreakModal({ open, onClose, preferences }: StreakModalP
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <Animated.View style={[styles.overlay, overlayStyle]}>
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={closeModal} />
+        <TouchableOpacity activeOpacity={0.7} style={StyleSheet.absoluteFillObject} onPress={closeModal} />
 
         <View style={styles.bottomWrap} pointerEvents="box-none">
           <Animated.View style={[styles.sheet, { height: sheetHeight }, sheetStyle]}>
@@ -240,12 +240,12 @@ export default function StreakModal({ open, onClose, preferences }: StreakModalP
                 </View>
               </GestureDetector>
 
-              <Pressable style={[styles.headerIconBtn, styles.headerLeft]} onPress={shareStreak} hitSlop={12}>
+              <TouchableOpacity activeOpacity={0.7} style={[styles.headerIconBtn, styles.headerLeft]} onPress={shareStreak} hitSlop={12}>
                 <Share2 size={20} color="rgba(252,211,77,0.5)" />
-              </Pressable>
-              <Pressable style={[styles.headerIconBtn, styles.headerRight]} onPress={closeModal} hitSlop={12}>
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.7} style={[styles.headerIconBtn, styles.headerRight]} onPress={closeModal} hitSlop={12}>
                 <X size={20} color="rgba(252,211,77,0.5)" />
-              </Pressable>
+              </TouchableOpacity>
 
               <ScrollView
                 style={styles.scroll}

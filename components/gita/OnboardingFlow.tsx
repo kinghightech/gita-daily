@@ -13,7 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { TouchableOpacity,  KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View  } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 type AuthChoice = 'email';
@@ -243,7 +243,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
           <Text style={styles.subtitle}>Get gentle reminders to come back for your daily Gita quote and more.</Text>
 
           <View style={styles.choiceList}>
-            <Pressable
+            <TouchableOpacity activeOpacity={0.7}
               style={[styles.choiceCard, reminderChoice === 'yes' && styles.choiceCardSelected]}
               onPress={() => {
                 void handleReminderChoice('yes');
@@ -251,9 +251,9 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
             >
               <Bell size={18} color={reminderChoice === 'yes' ? '#0f172a' : '#fbbf24'} />
               <Text style={[styles.choiceText, reminderChoice === 'yes' && styles.choiceTextSelected]}>Yes, remind me</Text>
-            </Pressable>
+            </TouchableOpacity>
 
-            <Pressable
+            <TouchableOpacity activeOpacity={0.7}
               style={[styles.choiceCard, reminderChoice === 'no' && styles.choiceCardSelected]}
               onPress={() => {
                 void handleReminderChoice('no');
@@ -261,7 +261,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
             >
               <Shield size={18} color={reminderChoice === 'no' ? '#0f172a' : '#fbbf24'} />
               <Text style={[styles.choiceText, reminderChoice === 'no' && styles.choiceTextSelected]}>No, maybe later</Text>
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </>
       );
@@ -274,21 +274,21 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
           <Text style={styles.subtitle}>Pick the language you want to read your daily verses in.</Text>
 
           <View style={styles.choiceList}>
-            <Pressable
+            <TouchableOpacity activeOpacity={0.7}
               style={[styles.choiceCard, preferredLanguage === 'english' && styles.choiceCardSelected]}
               onPress={() => setPreferredLanguage('english')}
             >
               <Globe size={18} color={preferredLanguage === 'english' ? '#0f172a' : '#fbbf24'} />
               <Text style={[styles.choiceText, preferredLanguage === 'english' && styles.choiceTextSelected]}>English</Text>
-            </Pressable>
+            </TouchableOpacity>
 
-            <Pressable
+            <TouchableOpacity activeOpacity={0.7}
               style={[styles.choiceCard, preferredLanguage === 'hindi' && styles.choiceCardSelected]}
               onPress={() => setPreferredLanguage('hindi')}
             >
               <Globe size={18} color={preferredLanguage === 'hindi' ? '#0f172a' : '#fbbf24'} />
               <Text style={[styles.choiceText, preferredLanguage === 'hindi' && styles.choiceTextSelected]}>Hindi</Text>
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </>
       );
@@ -304,23 +304,23 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
         </Text>
 
         <View style={styles.modeSwitchWrap}>
-          <Pressable
+          <TouchableOpacity activeOpacity={0.7}
             style={[styles.modeSwitchBtn, authMode === 'signup' && styles.modeSwitchBtnActive]}
             onPress={() => setAuthMode('signup')}
           >
             <Text style={[styles.modeSwitchText, authMode === 'signup' && styles.modeSwitchTextActive]}>
               Create Account
             </Text>
-          </Pressable>
+          </TouchableOpacity>
 
-          <Pressable
+          <TouchableOpacity activeOpacity={0.7}
             style={[styles.modeSwitchBtn, authMode === 'login' && styles.modeSwitchBtnActive]}
             onPress={() => setAuthMode('login')}
           >
             <Text style={[styles.modeSwitchText, authMode === 'login' && styles.modeSwitchTextActive]}>
               Log In
             </Text>
-          </Pressable>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.emailFieldsWrap}>
@@ -379,7 +379,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
       >
         <View style={styles.contentWrap}>
           {step > 0 && (
-            <Pressable
+            <TouchableOpacity activeOpacity={0.7}
               onPress={goBackFlow}
               style={styles.backBtn}
               hitSlop={10}
@@ -387,7 +387,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
               accessibilityLabel="Go back"
             >
               <ChevronLeft size={22} color="#fef3c7" />
-            </Pressable>
+            </TouchableOpacity>
           )}
 
           <View style={styles.progressRow}>
@@ -406,7 +406,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
             <Animated.View style={[styles.stepBlock, pageAnimatedStyle]}>{renderStepContent()}</Animated.View>
           </ScrollView>
 
-          <Pressable
+          <TouchableOpacity activeOpacity={0.7}
             onPress={continueFlow}
             disabled={!canContinue}
             style={[styles.continueBtn, !canContinue && styles.continueBtnDisabled]}
@@ -415,7 +415,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
               {step === TOTAL_STEPS - 1 ? (authMode === 'signup' ? 'Finish' : 'Log In') : 'Continue'}
             </Text>
             {step < TOTAL_STEPS - 1 && <ChevronRight size={16} color={!canContinue ? 'rgba(15,23,42,0.45)' : '#0f172a'} />}
-          </Pressable>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </BackgroundLayout>

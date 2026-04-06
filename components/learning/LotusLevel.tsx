@@ -82,7 +82,7 @@ function LotusLevel({
 
   return (
     <Pressable
-      onPressIn={
+      onPress={
         isLocked && !allowPressWhenLocked
           ? undefined
           : () => onPress(level)

@@ -13,7 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Flame } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
-import { DeviceEventEmitter, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { TouchableOpacity,  DeviceEventEmitter, Pressable, ScrollView, StyleSheet, Text, View  } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -176,8 +176,8 @@ export default function Home() {
                 <Text style={styles.greeting}>{greeting.toUpperCase()}</Text>
                 <Text style={styles.userName}>{isIdentityLoading ? 'Loading...' : displayName || 'Your Name'}</Text>
               </View>
-              <Pressable
-                style={({ pressed }) => [styles.streakIndicator, pressed && styles.streakIndicatorPressed]}
+              <TouchableOpacity activeOpacity={0.7}
+                style={styles.streakIndicator}
                 onPress={() => setIsStreakModalOpen(true)}
               >
                 <Flame size={20} color="#fbbf24" />
@@ -185,7 +185,7 @@ export default function Home() {
                   <Text style={styles.streakNumber}>{currentStreak}</Text>
                   <Text style={styles.streakLabel}> days</Text>
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             </Animated.View>
 
             {isLoading ? (

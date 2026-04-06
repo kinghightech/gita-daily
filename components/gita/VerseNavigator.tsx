@@ -13,21 +13,21 @@ type Props = {
 export default function VerseNavigator({ onPrevious, onNext, onRandom, currentIndex, total }: Props) {
   return (
     <View style={styles.row}>
-      <Pressable onPress={onPrevious} style={styles.iconBtn} hitSlop={10}>
+      <TouchableOpacity activeOpacity={0.7} onPress={onPrevious} style={styles.iconBtn} hitSlop={10}>
         <ChevronLeft color="rgba(251,191,36,0.9)" size={22} />
-      </Pressable>
+      </TouchableOpacity>
 
-      <Pressable onPress={onRandom} style={styles.pill}>
+      <TouchableOpacity activeOpacity={0.7} onPress={onRandom} style={styles.pill}>
         <Shuffle color="rgba(251,191,36,0.95)" size={16} />
         <Text style={styles.pillText}>New Verse</Text>
         <Text style={styles.counter}>
           {currentIndex + 1}/{total}
         </Text>
-      </Pressable>
+      </TouchableOpacity>
 
-      <Pressable onPress={onNext} style={styles.iconBtn} hitSlop={10}>
+      <TouchableOpacity activeOpacity={0.7} onPress={onNext} style={styles.iconBtn} hitSlop={10}>
         <ChevronRight color="rgba(251,191,36,0.9)" size={22} />
-      </Pressable>
+      </TouchableOpacity>
     </View>
   );
 }

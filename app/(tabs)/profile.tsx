@@ -13,6 +13,8 @@ import { fetchCurrentUserAndProfile, getProfileDisplayName, STREAK_UPDATED_EVENT
 import { supabase } from '@/lib/supabase';
 import { fetchAllFestivals, Festival, getFestivalSymbol } from '@/lib/festivals';
 import { BADGE_DEFINITIONS, fetchUserBadges, checkAndAwardBadges, UserStats } from '@/lib/badges';
+import { fetchUserNotes, NOTES_UPDATED_EVENT, type UserNote } from '@/lib/notes';
+import { fetchAllGitaVerses } from '@/lib/verses';
 import LotusLoader from '@/components/ui/LotusLoader';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -40,9 +42,10 @@ import {
     Bookmark,
     Medal,
     Compass,
+    StickyNote,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
+import { TouchableOpacity, 
     Alert,
     DeviceEventEmitter,
     Pressable,
@@ -51,7 +54,7 @@ import {
     Text,
     View,
     Dimensions,
-} from 'react-native';
+ } from 'react-native';
 
 import { MOCK_VERSES, Verse } from '@/Data/mockverses';
 import FestivalModal from '@/components/gita/FestivalModal';
@@ -122,6 +125,8 @@ export default function ProfileScreen() {
   const [favoriteFestivalIds, setFavoriteFestivalIds] = useState<string[]>([]);
   const [earnedBadgeIds, setEarnedBadgeIds] = useState<string[]>([]);
   const [allFestivals, setAllFestivals] = useState<Festival[]>([]);
+  const [userNotes, setUserNotes] = useState<UserNote[]>([]);
+  const [supabaseVerses, setSupabaseVerses] = useState<Verse[]>([]);
   const [selectedFavVerse, setSelectedFavVerse] = useState<Verse | null>(null);
   const [selectedFestival, setSelectedFestival] = useState<Festival | null>(null);
   const pageScrollRef = useRef<ScrollView>(null);
@@ -144,16 +149,30 @@ export default function ProfileScreen() {
 
       const preferredLanguage = await loadPreferredLanguageForCurrentUser();
 
-      const [favIds, favFestIds, festivals, medalIds] = await Promise.all([
+      const [favIds, favFestIds, festivals, medalIds, notes, gitaVerses] = await Promise.all([
         fetchUserFavorites(user.id),
         fetchUserFestivalFavorites(user.id),
         fetchAllFestivals(),
-        fetchUserBadges(user.id)
+        fetchUserBadges(user.id),
+        fetchUserNotes(user.id),
+        fetchAllGitaVerses(),
       ]);
 
       setFavoriteVerseIds(favIds);
       setFavoriteFestivalIds(favFestIds);
       setAllFestivals(festivals);
+      setUserNotes(notes);
+
+      // Map supabase gita_verses for favorites lookup
+      const mapped: Verse[] = gitaVerses.map(v => ({
+        id: v.id,
+        chapter: v.chapter_number,
+        verse: v.verse_number,
+        english: v.english,
+        hindi: v.hindi || '',
+        speaker: v.speaker || undefined,
+      }));
+      setSupabaseVerses(mapped);
 
       // Award logic
       const stats: UserStats = {
@@ -195,6 +214,7 @@ export default function ProfileScreen() {
       DeviceEventEmitter.addListener(STREAK_UPDATED_EVENT, refreshProfileIdentity),
       DeviceEventEmitter.addListener(FAVORITES_UPDATED_EVENT, refreshProfileIdentity),
       DeviceEventEmitter.addListener(FESTIVALS_UPDATED_EVENT, refreshProfileIdentity),
+      DeviceEventEmitter.addListener(NOTES_UPDATED_EVENT, refreshProfileIdentity),
     ];
     return () => subs.forEach(s => s.remove());
   }, []);
@@ -206,9 +226,15 @@ export default function ProfileScreen() {
     }, [])
   );
 
+  const COMBINED_VERSES = useMemo(() => {
+    const supaIds = new Set(supabaseVerses.map(v => v.id));
+    const filtered = ALL_VERSES.filter(v => !supaIds.has(v.id));
+    return [...supabaseVerses, ...filtered];
+  }, [supabaseVerses]);
+
   const favoriteVerses = useMemo(() => {
-    return ALL_VERSES.filter(v => favoriteVerseIds.includes(v.id));
-  }, [favoriteVerseIds]);
+    return COMBINED_VERSES.filter(v => favoriteVerseIds.includes(v.id));
+  }, [favoriteVerseIds, COMBINED_VERSES]);
 
   const favoriteFestivals = useMemo(() => {
     return allFestivals.filter(f => favoriteFestivalIds.includes(f.id));
@@ -304,10 +330,10 @@ export default function ProfileScreen() {
 
           {/* ── Quick Actions ── */}
           <View style={styles.quickActions}>
-            <Pressable style={styles.qaCard} onPress={scrollToSaved}>
+            <TouchableOpacity activeOpacity={0.7} style={styles.qaCard} onPress={scrollToSaved}>
               <Bookmark size={20} color="#fbbf24" />
               <Text style={styles.qaText}>Saved</Text>
-            </Pressable>
+            </TouchableOpacity>
           </View>
 
           {/* ── Streak Bar ── */}
@@ -336,7 +362,7 @@ export default function ProfileScreen() {
                 const BadgeIcon = BADGE_ICONS[badge.icon] || Star;
                 return (
                   <View key={badge.id} style={styles.badgeWrapper}>
-                    <Pressable 
+                    <TouchableOpacity activeOpacity={0.7} 
                       style={[styles.badgeCircle, !isEarned && styles.badgeLocked]}
                       onPress={() => handleBadgePress(badge, isEarned)}
                     >
@@ -350,7 +376,7 @@ export default function ProfileScreen() {
                           <Lock size={12} color="white" opacity={0.6} />
                         </View>
                       )}
-                    </Pressable>
+                    </TouchableOpacity>
                     <Text style={[styles.badgeName, !isEarned && { opacity: 0.4 }]}>
                       {badge.title}
                     </Text>
@@ -421,13 +447,12 @@ export default function ProfileScreen() {
                 {favoriteVerses.map((verse) => {
                   const isSelected = selectedFavVerse?.id === verse.id;
                   return (
-                    <Pressable
+                    <TouchableOpacity activeOpacity={0.7}
                       key={verse.id}
                       onPress={() => handleFavSelect(verse)}
-                      style={({ pressed }) => [
+                      style={[
                         styles.favItem,
                         isSelected && styles.favItemSelected,
-                        pressed && styles.favItemPressed,
                       ]}
                     >
                       <View style={styles.favItemHeader}>
@@ -435,7 +460,7 @@ export default function ProfileScreen() {
                         <Heart size={12} color="#FE2C55" fill="#FE2C55" />
                       </View>
                       <Text style={styles.favText} numberOfLines={2}>&quot;{verse.english}&quot;</Text>
-                    </Pressable>
+                    </TouchableOpacity>
                   );
                 })}
               </ScrollView>
@@ -463,10 +488,10 @@ export default function ProfileScreen() {
                 nestedScrollEnabled
               >
                 {favoriteFestivals.map((fest) => (
-                  <Pressable
+                  <TouchableOpacity activeOpacity={0.7}
                     key={fest.id}
                     onPress={() => setSelectedFestival(fest)}
-                    style={({ pressed }) => [styles.favItem, pressed && styles.favItemPressed]}
+                    style={styles.favItem}
                   >
                     <View style={styles.favItemHeader}>
                       <Text style={[styles.favRef, { color: '#60a5fa' }]}>
@@ -475,8 +500,60 @@ export default function ProfileScreen() {
                       <Star size={12} color="#60a5fa" fill="#60a5fa" />
                     </View>
                     <Text style={styles.favText} numberOfLines={1}>{fest.display_date} • {fest.deity}</Text>
-                  </Pressable>
+                  </TouchableOpacity>
                 ))}
+              </ScrollView>
+            )}
+          </View>
+
+          {/* ── Notes Section ── */}
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.headerIconBg}>
+                <StickyNote size={18} color="#fbbf24" />
+              </View>
+              <Text style={styles.sectionTitle}>Your Notes</Text>
+            </View>
+            {userNotes.length === 0 ? (
+              <View style={styles.noFavWrap}>
+                <StickyNote size={40} color="rgba(251,191,36,0.15)" />
+                <Text style={styles.noFavText}>No notes yet</Text>
+                <Text style={styles.noFavSubtext}>Tap "Note" on any verse in the Read section to add one</Text>
+              </View>
+            ) : (
+              <ScrollView
+                style={styles.favScroll}
+                contentContainerStyle={styles.favScrollContent}
+                showsVerticalScrollIndicator
+                nestedScrollEnabled
+              >
+                {userNotes.map((note) => {
+                  const verseData = note.verse;
+                  const verseRef = verseData
+                    ? `${verseData.chapter_number}.${verseData.verse_number}`
+                    : '—';
+                  const dateStr = new Date(note.created_at).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  });
+                  return (
+                    <View key={note.id} style={styles.noteItem}>
+                      <View style={styles.noteItemHeader}>
+                        <Text style={styles.noteVerseRef}>Verse {verseRef}</Text>
+                        <Text style={styles.noteDate}>{dateStr}</Text>
+                      </View>
+                      {verseData && (
+                        <Text style={styles.noteVersePreview} numberOfLines={1}>
+                          &quot;{verseData.english}&quot;
+                        </Text>
+                      )}
+                      <Text style={styles.noteText} numberOfLines={3}>
+                        {note.note_text}
+                      </Text>
+                    </View>
+                  );
+                })}
               </ScrollView>
             )}
           </View>
@@ -489,14 +566,14 @@ export default function ProfileScreen() {
               </View>
               <Text style={styles.sectionTitle}>Language</Text>
             </View>
-            <Pressable style={styles.langTrigger} onPress={() => setIsLangOpen(!isLangOpen)}>
+            <TouchableOpacity activeOpacity={0.7} style={styles.langTrigger} onPress={() => setIsLangOpen(!isLangOpen)}>
               <Text style={styles.langTriggerText}>{selectedLanguage}</Text>
               <ChevronDown size={20} color="rgba(251,191,36,0.3)" />
-            </Pressable>
+            </TouchableOpacity>
             {isLangOpen && (
               <View style={styles.langMenu}>
                 {['English', 'Hindi'].map((lang) => (
-                  <Pressable 
+                  <TouchableOpacity activeOpacity={0.7} 
                     key={lang} 
                     style={styles.langMenuItem}
                     onPress={() => {
@@ -510,7 +587,7 @@ export default function ProfileScreen() {
                     }}
                   >
                     <Text style={styles.langMenuItemText}>{lang}</Text>
-                  </Pressable>
+                  </TouchableOpacity>
                 ))}
               </View>
             )}
@@ -518,26 +595,26 @@ export default function ProfileScreen() {
 
           {/* ── Actions ── */}
           <View style={styles.actionsRow}>
-            <Pressable style={styles.actionBtn} onPress={handleSignOut}>
+            <TouchableOpacity activeOpacity={0.7} style={styles.actionBtn} onPress={handleSignOut}>
               <LogOut size={16} color="rgba(251,191,36,0.5)" />
               <Text style={styles.actionBtnText}>Sign Out</Text>
-            </Pressable>
-            <Pressable style={styles.actionBtnDanger} onPress={() => Alert.alert('Delete', 'Integrating soon.')}>
+            </TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.7} style={styles.actionBtnDanger} onPress={() => Alert.alert('Delete', 'Integrating soon.')}>
               <Trash2 size={16} color="rgba(239,68,68,0.5)" />
               <Text style={styles.actionBtnDangerText}>Delete Account</Text>
-            </Pressable>
+            </TouchableOpacity>
           </View>
 
-          <Pressable style={styles.replayBtn} onPress={replayOnboarding}>
+          <TouchableOpacity activeOpacity={0.7} style={styles.replayBtn} onPress={replayOnboarding}>
             <Text style={styles.replayBtnText}>Replay Onboarding</Text>
-          </Pressable>
+          </TouchableOpacity>
 
           {/* ── Verse Preview ── */}
           {selectedFavVerse && (
             <View style={styles.quoteBox} onLayout={(e) => { quoteBoxYRef.current = e.nativeEvent.layout.y; }}>
               <View style={styles.quoteBoxHeader}>
                 <Text style={styles.previewTitle}>REVISITING WISDOM</Text>
-                <Pressable onPress={() => setSelectedFavVerse(null)}><X color="#fbbf24" size={24} /></Pressable>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setSelectedFavVerse(null)}><X color="#fbbf24" size={24} /></TouchableOpacity>
               </View>
               <QuoteCard 
                 verse={selectedFavVerse} 
@@ -967,5 +1044,46 @@ const styles = StyleSheet.create({
     color: 'rgba(251,191,36,0.6)',
     fontFamily: Fonts.serif,
     fontSize: 16,
+  },
+  noFavSubtext: {
+    color: 'rgba(255,255,255,0.25)',
+    fontSize: 12,
+    textAlign: 'center',
+    maxWidth: 240,
+    lineHeight: 18,
+  },
+  noteItem: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.05)',
+    gap: 6,
+  },
+  noteItemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  noteVerseRef: {
+    color: '#fbbf24',
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: Fonts.serif,
+  },
+  noteDate: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 11,
+  },
+  noteVersePreview: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 12,
+    fontStyle: 'italic',
+    fontFamily: Fonts.serif,
+  },
+  noteText: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

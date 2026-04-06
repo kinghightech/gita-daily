@@ -1,7 +1,7 @@
 import { HapticTab } from '@/components/haptic-tab';
 import { GitaColors } from '@/constants/theme';
 import { Tabs } from 'expo-router';
-import { GraduationCap, Home, List, User } from 'lucide-react-native';
+import { BookOpen, GraduationCap, Home, List, User } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -37,6 +37,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="read"
+        options={{
+          title: 'Read',
+          tabBarIcon: ({ color, focused }) => (
+            <BookOpen size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="learn"
         options={{
           title: 'Learn',
@@ -55,7 +64,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen name="explore" options={{ href: null }} />
-      <Tabs.Screen name="read" options={{ href: null }} />
     </Tabs>
   );
 }

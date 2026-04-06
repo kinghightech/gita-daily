@@ -16,7 +16,7 @@ import {
     X,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { TouchableOpacity,  Modal, Pressable, ScrollView, StyleSheet, View  } from 'react-native';
 
 interface OnboardingWalkthroughProps {
   onComplete: () => void;
@@ -125,14 +125,14 @@ export default function OnboardingWalkthrough({ onComplete }: OnboardingWalkthro
 
         <ThemedView style={styles.card}>
           {/* Skip button */}
-          <Pressable onPress={onComplete} style={styles.skipBtn}>
+          <TouchableOpacity activeOpacity={0.7} onPress={onComplete} style={styles.skipBtn}>
             <X size={20} color="rgba(251, 191, 36, 0.4)" />
-          </Pressable>
+          </TouchableOpacity>
 
           {/* Step dots */}
           <View style={styles.dotsRow}>
             {STEPS.map((_, i) => (
-              <Pressable
+              <TouchableOpacity activeOpacity={0.7}
                 key={i}
                 onPress={() => go(i)}
                 style={[
@@ -184,20 +184,20 @@ export default function OnboardingWalkthrough({ onComplete }: OnboardingWalkthro
 
           {/* Navigation */}
           <View style={styles.navRow}>
-            <Pressable
+            <TouchableOpacity activeOpacity={0.7}
               onPress={() => go(step - 1)}
               disabled={isFirst}
               style={[styles.navBtn, isFirst && styles.navBtnDisabled]}
             >
               <ChevronLeft size={20} color="rgba(251, 191, 36, 0.5)" />
-            </Pressable>
+            </TouchableOpacity>
 
             {isLast ? (
-              <Pressable onPress={onComplete} style={styles.ctaBtn}>
+              <TouchableOpacity activeOpacity={0.7} onPress={onComplete} style={styles.ctaBtn}>
                 <ThemedText style={styles.ctaBtnText}>Begin My Journey 🙏</ThemedText>
-              </Pressable>
+              </TouchableOpacity>
             ) : (
-              <Pressable
+              <TouchableOpacity activeOpacity={0.7}
                 onPress={() => go(step + 1)}
                 style={styles.ctaBtn}
               >
@@ -205,7 +205,7 @@ export default function OnboardingWalkthrough({ onComplete }: OnboardingWalkthro
                   Next
                 </ThemedText>
                 <ChevronRight size={16} color="#111827" />
-              </Pressable>
+              </TouchableOpacity>
             )}
 
             <View style={styles.spacer} />
