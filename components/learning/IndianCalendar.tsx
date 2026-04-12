@@ -2,11 +2,15 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AnimatePresence, motion } from 'framer-motion';
-import { Calendar, ChevronLeft, ChevronRight, Sparkles, X } from 'lucide-react';
-import { useState } from 'react';
+import { Bookmark, Calendar, ChevronLeft, ChevronRight, Share2, Sparkles, X } from 'lucide-react-native';
+import { useState, useEffect } from 'react';
+import { Share, DeviceEventEmitter } from 'react-native';
+import { supabase } from '@/lib/supabase';
+import { toggleFavoriteFestival, fetchUserFestivalFavorites, FESTIVALS_UPDATED_EVENT } from '@/lib/favorites';
 
 const INDIAN_HOLIDAYS_2026 = [
     {
+        id: "3949f32d-0811-47bf-baf8-131519413195",
         date: "2026-01-14",
         name: "Makar Sankranti",
         hindi: "मकर संक्रांति",
@@ -21,6 +25,7 @@ const INDIAN_HOLIDAYS_2026 = [
         color: "from-orange-500 to-green-500"
     },
     {
+        id: "37c8e481-167c-4f4a-8bb7-b88f2900abe4",
         date: "2026-02-26",
         name: "Maha Shivaratri",
         hindi: "महा शिवरात्रि",
@@ -28,6 +33,7 @@ const INDIAN_HOLIDAYS_2026 = [
         color: "from-blue-600 to-indigo-600"
     },
     {
+        id: "40079dc5-9aed-4539-bddb-7df5065260f5",
         date: "2026-03-03",
         name: "🎨 Holi — Festival of Colors",
         hindi: "होली",
@@ -42,6 +48,7 @@ Don'ts: Force anyone, throw dirty water, or use harmful chemicals. Don't treat i
         color: "from-pink-500 to-purple-500"
     },
     {
+        id: "a32033a0-4f85-4c3d-aa59-62c5b3598c83",
         date: "2026-03-19",
         name: "🌿 Gudi Padwa / Ugadi — Hindu New Year",
         hindi: "गुड़ी पड़वा / उगादि",
@@ -56,6 +63,7 @@ Don'ts: Turn it into only superstition; focus on good habits and a fresh mindset
         color: "from-yellow-500 to-orange-500"
     },
     {
+        id: "206bf202-88b8-48f5-a559-830a6a6a857d",
         date: "2026-03-26",
         name: "🏹 Rama Navami",
         hindi: "राम नवमी",
@@ -84,6 +92,7 @@ Don'ts: Treat "non-violence" as only physical — hurting with words counts too.
         color: "from-sky-500 to-blue-500"
     },
     {
+        id: "97cc3795-655f-499c-ba0d-80723c2fe43c",
         date: "2026-04-02",
         name: "🐒 Hanuman Jayanti",
         hindi: "हनुमान जयंती",
@@ -98,6 +107,7 @@ Don'ts: Flex strength or confidence in a toxic way — Hanuman is strong and hum
         color: "from-orange-500 to-red-500"
     },
     {
+        id: "2ce1e118-2a10-403d-9193-2c6125964dcb",
         date: "2026-04-19",
         name: "🌟 Akshaya Tritiya",
         hindi: "अक्षय तृतीया",
@@ -112,6 +122,7 @@ Don'ts: Spend money you don't have just because it's "lucky."`,
         color: "from-yellow-400 to-amber-500"
     },
     {
+        id: "c759a37b-5783-4756-91b8-5f73a1b6a758",
         date: "2026-05-01",
         name: "🌕 Buddha Purnima",
         hindi: "बुद्ध पूर्णिमा",
@@ -126,6 +137,7 @@ Don'ts: Turn it into arguments about religion — this day is about peace.`,
         color: "from-yellow-400 to-amber-500"
     },
     {
+        id: "86e90392-5f09-478c-8f96-fba6f870dccb",
         date: "2026-05-25",
         name: "🌊 Ganga Dussehra",
         hindi: "गंगा दशहरा",
@@ -140,6 +152,7 @@ Don'ts: Think purity is only physical — actions and attitude matter too.`,
         color: "from-blue-400 to-cyan-500"
     },
     {
+        id: "5126e261-2936-4f78-8098-d032b41ec987",
         date: "2026-07-07",
         name: "Rath Yatra",
         hindi: "रथ यात्रा",
@@ -147,6 +160,7 @@ Don'ts: Think purity is only physical — actions and attitude matter too.`,
         color: "from-red-500 to-yellow-500"
     },
     {
+        id: "9fdee51d-12e4-4173-bea5-aaec800e4021",
         date: "2026-07-29",
         name: "👩‍🏫 Guru Purnima",
         hindi: "गुरु पूर्णिमा",
@@ -161,6 +175,7 @@ Don'ts: Put teachers on a pedestal if they behave badly — respect should inclu
         color: "from-amber-400 to-yellow-500"
     },
     {
+        id: "4f140588-4b58-4d58-9174-f115b12df5a4",
         date: "2026-08-28",
         name: "🧵 Raksha Bandhan",
         hindi: "रक्षा बंधन",
@@ -175,6 +190,7 @@ Don'ts: Make it only about gifts or money. Don't use "protection" as control —
         color: "from-pink-500 to-red-500"
     },
     {
+        id: "3c434e8b-39df-481f-a89a-11a39f91dafa",
         date: "2026-09-03",
         name: "🦚 Krishna Janmashtami",
         hindi: "कृष्ण जन्माष्टमी",
@@ -203,6 +219,7 @@ Don'ts: Use forgiveness as a "reset button" then repeat the same harm. Don't jud
         color: "from-sky-500 to-indigo-500"
     },
     {
+        id: "4f91d0aa-9e8d-4a1e-9939-7cb047b632b0",
         date: "2026-09-14",
         name: "🐘 Ganesh Chaturthi",
         hindi: "गणेश चतुर्थी",
@@ -217,6 +234,7 @@ Don'ts: Blast loud sound late at night (respect neighbors).`,
         color: "from-orange-500 to-red-500"
     },
     {
+        id: "ff6304a0-eba5-4d47-a28f-5b5281294327",
         date: "2026-10-11",
         name: "🪔 Sharad Navratri Begins",
         hindi: "शारदीय नवरात्रि",
@@ -231,6 +249,7 @@ Don'ts: Pressure people to fast. Don't treat women disrespectfully during a fest
         color: "from-red-500 to-orange-500"
     },
     {
+        id: "fcb545b7-52e1-46e6-970e-0453558f66ee",
         date: "2026-10-20",
         name: "🏹 Vijayadashami / Dussehra",
         hindi: "विजयादशमी / दशहरा",
@@ -259,6 +278,7 @@ Don'ts: Pressure anyone (especially women) into fasting. Don't make love "prove 
         color: "from-red-500 to-pink-500"
     },
     {
+        id: "a58a45f7-a5a5-4e61-b7f1-e8ac7bbfe4f4",
         date: "2026-11-08",
         name: "🪔 Diwali — Festival of Lights",
         hindi: "दीवाली",
@@ -275,6 +295,7 @@ Note (Jain): For Jains, this day also marks Mahavir Nirvan — Lord Mahavira's l
         color: "from-yellow-500 to-orange-500"
     },
     {
+        id: "6d4ac39d-61b6-4d40-9bd2-5c78c888a29c",
         date: "2026-11-10",
         name: "🧁 Govardhan Puja / Annakut",
         hindi: "गोवर्धन पूजा / अन्नकूट",
@@ -289,6 +310,7 @@ Don'ts: Waste food — this festival is literally about gratitude for food.`,
         color: "from-green-500 to-teal-500"
     },
     {
+        id: "b0da3e56-6600-4189-a5aa-8208e2f79696",
         date: "2026-11-11",
         name: "👧👦 Bhai Dooj",
         hindi: "भाई दूज",
@@ -303,6 +325,7 @@ Don'ts: Make it about expensive gifts.`,
         color: "from-pink-500 to-purple-500"
     },
     {
+        id: "9dfcb10b-9593-45c3-b88c-fa099d293db9",
         date: "2026-11-05",
         name: "Chhath Puja",
         hindi: "छठ पूजा",
@@ -333,7 +356,45 @@ const MONTHS = [
 export default function IndianCalendar() {
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
     const [selectedHoliday, setSelectedHoliday] = useState<any>(null);
+    const [favorites, setFavorites] = useState<string[]>([]);
+    const [user, setUser] = useState<any>(null);
     const year = 2026;
+
+    useEffect(() => {
+        const checkUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setUser(user);
+            if (user) {
+                const favs = await fetchUserFestivalFavorites(user.id);
+                setFavorites(favs);
+            }
+        };
+        checkUser();
+
+        const sub = DeviceEventEmitter.addListener(FESTIVALS_UPDATED_EVENT, ({ festivalId, liked }) => {
+            setFavorites(prev => liked ? [...prev, festivalId] : prev.filter(id => id !== festivalId));
+        });
+
+        return () => sub.remove();
+    }, []);
+
+    const handleShare = async (holiday: any) => {
+        try {
+            await Share.share({
+                message: `🌟 Celebrate ${holiday.name} with me!\n\n${holiday.hindi}\n${new Date(holiday.date).toLocaleDateString()}\n\n${holiday.description}\n\nShared via Gita Daily App`,
+                title: holiday.name
+            });
+        } catch (error) {
+            console.error('Error sharing:', error);
+        }
+    };
+
+    const handleToggleSave = async (holiday: any) => {
+        if (!user || !holiday.id) return;
+        const isCurrentlySaved = favorites.includes(holiday.id);
+        const newState = await toggleFavoriteFestival(user.id, holiday.id, isCurrentlySaved);
+        // update local state happens via event emitted in toggleFavoriteFestival
+    };
 
     const holidaysInMonth = INDIAN_HOLIDAYS_2026.filter(h => {
         const date = new Date(h.date);
@@ -376,36 +437,52 @@ export default function IndianCalendar() {
                 </div>
 
                 {/* Holidays List */}
-                <div className="space-y-3 min-h-[350px]">
-                    {holidaysInMonth.length === 0 ? (
-                        <p className="text-amber-300/50 text-sm text-center py-12">
-                            No major festivals this month
-                        </p>
-                    ) : (
-                        holidaysInMonth.map((holiday, idx) => (
-                            <motion.button
-                                key={holiday.date}
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: idx * 0.1 }}
-                                onClick={() => setSelectedHoliday(holiday)}
-                                className={`w-full p-4 rounded-xl bg-gradient-to-r ${holiday.color} text-white text-left hover:scale-[1.02] transition-transform shadow-lg`}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="font-medium">{holiday.name}</p>
-                                        <p className="text-xs opacity-80">{holiday.hindi}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-sm font-medium">
-                                            {new Date(holiday.date).getDate()}
-                                        </p>
-                                        <Sparkles className="w-3 h-3 opacity-70" />
-                                    </div>
-                                </div>
-                            </motion.button>
-                        ))
-                    )}
+                <div className="min-h-[350px]">
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={currentMonth}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.3, ease: "easeOut" }}
+                            className="space-y-3"
+                        >
+                            {holidaysInMonth.length === 0 ? (
+                                <p className="text-amber-300/50 text-sm text-center py-12">
+                                    No major festivals this month
+                                </p>
+                            ) : (
+                                holidaysInMonth.map((holiday, idx) => (
+                                    <motion.button
+                                        key={holiday.date + holiday.name}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: idx * 0.05 }}
+                                        onClick={() => setSelectedHoliday(holiday)}
+                                        className={`w-full p-5 rounded-xl bg-gradient-to-r ${holiday.color} text-white text-left hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg border border-white/10`}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-lg font-bold">{holiday.name}</p>
+                                                <p className="text-sm opacity-90 italic">{holiday.hindi}</p>
+                                            </div>
+                                            <div className="text-right bg-black/10 rounded-lg px-3 py-1.5 backdrop-blur-sm border border-white/10">
+                                                <p className="text-xl font-black leading-none mb-1">
+                                                    {new Date(holiday.date).getDate()}
+                                                </p>
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Sparkles className="w-3 h-3 text-amber-300" />
+                                                    <p className="text-[10px] font-bold uppercase tracking-wider opacity-80">
+                                                        {MONTHS[currentMonth].slice(0, 3)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.button>
+                                ))
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
 
                 {/* Holiday Detail Modal */}
@@ -430,14 +507,46 @@ export default function IndianCalendar() {
                                         <div>
                                             <h3 className="text-xl font-serif text-amber-100">{selectedHoliday.name}</h3>
                                             <p className="text-amber-300">{selectedHoliday.hindi}</p>
-                                            <p className="text-sm text-amber-300/60 mt-1">
-                                                {new Date(selectedHoliday.date).toLocaleDateString('en-US', {
-                                                    weekday: 'long',
-                                                    year: 'numeric',
-                                                    month: 'long',
-                                                    day: 'numeric'
-                                                })}
-                                            </p>
+                                            <div className="flex items-center gap-3 mt-1">
+                                                <p className="text-sm text-amber-300/60">
+                                                    {new Date(selectedHoliday.date).toLocaleDateString('en-US', {
+                                                        weekday: 'long',
+                                                        year: 'numeric',
+                                                        month: 'long',
+                                                        day: 'numeric'
+                                                    })}
+                                                </p>
+                                                <div className="flex items-center gap-4">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleShare(selectedHoliday);
+                                                        }}
+                                                        className="h-10 w-10 p-0 text-amber-200 hover:bg-amber-500/20 active:bg-amber-500/30"
+                                                    >
+                                                        <Share2 color="#fde68a" size={22} />
+                                                    </Button>
+                                                    {selectedHoliday.id && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleToggleSave(selectedHoliday);
+                                                            }}
+                                                            className={`h-10 w-10 p-0 hover:bg-amber-500/20 active:bg-amber-500/30 ${favorites.includes(selectedHoliday.id) ? 'text-amber-400' : 'text-amber-200'}`}
+                                                        >
+                                                            <Bookmark 
+                                                                color={favorites.includes(selectedHoliday.id) ? "#fbbf24" : "#fde68a"} 
+                                                                size={22} 
+                                                                fill={favorites.includes(selectedHoliday.id) ? "#fbbf24" : "transparent"} 
+                                                            />
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                         <Button
                                             variant="ghost"

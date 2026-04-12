@@ -1,7 +1,7 @@
 import { GitaColors } from '@/constants/theme';
 import { Festival, getFestivalSymbol } from '@/lib/festivals';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Calendar, Check, Heart, Info, Map, Share2, Sparkles, X } from 'lucide-react-native';
+import { Bookmark, Calendar, Check, Heart, Info, Map, Share2, Sparkles, X } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, Share, ScrollView, StyleSheet, Text, View, DeviceEventEmitter } from 'react-native';
 import { fetchUserFestivalFavorites, toggleFavoriteFestival, FESTIVALS_UPDATED_EVENT } from '@/lib/favorites';
@@ -113,8 +113,30 @@ export default function FestivalModal({ festival, onClose }: FestivalModalProps)
                   <Calendar size={18} color={GitaColors.gold} />
                   <Text style={styles.sectionTitle}>DATES</Text>
                 </View>
-                <Text style={styles.dateTextPrimary}>{festival.display_date}</Text>
-                <Text style={styles.dateTextSecondary}>{festival.main_day_info.replace('Main:', 'Main celebration:')}</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flex: 1, paddingRight: 16 }}>
+                    <Text style={styles.dateTextPrimary}>{festival.display_date}</Text>
+                    <Text style={styles.dateTextSecondary}>{festival.main_day_info.replace('Main:', 'Main celebration:')}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                    <Pressable 
+                      onPress={toggleFavorite}
+                      style={styles.actionBtn}
+                    >
+                      <Bookmark 
+                        size={22} 
+                        color={isFavorite ? GitaColors.gold : 'rgba(255,255,255,0.5)'} 
+                        fill={isFavorite ? GitaColors.gold : 'transparent'} 
+                      />
+                    </Pressable>
+                    <Pressable 
+                      onPress={handleShare}
+                      style={styles.actionBtn}
+                    >
+                      <Share2 size={22} color="rgba(255,255,255,0.5)" />
+                    </Pressable>
+                  </View>
+                </View>
               </View>
 
               <View style={styles.section}>
@@ -319,6 +341,13 @@ const styles = StyleSheet.create({
   dateTextSecondary: {
     color: 'rgba(251,191,36,0.5)',
     fontSize: 14,
+  },
+  actionBtn: {
+    padding: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   gridRow: {
     flexDirection: 'row',

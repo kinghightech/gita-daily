@@ -10,6 +10,7 @@ import { Calendar, Check, ChevronRight, Flower2, Sparkles, X } from 'lucide-reac
 import LotusLoader from '@/components/ui/LotusLoader';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TouchableOpacity,  Animated, DeviceEventEmitter, Dimensions, Easing, InteractionManager, Modal, Pressable, ScrollView, StyleSheet, Text, View  } from 'react-native';
+import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, runOnJS } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
 type LearnTab = 'lotus' | 'festivals';
@@ -460,6 +461,10 @@ function FestivalsView({ onSelectFestival }: { onSelectFestival: (f: Festival) =
   const [currentMonthIdx, setCurrentMonthIdx] = useState(new Date().getMonth());
   const [allFestivals, setAllFestivals] = useState<Festival[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Animation values
+  const listOpacity = useSharedValue(1);
+  const listTranslateX = useSharedValue(0);
 
   useEffect(() => {
     (async () => {
@@ -475,23 +480,52 @@ function FestivalsView({ onSelectFestival }: { onSelectFestival: (f: Festival) =
     return allFestivals.filter(f => f.month.includes(monthName));
   }, [allFestivals, monthName]);
 
-  const nextMonth = () => setCurrentMonthIdx(prev => (prev + 1) % 12);
-  const prevMonth = () => setCurrentMonthIdx(prev => (prev - 1 + 12) % 12);
+  const listAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: listOpacity.value,
+    transform: [{ translateX: listTranslateX.value }]
+  }));
+
+  const animateTransition = (direction: 'next' | 'prev', callback: () => void) => {
+    const isNext = direction === 'next';
+    const outX = isNext ? -30 : 30;
+    const inX = isNext ? 30 : -30;
+
+    listOpacity.value = withTiming(0, { duration: 150 }, (finished) => {
+      if (finished) {
+        runOnJS(callback)();
+        listTranslateX.value = inX;
+        listOpacity.value = withTiming(1, { duration: 250 });
+        listTranslateX.value = withTiming(0, { duration: 250 });
+      }
+    });
+    listTranslateX.value = withTiming(outX, { duration: 150 });
+  };
+
+  const nextMonth = () => {
+    animateTransition('next', () => {
+      setCurrentMonthIdx(prev => (prev + 1) % 12);
+    });
+  };
+
+  const prevMonth = () => {
+    animateTransition('prev', () => {
+      setCurrentMonthIdx(prev => (prev - 1 + 12) % 12);
+    });
+  };
 
   return (
     <ScrollView style={styles.festScroll} contentContainerStyle={styles.festContent} showsVerticalScrollIndicator={false}>
       <View style={styles.festCard}>
-        <View style={styles.festTitleRow}>
-          <Calendar size={24} color={GitaColors.gold} />
-          <Text style={styles.festTitle}>Festival Calendar</Text>
+        <View style={styles.festHeader}>
+          <Text style={styles.festTitle}>Hindu Festival Calendar</Text>
+          <Text style={styles.festYear}>2026</Text>
         </View>
-        <Text style={styles.festYear}>2026</Text>
         
         <View style={styles.monthRow}>
           <TouchableOpacity activeOpacity={0.7} p-4 onPress={prevMonth} hitSlop={20}>
             <Text style={styles.monthArrow}>‹</Text>
           </TouchableOpacity>
-          <Text style={styles.monthText}>{monthName} 2026</Text>
+          <Text style={styles.monthText}>{monthName}</Text>
           <TouchableOpacity activeOpacity={0.7} p-4 onPress={nextMonth} hitSlop={20}>
             <Text style={styles.monthArrow}>›</Text>
           </TouchableOpacity>
@@ -502,31 +536,34 @@ function FestivalsView({ onSelectFestival }: { onSelectFestival: (f: Festival) =
             <LotusLoader size={80} color={GitaColors.gold} />
             <Text style={styles.loadingText}>Loading festivals...</Text>
           </View>
-        ) : filtered.length === 0 ? (
-          <View style={styles.emptyArea}>
-            <Text style={styles.emptyText}>No major festivals this month.</Text>
-          </View>
         ) : (
-          <View style={styles.festivalList}>
-            {filtered.map((fest) => (
-              <TouchableOpacity activeOpacity={0.7} 
-                key={fest.id} 
-                style={styles.festivalItemCard}
-                onPress={() => onSelectFestival(fest)}
-              >
-                <View style={styles.festItemLeft}>
-                  <View style={styles.symbolBadge}>
-                    <Text style={styles.festItemIcon}>{getFestivalSymbol(fest.name, fest.icon_emoji)}</Text>
+          <Reanimated.View style={[styles.festivalList, listAnimatedStyle]}>
+            {filtered.length === 0 ? (
+              <View style={styles.emptyArea}>
+                <Text style={styles.emptyText}>No major festivals this month.</Text>
+              </View>
+            ) : (
+              filtered.map((fest) => (
+                <TouchableOpacity activeOpacity={0.7} 
+                  key={fest.id} 
+                  style={styles.festivalItemCard}
+                  onPress={() => onSelectFestival(fest)}
+                >
+                  <View style={styles.festItemLeft}>
+                    <View style={styles.symbolBadge}>
+                      <Text style={styles.festItemIcon}>{getFestivalSymbol(fest.name, fest.icon_emoji)}</Text>
+                    </View>
+                    <View style={styles.festItemMeta}>
+                      <Text style={styles.festItemName}>{fest.name}</Text>
+                      <Text style={styles.festItemDeity}>{fest.deity}</Text>
+                      <Text style={styles.festItemDateText}>{fest.month} {getOrdinalDay(new Date(fest.main_date).getUTCDate())}</Text>
+                    </View>
                   </View>
-                  <View style={styles.festItemMeta}>
-                    <Text style={styles.festItemName}>{fest.name}</Text>
-                    <Text style={styles.festItemDeity}>{fest.deity}</Text>
-                    <Text style={styles.festItemDateText}>{fest.month} {getOrdinalDay(new Date(fest.main_date).getUTCDate())}</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
+                  <ChevronRight size={20} color="rgba(251, 191, 36, 0.3)" />
+                </TouchableOpacity>
+              ))
+            )}
+          </Reanimated.View>
         )}
       </View>
     </ScrollView>
@@ -614,48 +651,48 @@ const styles = StyleSheet.create({
   festScroll: { flex: 1 },
   festContent: { paddingHorizontal: 20, paddingBottom: 100 },
   festCard: { backgroundColor: 'rgba(15,25,50,0.65)', borderRadius: 24, padding: 24, borderWidth: 1, borderColor: 'rgba(251,191,36,0.15)' },
-  festTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  festTitle: { color: GitaColors.gold, fontSize: 22, fontWeight: '700', fontFamily: Fonts.serif },
-  festYear: { color: 'rgba(251,191,36,0.6)', fontSize: 16, marginTop: 2, fontWeight: '600' },
-  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
-  monthText: { color: 'white', fontSize: 18, fontWeight: '700' },
-  monthArrow: { color: GitaColors.gold, fontSize: 32, fontWeight: '300', lineHeight: 32 },
-  loaderArea: { paddingVertical: 40, alignItems: 'center' },
-  emptyArea: { paddingVertical: 40, alignItems: 'center' },
-  emptyText: { color: 'rgba(255,255,255,0.4)', fontSize: 15 },
-  festivalList: { marginTop: 8 },
+  festHeader: { alignItems: 'center', paddingVertical: 18 },
+  festTitle: { color: GitaColors.gold, fontSize: 30, fontWeight: '800', fontFamily: Fonts.serif, textAlign: 'center', lineHeight: 36 },
+  festYear: { color: 'rgba(251,191,36,0.6)', fontSize: 16, marginTop: 4, fontWeight: '700', letterSpacing: 4, textAlign: 'center' },
+  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, marginBottom: 20, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 20, paddingHorizontal: 24, paddingVertical: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+  monthText: { color: 'white', fontSize: 20, fontWeight: '800', letterSpacing: 0.5 },
+  monthArrow: { color: GitaColors.gold, fontSize: 36, fontWeight: '300', lineHeight: 36, paddingHorizontal: 10 },
+  loaderArea: { paddingVertical: 60, alignItems: 'center' },
+  emptyArea: { paddingVertical: 60, alignItems: 'center' },
+  emptyText: { color: 'rgba(255,255,255,0.4)', fontSize: 16, textAlign: 'center' },
+  festivalList: { marginTop: 4 },
   festivalItemCard: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'space-between', 
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 22,
+    padding: 20,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.1)',
+    borderColor: 'rgba(251, 191, 36, 0.12)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  festItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 16, flex: 1 },
+  festItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 20, flex: 1 },
   symbolBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(251, 191, 36, 0.08)',
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(251, 191, 36, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.15)',
+    borderColor: 'rgba(251, 191, 36, 0.2)',
   },
-  festItemIcon: { fontSize: 24 },
+  festItemIcon: { fontSize: 28 },
   festItemMeta: { flex: 1 },
-  festItemName: { color: 'white', fontSize: 17, fontWeight: '700', fontFamily: Fonts.serif },
-  festItemDeity: { color: 'rgba(251, 191, 36, 0.6)', fontSize: 13, marginTop: 1, fontWeight: '500' },
-  festItemDateText: { color: 'rgba(251, 191, 36, 0.4)', fontSize: 12, marginTop: 4, fontWeight: '600', letterSpacing: 0.5 },
+  festItemName: { color: 'white', fontSize: 20, fontWeight: '800', fontFamily: Fonts.serif, lineHeight: 24 },
+  festItemDeity: { color: 'rgba(251, 191, 36, 0.7)', fontSize: 14, marginTop: 2, fontWeight: '600' },
+  festItemDateText: { color: 'rgba(251, 191, 36, 0.5)', fontSize: 13, marginTop: 6, fontWeight: '700', letterSpacing: 0.5 },
   loaderCenterContainer: { 
     flex: 1, 
     justifyContent: 'center', 

@@ -14,6 +14,7 @@ export type GitaVerse = {
   speaker: string | null;
   english: string;
   hindi: string | null;
+  context: string | null;
 };
 
 /**

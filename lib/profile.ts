@@ -22,6 +22,9 @@ export type ProfileRow = {
   previous_login_date: string | null;
   onboarding_complete_legacy: boolean | null;
   current_lotus_level: number;
+  shares_count: number;
+  bookmark_chapter: number | null;
+  bookmark_verse: number | null;
 };
 
 type RawProfileRow = {
@@ -41,6 +44,9 @@ type RawProfileRow = {
   current_login_date?: string | null;
   previous_login_date?: string | null;
   current_lotus_level?: number;
+  shares_count?: number;
+  bookmark_chapter?: number | null;
+  bookmark_verse?: number | null;
 };
 
 const isBlank = (value: string | null | undefined) => !value || value.trim().length === 0;
@@ -208,12 +214,15 @@ export const fetchProfileByUserId = async (userId: string): Promise<ProfileRow |
       previous_login_date: row.previous_login_date ?? null,
       onboarding_complete_legacy: row.Onboarding_complete ?? null,
       current_lotus_level: row.current_lotus_level ?? 1,
+      shares_count: row.shares_count ?? 0,
+      bookmark_chapter: row.bookmark_chapter ?? null,
+      bookmark_verse: row.bookmark_verse ?? null,
     };
   };
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, email, preferred_language, daily_notification_enabled, notification_time, onboarding_complete, Onboarding_complete, profile_picture, streak_count, longest_streak, last_opened_at, created_at, current_login_date, previous_login_date, current_lotus_level')
+    .select('id, full_name, email, preferred_language, daily_notification_enabled, notification_time, onboarding_complete, Onboarding_complete, profile_picture, streak_count, longest_streak, last_opened_at, created_at, current_login_date, previous_login_date, current_lotus_level, shares_count, bookmark_chapter, bookmark_verse')
     .eq('id', userId)
     .maybeSingle();
 
@@ -278,6 +287,14 @@ export const fetchCurrentUserAndProfile = async (): Promise<{
     },
     profile,
   };
+};
+
+export const incrementSharesCount = async (userId: string) => {
+  if (!userId) return;
+  const { error } = await supabase.rpc('increment_shares_count', { user_id: userId });
+  if (error) {
+    console.error('Error incrementing shares count:', error);
+  }
 };
 
 export const completeOnboardingProfile = async (params: {
@@ -418,4 +435,21 @@ export const updateUserStreak = async (): Promise<number> => {
   const streak = typeof data === 'number' ? data : 0;
   DeviceEventEmitter.emit(STREAK_UPDATED_EVENT, streak);
   return streak;
+};
+
+export const updateBookmark = async (userId: string, chapter: number | null, verse: number | null) => {
+  if (!userId) return false;
+  const { error } = await supabase
+    .from('profiles')
+    .update({ 
+      bookmark_chapter: chapter, 
+      bookmark_verse: verse 
+    })
+    .eq('id', userId);
+  
+  if (error) {
+    console.error('Error saving bookmark:', error);
+    return false;
+  }
+  return true;
 };

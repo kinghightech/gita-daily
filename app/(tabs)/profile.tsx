@@ -12,11 +12,12 @@ import {
 import { fetchCurrentUserAndProfile, getProfileDisplayName, STREAK_UPDATED_EVENT } from '@/lib/profile';
 import { supabase } from '@/lib/supabase';
 import { fetchAllFestivals, Festival, getFestivalSymbol } from '@/lib/festivals';
-import { BADGE_DEFINITIONS, fetchUserBadges, checkAndAwardBadges, UserStats } from '@/lib/badges';
+import { BADGE_DEFINITIONS, fetchUserBadges, checkAndAwardBadges, UserStats, BADGE_ICONS } from '@/lib/badges';
 import { fetchUserNotes, NOTES_UPDATED_EVENT, type UserNote } from '@/lib/notes';
 import { fetchAllGitaVerses } from '@/lib/verses';
 import LotusLoader from '@/components/ui/LotusLoader';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import {
     useFocusEffect,
 } from '@react-navigation/native';
@@ -43,6 +44,7 @@ import {
     Medal,
     Compass,
     StickyNote,
+    ChevronRight,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TouchableOpacity, 
@@ -78,15 +80,7 @@ const PLACEHOLDER_VERSES: Verse[] = [
 ];
 const ALL_VERSES = [...MOCK_VERSES, ...PLACEHOLDER_VERSES];
 
-const BADGE_ICONS: Record<string, any> = {
-  Sparkles,
-  Flame,
-  Trophy,
-  Medal,
-  Compass,
-  Heart,
-  Calendar,
-};
+
 
 type ProfileData = {
   id: string;
@@ -99,6 +93,7 @@ type ProfileData = {
   created_at: string | null;
   preferred_language: string | null;
   current_lotus_level?: number;
+  shares_count?: number;
 };
 
 const ONBOARDING_COMPLETE_KEY = 'gitaDaily.onboardingComplete.v1';
@@ -106,6 +101,7 @@ const ONBOARDING_PROFILE_KEY = 'gitaDaily.onboardingProfile.v1';
 const ONBOARDING_REPLAY_EVENT = 'gitaDaily.replayOnboarding';
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const [profile, setProfile] = useState<ProfileData>({
     id: '',
     full_name: '',
@@ -181,6 +177,8 @@ export default function ProfileScreen() {
         favQuotesCount: favIds.length,
         favFestivalsCount: favFestIds.length,
         lessonsDoneCount: Math.max(0, (currentProfile?.current_lotus_level ?? 1) - 1),
+        notesCount: notes.length,
+        sharesCount: currentProfile?.shares_count ?? 0,
       };
       const finalBadgeIds = await checkAndAwardBadges(user.id, stats, medalIds);
       setEarnedBadgeIds(finalBadgeIds);
@@ -270,10 +268,9 @@ export default function ProfileScreen() {
   };
 
   const handleBadgePress = (badge: any, isEarned: boolean) => {
-    Alert.alert(
-      isEarned ? `Unlocked: ${badge.title}` : `Locked: ${badge.title}`,
-      `${badge.description}\n\n${isEarned ? 'You have earned this badge! ✨' : 'Keep going to unlock this achievement!'}`
-    );
+    // If tapping a specific badge in the profile view, we can just show info or navigate.
+    // However, the user wants the WHOLE box to be clickable.
+    router.push('/badges');
   };
 
   const handleSignOut = async () => {
@@ -346,9 +343,16 @@ export default function ProfileScreen() {
           </View>
 
           {/* ── Badges Section ── */}
-          <View style={styles.badgesSection}>
+          <TouchableOpacity 
+            activeOpacity={0.8} 
+            style={styles.badgesSection}
+            onPress={() => router.push('/badges')}
+          >
             <View style={styles.badgesHeader}>
-              <Text style={styles.badgesTitle}>{earnedBadgeIds.length} Badges Unlocked</Text>
+              <View style={styles.badgesHeaderLeft}>
+                <Text style={styles.badgesTitle}>{earnedBadgeIds.length} Badges Unlocked</Text>
+                <ChevronRight size={16} color="#fbbf24" style={{ opacity: 0.6 }} />
+              </View>
               <Target size={18} color="#fbbf24" style={{ opacity: 0.8 }} />
             </View>
             
@@ -356,35 +360,33 @@ export default function ProfileScreen() {
               horizontal 
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.badgesList}
+              pointerEvents="none" // Pass touches through to the parent TouchableOpacity
             >
-              {BADGE_DEFINITIONS.map((badge) => {
-                const isEarned = earnedBadgeIds.includes(badge.id);
-                const BadgeIcon = BADGE_ICONS[badge.icon] || Star;
-                return (
-                  <View key={badge.id} style={styles.badgeWrapper}>
-                    <TouchableOpacity activeOpacity={0.7} 
-                      style={[styles.badgeCircle, !isEarned && styles.badgeLocked]}
-                      onPress={() => handleBadgePress(badge, isEarned)}
-                    >
-                      <BadgeIcon 
-                        size={28} 
-                        color={isEarned ? "#fbbf24" : "rgba(251, 191, 36, 0.2)"} 
-                        strokeWidth={1.5}
-                      />
-                      {!isEarned && (
-                        <View style={styles.lockOverlay}>
-                          <Lock size={12} color="white" opacity={0.6} />
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                    <Text style={[styles.badgeName, !isEarned && { opacity: 0.4 }]}>
-                      {badge.title}
-                    </Text>
-                  </View>
-                );
-              })}
+              {BADGE_DEFINITIONS.filter(b => earnedBadgeIds.includes(b.id)).length === 0 ? (
+                <View style={styles.noUnlocksWrap}>
+                  <Text style={styles.noUnlocksText}>Begin your journey to earn badges</Text>
+                </View>
+              ) : (
+                BADGE_DEFINITIONS.filter(b => earnedBadgeIds.includes(b.id)).map((badge) => {
+                  const BadgeIcon = BADGE_ICONS[badge.icon] || Star;
+                  return (
+                    <View key={badge.id} style={styles.badgeWrapper}>
+                      <View style={styles.badgeCircle}>
+                        <BadgeIcon 
+                          size={28} 
+                          color="#fbbf24" 
+                          strokeWidth={1.5}
+                        />
+                      </View>
+                      <Text style={styles.badgeName}>
+                        {badge.title}
+                      </Text>
+                    </View>
+                  );
+                })
+              )}
             </ScrollView>
-          </View>
+          </TouchableOpacity>
 
           {/* ── Your Journey ── */}
           <View style={styles.sectionCard}>
@@ -772,53 +774,65 @@ const styles = StyleSheet.create({
   badgesSection: {
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 16,
-    padding: 16,
+    paddingVertical: 16,
     marginBottom: 20,
   },
   badgesHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
     marginBottom: 16,
+  },
+  badgesHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   badgesTitle: {
     color: '#fbbf24',
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     fontFamily: Fonts.serif,
   },
   badgesList: {
-    gap: 20,
-    paddingRight: 10,
+    paddingHorizontal: 16,
+    gap: 16,
+  },
+  noUnlocksWrap: {
+    paddingVertical: 10,
+    opacity: 0.4,
+  },
+  noUnlocksText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+    fontStyle: 'italic',
   },
   badgeWrapper: {
     alignItems: 'center',
-    width: 70,
+    gap: 8,
+    width: 72,
   },
   badgeCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    justifyContent: 'center',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(251, 191, 36, 0.12)',
     alignItems: 'center',
-    marginBottom: 8,
-    position: 'relative',
-    borderWidth: 1.5,
-    borderColor: 'rgba(251,191,36,0.1)',
-  },
-  badgeLocked: {
-    backgroundColor: 'rgba(255,255,255,0.01)',
-    borderColor: 'rgba(251,191,36,0.05)',
-  },
-  badgeIcon: {
-    fontSize: 28,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.2)',
+    shadowColor: '#fbbf24',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   badgeName: {
-    color: 'white',
-    fontSize: 10,
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontWeight: '600',
     textAlign: 'center',
-    fontWeight: '500',
   },
   lockOverlay: {
     position: 'absolute',

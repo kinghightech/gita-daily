@@ -300,6 +300,11 @@ export default function RootLayout() {
       DeviceEventEmitter.emit(PREFERRED_LANGUAGE_CHANGED_EVENT, payload.preferredLanguage);
       setShowOnboarding(false);
 
+      // Trigger streak update right after onboarding so new users see a 1-day streak instead of 0
+      void updateUserStreak().catch((error) => {
+        console.warn('Daily streak update after onboarding failed', error);
+      });
+
       if (onboardingPersistWarning) {
         Alert.alert(
           'Profile sync delayed',

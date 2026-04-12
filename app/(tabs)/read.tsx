@@ -5,9 +5,10 @@ import * as Clipboard from 'expo-clipboard';
 import { fetchChapter, fetchVersesByChapter, type GitaChapter, type GitaVerse } from '@/lib/verses';
 import { saveNote } from '@/lib/notes';
 import { FAVORITES_UPDATED_EVENT, toggleFavoriteVerse, fetchUserFavorites } from '@/lib/favorites';
-import { fetchCurrentUserAndProfile } from '@/lib/profile';
+import { fetchCurrentUserAndProfile, incrementSharesCount, updateBookmark } from '@/lib/profile';
 import { useFocusEffect } from '@react-navigation/native';
 import {
+  Bookmark,
   ChevronLeft,
   ChevronRight,
   Copy,
@@ -53,17 +54,31 @@ export default function ReadScreen() {
   const [user, setUser] = useState<{ id: string } | null>(null);
   const [favoriteVerseIds, setFavoriteVerseIds] = useState<string[]>([]);
 
+  const [userBookmark, setUserBookmark] = useState<{ chapter: number; verse: number } | null>(null);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [hasScrolledToBookmark, setHasScrolledToBookmark] = useState(false);
+  const verseRefs = useRef<Record<number, View | null>>({});
+  const verseOffsets = useRef<Record<number, number>>({});
   const popupAnim = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<ScrollView>(null);
+  const contentRef = useRef<View>(null);
 
   // Load user
   useEffect(() => {
     (async () => {
-      const { user } = await fetchCurrentUserAndProfile();
+      const { user, profile } = await fetchCurrentUserAndProfile();
       if (user) {
         setUser({ id: user.id });
         const favs = await fetchUserFavorites(user.id);
         setFavoriteVerseIds(favs);
+        
+        if (profile?.bookmark_chapter && profile?.bookmark_verse) {
+          const bookmark = { chapter: profile.bookmark_chapter, verse: profile.bookmark_verse };
+          setUserBookmark(bookmark);
+          if (currentChapter !== bookmark.chapter) {
+            setCurrentChapter(bookmark.chapter);
+          }
+        }
       }
     })();
   }, []);
@@ -87,6 +102,7 @@ export default function ReadScreen() {
     setIsLoading(true);
     setSelectedVerse(null);
     hidePopup();
+    verseRefs.current = {};
     const [chapterData, versesData] = await Promise.all([
       fetchChapter(num),
       fetchVersesByChapter(num),
@@ -94,18 +110,60 @@ export default function ReadScreen() {
     setChapter(chapterData);
     setVerses(versesData);
     setIsLoading(false);
-    scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, []);
 
   useEffect(() => {
     loadChapter(currentChapter);
   }, [currentChapter, loadChapter]);
 
+  // On tab focus: navigate to bookmark if we haven't already in this focus session
   useFocusEffect(
     useCallback(() => {
-      loadChapter(currentChapter);
-    }, [currentChapter, loadChapter])
+      // Reset scroll state on focus so it can re-trigger if bookmark is seen
+      setHasScrolledToBookmark(false);
+      
+      if (userBookmark) {
+        // Just update currentChapter; the main useEffect will handle loading
+        setCurrentChapter(userBookmark.chapter);
+      }
+      
+      // We don't call loadChapter here anymore to prevent double-loading
+      // or loading with stale closure values.
+    }, [userBookmark])
   );
+
+  // Scroll to bookmarked verse after content loads
+  useEffect(() => {
+    // ONLY proceed if we have a bookmark and haven't scrolled yet
+    if (isLoading || verses.length === 0 || hasScrolledToBookmark) return;
+
+    const isCurrentChapterBookmarked = userBookmark && userBookmark.chapter === currentChapter;
+
+    if (isCurrentChapterBookmarked) {
+      const timer = setTimeout(() => {
+        const verseView = verseRefs.current[userBookmark.verse];
+        const contentNode = contentRef.current;
+        
+        if (verseView && contentNode) {
+          // measureLayout relative to our own content container is the ONLY stable way
+          (verseView as any).measureLayout(
+            contentNode,
+            (_x: number, y: number) => {
+              if (y > 0) {
+                scrollRef.current?.scrollTo({ y: Math.max(0, y - 20), animated: true });
+                setHasScrolledToBookmark(true);
+              }
+            },
+            () => {
+              console.warn('measureLayout failed for verse', userBookmark.verse);
+            }
+          );
+        }
+      }, 600);
+      return () => clearTimeout(timer);
+    } 
+    // REMOVED: else scroll to top. Tab switching should NOT reset your position.
+  }, [isLoading, verses, userBookmark, currentChapter, hasScrolledToBookmark]);
 
   // Group verses by consecutive speaker for script format
   const groupedVerses = useMemo(() => {
@@ -158,9 +216,10 @@ export default function ReadScreen() {
       setSelectedVerse(verse);
       setPopupTab('actions');
       setNoteText('');
+      setIsBookmarked(userBookmark?.chapter === verse.chapter_number && userBookmark?.verse === verse.verse_number);
       showPopup();
     },
-    [selectedVerse, showPopup, hidePopup]
+    [selectedVerse, showPopup, hidePopup, userBookmark]
   );
 
   // Actions
@@ -182,8 +241,11 @@ export default function ReadScreen() {
     const text = `"${selectedVerse.english}"\n\n— Bhagavad Gita, Chapter ${selectedVerse.chapter_number}, Verse ${selectedVerse.verse_number}${selectedVerse.speaker ? ` (${selectedVerse.speaker})` : ''}\n\nShared via Gita Daily`;
     try {
       await Share.share({ title: 'Gita Daily', message: text });
+      if (user?.id) {
+        await incrementSharesCount(user.id);
+      }
     } catch {}
-  }, [selectedVerse]);
+  }, [selectedVerse, user]);
 
   const handleSaveNote = useCallback(async () => {
     if (!selectedVerse || !user?.id || !noteText.trim()) return;
@@ -200,30 +262,52 @@ export default function ReadScreen() {
     }
   }, [selectedVerse, user, noteText]);
 
+  const handleBookmark = useCallback(async () => {
+    if (!selectedVerse || !user?.id) return;
+    const success = await updateBookmark(user.id, selectedVerse.chapter_number, selectedVerse.verse_number);
+    if (success) {
+      const newBookmark = { chapter: selectedVerse.chapter_number, verse: selectedVerse.verse_number };
+      setUserBookmark(newBookmark);
+      setIsBookmarked(true);
+      Alert.alert('Bookmarked', `You will pick up here at ${newBookmark.chapter}.${newBookmark.verse} next time.`);
+    } else {
+      Alert.alert('Error', 'Could not save bookmark.');
+    }
+  }, [selectedVerse, user]);
+
+  const handleRemoveBookmark = useCallback(async () => {
+    if (!user?.id) return;
+    const success = await updateBookmark(user.id, null, null);
+    if (success) {
+      setUserBookmark(null);
+      setIsBookmarked(false);
+      Alert.alert('Bookmark Removed', 'Your reading position has been cleared.');
+    } else {
+      Alert.alert('Error', 'Could not remove bookmark.');
+    }
+  }, [user]);
+
   const goToChapter = (delta: number) => {
     const next = currentChapter + delta;
-    if (next >= 1) {
+    if (next >= 1 && next <= 18) {
+      setHasScrolledToBookmark(false);
       setCurrentChapter(next);
     }
   };
 
   const getContextForVerse = (ch: number, v: number): string | null => {
-    if (ch !== 1) return null;
-    
-    switch(v) {
-      case 11:
-        return "Duryodhana finishes his speech, the war horns blow, and the narrator (Sanjaya) takes over to describe the intense atmosphere to King Dhritarashtra.";
-      case 21:
-        return "As the weapons are about to be fired, Arjuna raises his bow and asks his charioteer, Lord Krishna, to move them to the center of the battlefield.";
-      case 24:
-        return "Krishna drives the chariot between both armies and stops before the great warriors.";
-      case 26:
-        return "Arjuna now sees both armies filled with people he personally knows.";
-      case 48:
-        return "Arjuna surrenders emotionally and refuses to fight.";
-      default:
-        return null;
+    // Only keeping Chapter 1 hardcoded for now; Chapter 2 is now database-driven
+    if (ch === 1) {
+      switch(v) {
+        case 11: return "Duryodhana finishes his speech, the war horns blow, and the narrator (Sanjaya) takes over to describe the intense atmosphere to King Dhritarashtra.";
+        case 21: return "As the weapons are about to be fired, Arjuna raises his bow and asks his charioteer, Lord Krishna, to move them to the center of the battlefield.";
+        case 24: return "Krishna drives the chariot between both armies and stops before the great warriors.";
+        case 26: return "Arjuna now sees both armies filled with people he personally knows.";
+        case 48: return "Arjuna surrenders emotionally and refuses to fight.";
+        default: return null;
+      }
     }
+    return null;
   };
 
   const popupTranslateY = popupAnim.interpolate({
@@ -252,12 +336,25 @@ export default function ReadScreen() {
           <View style={styles.chapterCenter}>
             <Text style={styles.chapterLabel}>Chapter {currentChapter}</Text>
             {chapter && (
-              <Text style={styles.chapterName}>{chapter.chapter_name}</Text>
+              <Text 
+                style={styles.chapterName}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {chapter.chapter_name}
+              </Text>
             )}
           </View>
 
-          <Pressable style={styles.navArrow} onPress={() => goToChapter(1)}>
-            <ChevronRight size={28} color={GitaColors.gold} />
+          <Pressable 
+            style={styles.navArrow} 
+            onPress={() => goToChapter(1)}
+            disabled={currentChapter >= 18}
+          >
+            <ChevronRight 
+              size={28} 
+              color={currentChapter >= 18 ? 'rgba(251,191,36,0.2)' : GitaColors.gold} 
+            />
           </Pressable>
         </View>
 
@@ -288,47 +385,55 @@ export default function ReadScreen() {
           contentContainerStyle={styles.readScrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.scriptCard}>
+          <View style={styles.scriptCard} ref={contentRef}>
             {groupedVerses.map((group, groupIdx) => {
-              const firstVerseNum = group.verses[0].verse_number;
-              const context = getContextForVerse(currentChapter, firstVerseNum);
-
               return (
-                <View key={groupIdx}>
-                  {context && (
-                    <View style={styles.contextBox}>
-                      <View style={styles.contextHeader}>
-                        <FileText size={16} color="#fbbf24" />
-                        <Text style={styles.contextLabel}>CONTEXT</Text>
-                      </View>
-                      <Text style={styles.contextText}>{context}</Text>
-                    </View>
-                  )}
-
-                  <View style={[styles.speakerBlock, !!context && { marginTop: 24 }]}>
+                <View key={groupIdx} style={styles.speakerBlock}>
                     <Text style={styles.speakerName}>{group.speaker}:</Text>
                     <View style={styles.dialogueBlock}>
                       {group.verses.map((verse) => {
                         const isSelected = selectedVerse?.id === verse.id;
+                        const context = verse.context || getContextForVerse(currentChapter, verse.verse_number);
+                        const isThisBookmarked = userBookmark?.chapter === currentChapter && userBookmark?.verse === verse.verse_number;
+
                         return (
-                          <Pressable
-                            key={verse.id}
-                            onPress={() => handleVersePress(verse)}
+                          <View 
+                            key={verse.id} 
+                            ref={(ref) => { verseRefs.current[verse.verse_number] = ref; }}
+                            style={[styles.verseWithContext, isThisBookmarked && styles.bookmarkedVerse]}
                           >
-                            <Text
-                              style={[
-                                styles.verseText,
-                                isSelected && styles.verseTextSelected,
-                              ]}
+                            {isThisBookmarked && (
+                              <View style={styles.bookmarkIndicator}>
+                                <Bookmark size={16} color={GitaColors.gold} fill={GitaColors.gold} />
+                              </View>
+                            )}
+                            <Pressable
+                              onPress={() => handleVersePress(verse)}
                             >
-                              &quot;{verse.english}&quot;
-                            </Text>
-                          </Pressable>
+                              <Text
+                                style={[
+                                  styles.verseText,
+                                  isSelected && styles.verseTextSelected,
+                                ]}
+                              >
+                                &quot;{verse.english}&quot;
+                              </Text>
+
+                              {context && (
+                                <View style={styles.contextBoxInside}>
+                                  <View style={styles.contextHeader}>
+                                    <FileText size={14} color="#fbbf24" />
+                                    <Text style={styles.contextLabel}>CONTEXT</Text>
+                                  </View>
+                                  <Text style={styles.contextText}>{context}</Text>
+                                </View>
+                              )}
+                            </Pressable>
+                          </View>
                         );
                       })}
                     </View>
                   </View>
-                </View>
               );
             })}
           </View>
@@ -393,9 +498,26 @@ export default function ReadScreen() {
                 <Text style={styles.popupActionLabel}>Copy</Text>
               </Pressable>
 
-              <Pressable style={styles.popupActionBtn} onPress={handleShare}>
+              <Pressable
+                style={styles.popupActionBtn}
+                onPress={handleShare}
+              >
                 <Share2 size={22} color="rgba(255,255,255,0.7)" />
                 <Text style={styles.popupActionLabel}>Share</Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.popupActionBtn}
+                onPress={isBookmarked ? handleRemoveBookmark : handleBookmark}
+              >
+                <Bookmark 
+                  size={22} 
+                  color={isBookmarked ? GitaColors.gold : 'rgba(255,255,255,0.7)'} 
+                  fill={isBookmarked ? GitaColors.gold : 'transparent'}
+                />
+                <Text style={[styles.popupActionLabel, isBookmarked && { color: GitaColors.gold }]}>
+                  {isBookmarked ? 'Remove' : 'Mark'}
+                </Text>
               </Pressable>
 
               <Pressable
@@ -504,6 +626,7 @@ const styles = StyleSheet.create({
   chapterCenter: {
     flex: 1,
     alignItems: 'center',
+    paddingHorizontal: 16,
   },
   chapterLabel: {
     color: 'rgba(251,191,36,0.6)',
@@ -514,10 +637,11 @@ const styles = StyleSheet.create({
   },
   chapterName: {
     color: '#fef3c7',
-    fontSize: 22,
+    fontSize: 23,
     fontWeight: '700',
     fontFamily: Fonts.serif,
     marginTop: 2,
+    textAlign: 'center',
   },
   playBtnWrap: {
     alignItems: 'center',
@@ -610,32 +734,53 @@ const styles = StyleSheet.create({
     textDecorationStyle: 'dotted',
   },
 
+  /* ── Bookmark Indicator ── */
+  bookmarkedVerse: {
+    backgroundColor: 'rgba(251,191,36,0.07)',
+    borderLeftWidth: 3,
+    borderLeftColor: GitaColors.gold,
+    borderRadius: 12,
+    paddingLeft: 14,
+    paddingVertical: 10,
+    paddingRight: 8,
+  },
+  bookmarkIndicator: {
+    position: 'absolute',
+    top: 8,
+    right: 10,
+    zIndex: 1,
+  },
+
   /* ── Context Box ── */
-  contextBox: {
+  verseWithContext: {
+    gap: 12,
+  },
+  contextBoxInside: {
     backgroundColor: 'rgba(251,191,36,0.06)',
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 12,
+    padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.15)',
+    borderColor: 'rgba(251,191,36,0.12)',
     borderStyle: 'dashed',
-    marginBottom: 8,
+    marginTop: 4,
+    marginBottom: 4,
   },
   contextHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
+    gap: 6,
+    marginBottom: 8,
   },
   contextLabel: {
     color: '#fbbf24',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
   },
   contextText: {
     color: 'rgba(254,243,199,0.7)',
-    fontSize: 20,
-    lineHeight: 30,
+    fontSize: 18,
+    lineHeight: 28,
     fontFamily: Fonts.serif,
     fontStyle: 'italic',
   },

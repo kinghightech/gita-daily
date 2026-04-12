@@ -1,4 +1,15 @@
 import { supabase } from './supabase';
+import { 
+  Sparkles, 
+  Flame, 
+  Trophy, 
+  Medal, 
+  Compass, 
+  Heart, 
+  Calendar, 
+  Star, 
+  StickyNote 
+} from 'lucide-react-native';
 
 export interface Badge {
   id: string;
@@ -14,6 +25,8 @@ export interface UserStats {
   favQuotesCount: number;
   favFestivalsCount: number;
   lessonsDoneCount: number;
+  notesCount: number;
+  sharesCount: number;
 }
 
 export const BADGE_DEFINITIONS: Badge[] = [
@@ -22,7 +35,14 @@ export const BADGE_DEFINITIONS: Badge[] = [
     title: 'Welcome',
     description: 'Joined the Gita Daily journey.',
     icon: 'Sparkles',
-    criteria: () => true, // Everyone gets this
+    criteria: () => true,
+  },
+  {
+    id: 'explorer',
+    title: 'First Step',
+    description: 'Completed your first lesson.',
+    icon: 'Compass',
+    criteria: (s) => s.lessonsDoneCount >= 1,
   },
   {
     id: 'streak_7',
@@ -39,6 +59,13 @@ export const BADGE_DEFINITIONS: Badge[] = [
     criteria: (s) => s.streakCount >= 30,
   },
   {
+    id: 'centurion',
+    title: 'Centurion',
+    description: 'Maintained a 100-day streak.',
+    icon: 'Flame',
+    criteria: (s) => s.streakCount >= 100,
+  },
+  {
     id: 'levels_10',
     title: 'Scholar',
     description: 'Completed 10 lotus levels.',
@@ -46,27 +73,67 @@ export const BADGE_DEFINITIONS: Badge[] = [
     criteria: (s) => s.levelCount >= 10,
   },
   {
-    id: 'explorer',
-    title: 'First Step',
-    description: 'Completed your first lesson.',
-    icon: 'Compass',
-    criteria: (s) => s.lessonsDoneCount >= 1,
+    id: 'sage',
+    title: 'Master Sage',
+    description: 'Completed the entire Lotus Path.',
+    icon: 'Trophy',
+    criteria: (s) => s.levelCount >= 50,
   },
   {
-    id: 'devotee',
+    id: 'gnostic',
     title: 'Gnostic',
     description: 'Favorited 5 sacred quotes.',
     icon: 'Heart',
     criteria: (s) => s.favQuotesCount >= 5,
   },
   {
-    id: 'festival_fan',
+    id: 'collector',
+    title: 'Collector',
+    description: 'Favorited 25 sacred quotes.',
+    icon: 'Star',
+    criteria: (s) => s.favQuotesCount >= 25,
+  },
+  {
+    id: 'festivity',
     title: 'Festivity',
     description: 'Saved your first festival.',
     icon: 'Calendar',
     criteria: (s) => s.favFestivalsCount >= 1,
   },
+  {
+    id: 'historian',
+    title: 'Historian',
+    description: 'Saved 10 different festivals.',
+    icon: 'Calendar',
+    criteria: (s) => s.favFestivalsCount >= 10,
+  },
+  {
+    id: 'philosopher',
+    title: 'Philosopher',
+    description: 'Wrote 5 personal reflections.',
+    icon: 'StickyNote',
+    criteria: (s) => s.notesCount >= 5,
+  },
+  {
+    id: 'messenger',
+    title: 'Messenger',
+    description: 'Shared 5 verses with the world.',
+    icon: 'Compass',
+    criteria: (s) => s.sharesCount >= 5,
+  },
 ];
+
+export const BADGE_ICONS: Record<string, any> = {
+  Sparkles,
+  Flame,
+  Trophy,
+  Medal,
+  Compass,
+  Heart,
+  Calendar,
+  Star,
+  StickyNote,
+};
 
 /**
  * Fetches all badge IDs earned by the user.
@@ -105,7 +172,7 @@ export const checkAndAwardBadges = async (userId: string, stats: UserStats, curr
 
   if (newBadges.length > 0) {
     const inserts = newBadges.map(id => ({ user_id: userId, badge_id: id }));
-    const { error } = await supabase.from('user_badges').insert(inserts);
+    const { error } = await supabase.from('user_badges').upsert(inserts, { onConflict: 'user_id, badge_id' });
     if (error) {
       console.error('Error awarding badges:', error);
       return currentBadgeIds; // Revert if failed

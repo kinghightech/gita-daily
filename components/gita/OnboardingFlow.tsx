@@ -1,5 +1,6 @@
 import BackgroundLayout from '@/components/BackgroundLayout';
 import { Fonts } from '@/constants/theme';
+import { HapticButton } from '@/components/ui/HapticButton';
 import { Image } from 'expo-image';
 import {
   Bell,
@@ -12,8 +13,8 @@ import {
   Shield,
   Sparkles,
 } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
-import { TouchableOpacity,  KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View  } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View  } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 type AuthChoice = 'email';
@@ -48,10 +49,15 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const pageTransition = useSharedValue(1);
+  const direction = useSharedValue(1); // 1 for forward, -1 for backward
 
   const pageAnimatedStyle = useAnimatedStyle(() => {
     const opacity = pageTransition.value;
-    const translateX = (1 - pageTransition.value) * 28;
+    
+    // When fading out (target 0), we want to slide OUT.
+    // When fading in (target 1), we want to slide IN.
+    // Actually, a simpler way is to just use direction to flip the start/end points.
+    const translateX = (1 - pageTransition.value) * 50 * direction.value;
 
     return {
       opacity,
@@ -81,25 +87,32 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     return true;
   }, [authMode, email, fullName, password, preferredLanguage, reminderChoice, step]);
 
-  const setStepFromAnimation = (nextStep: number) => {
+  const setStepFromAnimation = (nextStep: number, isForward: boolean) => {
     setStep(nextStep);
+    // On the way in, flip direction to come from the opposite side
+    direction.value = isForward ? -1 : 1;
+    
     pageTransition.value = 0;
     pageTransition.value = withTiming(1, {
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
+      duration: 350,
+      easing: Easing.bezier(0.33, 1, 0.68, 1),
     });
   };
 
   const animateToStep = (nextStep: number) => {
+    const isForward = nextStep > step;
+    // On the way out, slide in the primary direction
+    direction.value = isForward ? 1 : -1;
+
     pageTransition.value = withTiming(
       0,
       {
-        duration: 150,
-        easing: Easing.out(Easing.cubic),
+        duration: 200,
+        easing: Easing.bezier(0.33, 1, 0.68, 1),
       },
       (finished) => {
         if (!finished) return;
-        runOnJS(setStepFromAnimation)(nextStep);
+        runOnJS(setStepFromAnimation)(nextStep, isForward);
       }
     );
   };
@@ -243,7 +256,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
           <Text style={styles.subtitle}>Get gentle reminders to come back for your daily Gita quote and more.</Text>
 
           <View style={styles.choiceList}>
-            <TouchableOpacity activeOpacity={0.7}
+            <HapticButton
               style={[styles.choiceCard, reminderChoice === 'yes' && styles.choiceCardSelected]}
               onPress={() => {
                 void handleReminderChoice('yes');
@@ -251,9 +264,9 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
             >
               <Bell size={18} color={reminderChoice === 'yes' ? '#0f172a' : '#fbbf24'} />
               <Text style={[styles.choiceText, reminderChoice === 'yes' && styles.choiceTextSelected]}>Yes, remind me</Text>
-            </TouchableOpacity>
+            </HapticButton>
 
-            <TouchableOpacity activeOpacity={0.7}
+            <HapticButton
               style={[styles.choiceCard, reminderChoice === 'no' && styles.choiceCardSelected]}
               onPress={() => {
                 void handleReminderChoice('no');
@@ -261,7 +274,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
             >
               <Shield size={18} color={reminderChoice === 'no' ? '#0f172a' : '#fbbf24'} />
               <Text style={[styles.choiceText, reminderChoice === 'no' && styles.choiceTextSelected]}>No, maybe later</Text>
-            </TouchableOpacity>
+            </HapticButton>
           </View>
         </>
       );
@@ -274,21 +287,21 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
           <Text style={styles.subtitle}>Pick the language you want to read your daily verses in.</Text>
 
           <View style={styles.choiceList}>
-            <TouchableOpacity activeOpacity={0.7}
+            <HapticButton
               style={[styles.choiceCard, preferredLanguage === 'english' && styles.choiceCardSelected]}
               onPress={() => setPreferredLanguage('english')}
             >
               <Globe size={18} color={preferredLanguage === 'english' ? '#0f172a' : '#fbbf24'} />
               <Text style={[styles.choiceText, preferredLanguage === 'english' && styles.choiceTextSelected]}>English</Text>
-            </TouchableOpacity>
+            </HapticButton>
 
-            <TouchableOpacity activeOpacity={0.7}
+            <HapticButton
               style={[styles.choiceCard, preferredLanguage === 'hindi' && styles.choiceCardSelected]}
               onPress={() => setPreferredLanguage('hindi')}
             >
               <Globe size={18} color={preferredLanguage === 'hindi' ? '#0f172a' : '#fbbf24'} />
               <Text style={[styles.choiceText, preferredLanguage === 'hindi' && styles.choiceTextSelected]}>Hindi</Text>
-            </TouchableOpacity>
+            </HapticButton>
           </View>
         </>
       );
@@ -304,23 +317,23 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
         </Text>
 
         <View style={styles.modeSwitchWrap}>
-          <TouchableOpacity activeOpacity={0.7}
+          <HapticButton
             style={[styles.modeSwitchBtn, authMode === 'signup' && styles.modeSwitchBtnActive]}
             onPress={() => setAuthMode('signup')}
           >
             <Text style={[styles.modeSwitchText, authMode === 'signup' && styles.modeSwitchTextActive]}>
               Create Account
             </Text>
-          </TouchableOpacity>
+          </HapticButton>
 
-          <TouchableOpacity activeOpacity={0.7}
+          <HapticButton
             style={[styles.modeSwitchBtn, authMode === 'login' && styles.modeSwitchBtnActive]}
             onPress={() => setAuthMode('login')}
           >
             <Text style={[styles.modeSwitchText, authMode === 'login' && styles.modeSwitchTextActive]}>
               Log In
             </Text>
-          </TouchableOpacity>
+          </HapticButton>
         </View>
 
         <View style={styles.emailFieldsWrap}>
@@ -379,15 +392,12 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
       >
         <View style={styles.contentWrap}>
           {step > 0 && (
-            <TouchableOpacity activeOpacity={0.7}
+            <HapticButton
               onPress={goBackFlow}
               style={styles.backBtn}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
             >
               <ChevronLeft size={22} color="#fef3c7" />
-            </TouchableOpacity>
+            </HapticButton>
           )}
 
           <View style={styles.progressRow}>
@@ -406,7 +416,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
             <Animated.View style={[styles.stepBlock, pageAnimatedStyle]}>{renderStepContent()}</Animated.View>
           </ScrollView>
 
-          <TouchableOpacity activeOpacity={0.7}
+          <HapticButton
             onPress={continueFlow}
             disabled={!canContinue}
             style={[styles.continueBtn, !canContinue && styles.continueBtnDisabled]}
@@ -415,7 +425,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
               {step === TOTAL_STEPS - 1 ? (authMode === 'signup' ? 'Finish' : 'Log In') : 'Continue'}
             </Text>
             {step < TOTAL_STEPS - 1 && <ChevronRight size={16} color={!canContinue ? 'rgba(15,23,42,0.45)' : '#0f172a'} />}
-          </TouchableOpacity>
+          </HapticButton>
         </View>
       </KeyboardAvoidingView>
     </BackgroundLayout>

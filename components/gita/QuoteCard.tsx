@@ -6,6 +6,7 @@ import {
     Volume2,
 } from 'lucide-react-native';
 import { FAVORITES_UPDATED_EVENT, toggleFavoriteVerse } from '@/lib/favorites';
+import { incrementSharesCount } from '@/lib/profile';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { TouchableOpacity,  Alert, Animated, DeviceEventEmitter, Pressable, Share, StyleSheet, Text, View, type GestureResponderEvent  } from 'react-native';
 
@@ -105,10 +106,13 @@ export default function QuoteCard({
 
     try {
       await Share.share({ title: 'Gita Daily Wisdom', message: shareText });
+      if (user?.id) {
+        await incrementSharesCount(user.id);
+      }
     } catch {
       // canceled
     }
-  }, [verse]);
+  }, [verse, user]);
 
   const showTapHeart = useCallback((x: number, y: number) => {
     if (hideTapHeartTimeoutRef.current) {
