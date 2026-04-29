@@ -675,13 +675,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   userNameText: {
-    color: 'white',
+    color: '#fbbf24',
     fontSize: 34,
     fontWeight: '700',
     fontFamily: Fonts.serif,
   },
   userEmailText: {
-    color: 'rgba(255,255,255,0.5)',
+    color: '#fbbf24',
     fontSize: 15,
     marginTop: 4,
     fontFamily: Fonts.sans,
