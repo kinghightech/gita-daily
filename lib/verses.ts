@@ -73,6 +73,15 @@ export const fetchVersesByChapter = async (chapterNumber: number): Promise<GitaV
 /**
  * Fetches ALL gita_verses across all chapters (for All Verses tab).
  */
+/**
+ * Strips the leading verse reference (e.g. ।।1.1।।) from Hindi text,
+ * since the UI already shows chapter/verse numbers separately.
+ */
+export const stripHindiVerseRef = (text: string | null | undefined): string => {
+  if (!text) return '';
+  return text.replace(/^।।[\d\.\s\-]+।।\s*/, '');
+};
+
 export const fetchAllGitaVerses = async (): Promise<GitaVerse[]> => {
   const { data, error } = await supabase
     .from('gita_verses')

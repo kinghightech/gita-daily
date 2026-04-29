@@ -2,10 +2,12 @@ import BackgroundLayout from '@/components/BackgroundLayout';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import * as Clipboard from 'expo-clipboard';
-import { fetchChapter, fetchVersesByChapter, type GitaChapter, type GitaVerse } from '@/lib/verses';
+import { fetchChapter, fetchVersesByChapter, stripHindiVerseRef, type GitaChapter, type GitaVerse } from '@/lib/verses';
 import { saveNote } from '@/lib/notes';
 import { FAVORITES_UPDATED_EVENT, toggleFavoriteVerse, fetchUserFavorites } from '@/lib/favorites';
 import { fetchCurrentUserAndProfile, incrementSharesCount, updateBookmark } from '@/lib/profile';
+import { loadPreferredLanguageForCurrentUser, PREFERRED_LANGUAGE_CHANGED_EVENT } from '@/lib/preferredLanguage';
+import * as Speech from 'expo-speech';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   Bookmark,
@@ -15,9 +17,12 @@ import {
   FileText,
   Heart,
   Lightbulb,
+  Pause,
   Play,
   Share2,
   StickyNote,
+  Volume2,
+  VolumeX,
   X,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -47,12 +52,18 @@ export default function ReadScreen() {
   const [verses, setVerses] = useState<GitaVerse[]>([]);
   const [currentChapter, setCurrentChapter] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProfileLoaded, setIsProfileLoaded] = useState(false);
   const [selectedVerse, setSelectedVerse] = useState<GitaVerse | null>(null);
   const [popupTab, setPopupTab] = useState<PopupTab>('actions');
   const [noteText, setNoteText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [user, setUser] = useState<{ id: string } | null>(null);
   const [favoriteVerseIds, setFavoriteVerseIds] = useState<string[]>([]);
+  const [preferredLanguage, setPreferredLanguage] = useState<'english' | 'hindi'>('english');
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isReadingChapter, setIsReadingChapter] = useState(false);
+  const isReadingChapterRef = useRef(false);
+  const [currentReadingIndex, setCurrentReadingIndex] = useState(-1);
 
   const [userBookmark, setUserBookmark] = useState<{ chapter: number; verse: number } | null>(null);
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -69,8 +80,12 @@ export default function ReadScreen() {
       const { user, profile } = await fetchCurrentUserAndProfile();
       if (user) {
         setUser({ id: user.id });
-        const favs = await fetchUserFavorites(user.id);
+        const [favs, lang] = await Promise.all([
+          fetchUserFavorites(user.id),
+          loadPreferredLanguageForCurrentUser()
+        ]);
         setFavoriteVerseIds(favs);
+        setPreferredLanguage(lang as 'english' | 'hindi');
         
         if (profile?.bookmark_chapter && profile?.bookmark_verse) {
           const bookmark = { chapter: profile.bookmark_chapter, verse: profile.bookmark_verse };
@@ -80,12 +95,13 @@ export default function ReadScreen() {
           }
         }
       }
+      setIsProfileLoaded(true);
     })();
   }, []);
 
-  // Listen for favorites changes
+  // Listen for favorites/bookmarks/language changes
   useEffect(() => {
-    const sub = DeviceEventEmitter.addListener(
+    const favSub = DeviceEventEmitter.addListener(
       FAVORITES_UPDATED_EVENT,
       (data: { verseId: string; liked: boolean }) => {
         setFavoriteVerseIds(prev => {
@@ -94,7 +110,17 @@ export default function ReadScreen() {
         });
       }
     );
-    return () => sub.remove();
+    const langSub = DeviceEventEmitter.addListener(
+      PREFERRED_LANGUAGE_CHANGED_EVENT,
+      (newLang: string) => {
+        setPreferredLanguage(newLang as 'english' | 'hindi');
+      }
+    );
+
+    return () => {
+      favSub.remove();
+      langSub.remove();
+    };
   }, []);
 
   // Load chapter data
@@ -113,28 +139,28 @@ export default function ReadScreen() {
   }, []);
 
   useEffect(() => {
+    if (!isProfileLoaded) return;
     loadChapter(currentChapter);
-  }, [currentChapter, loadChapter]);
+  }, [currentChapter, loadChapter, isProfileLoaded]);
 
   // On tab focus: navigate to bookmark if we haven't already in this focus session
   useFocusEffect(
     useCallback(() => {
-      // Reset scroll state on focus so it can re-trigger if bookmark is seen
       setHasScrolledToBookmark(false);
       
       if (userBookmark) {
-        // Just update currentChapter; the main useEffect will handle loading
         setCurrentChapter(userBookmark.chapter);
       }
-      
-      // We don't call loadChapter here anymore to prevent double-loading
-      // or loading with stale closure values.
-    }, [userBookmark])
+
+      return () => {
+        // Stop speech when the user leaves this screen
+        stopSpeech();
+      };
+    }, [userBookmark, stopSpeech])
   );
 
   // Scroll to bookmarked verse after content loads
   useEffect(() => {
-    // ONLY proceed if we have a bookmark and haven't scrolled yet
     if (isLoading || verses.length === 0 || hasScrolledToBookmark) return;
 
     const isCurrentChapterBookmarked = userBookmark && userBookmark.chapter === currentChapter;
@@ -145,7 +171,6 @@ export default function ReadScreen() {
         const contentNode = contentRef.current;
         
         if (verseView && contentNode) {
-          // measureLayout relative to our own content container is the ONLY stable way
           (verseView as any).measureLayout(
             contentNode,
             (_x: number, y: number) => {
@@ -162,7 +187,6 @@ export default function ReadScreen() {
       }, 600);
       return () => clearTimeout(timer);
     } 
-    // REMOVED: else scroll to top. Tab switching should NOT reset your position.
   }, [isLoading, verses, userBookmark, currentChapter, hasScrolledToBookmark]);
 
   // Group verses by consecutive speaker for script format
@@ -217,9 +241,49 @@ export default function ReadScreen() {
       setPopupTab('actions');
       setNoteText('');
       setIsBookmarked(userBookmark?.chapter === verse.chapter_number && userBookmark?.verse === verse.verse_number);
+      
+      // Update reading index so 'Chapter Play' starts or resumes from here
+      const idx = verses.findIndex(v => v.id === verse.id);
+      if (idx !== -1) {
+        // If we are currently reading the chapter, stop and jump immediately
+        if (isReadingChapterRef.current) {
+          // Tell onStopped that we are intentionally jumping, not stopping fully
+          isReadingChapterRef.current = false;
+          Speech.stop();
+          
+          setCurrentReadingIndex(idx);
+          
+          setTimeout(() => {
+            isReadingChapterRef.current = true;
+            setIsReadingChapter(true);
+            playVerseAtIndex(idx);
+          }, 100); // Give the speech engine 100ms to fully clear its queues
+        } else {
+          setCurrentReadingIndex(idx);
+        }
+      }
+
       showPopup();
+
+      // Automatically adjust scroll so the verse sits clearly above the 280px popup.
+      setTimeout(() => {
+        const verseView = verseRefs.current[verse.verse_number];
+        const contentNode = contentRef.current;
+        if (verseView && contentNode) {
+          (verseView as any).measureLayout(
+            contentNode,
+            (_x: number, y: number) => {
+              if (y > 0) {
+                // y - 80 puts the quote beautifully below the header and miles above the popup
+                scrollRef.current?.scrollTo({ y: Math.max(0, y - 80), animated: true });
+              }
+            },
+            () => {}
+          );
+        }
+      }, 100);
     },
-    [selectedVerse, showPopup, hidePopup, userBookmark]
+    [selectedVerse, showPopup, hidePopup, userBookmark, verses, playVerseAtIndex]
   );
 
   // Actions
@@ -287,6 +351,145 @@ export default function ReadScreen() {
     }
   }, [user]);
 
+  const stopSpeech = useCallback((resetIndex = true) => {
+    Speech.stop();
+    setIsSpeaking(false);
+    setIsReadingChapter(false);
+    isReadingChapterRef.current = false;
+    if (resetIndex) {
+      setCurrentReadingIndex(-1);
+    }
+  }, []);
+
+  const handleSpeak = useCallback(() => {
+    if (isSpeaking || isReadingChapter) {
+      stopSpeech();
+      return;
+    }
+    if (!selectedVerse) return;
+    const text = preferredLanguage === 'hindi'
+      ? (stripHindiVerseRef(selectedVerse.hindi) || selectedVerse.english)
+      : selectedVerse.english;
+    if (!text) return;
+    const language = preferredLanguage === 'hindi' ? 'hi-IN' : 'en-US';
+    setIsSpeaking(true);
+    Speech.speak(text, {
+      language,
+      rate: 1.0,
+      pitch: 0.6,
+      onDone: () => setIsSpeaking(false),
+      onStopped: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    });
+  }, [isSpeaking, isReadingChapter, selectedVerse, preferredLanguage, stopSpeech]);
+
+  const playVerseAtIndex = useCallback((index: number) => {
+    if (!isReadingChapterRef.current || index >= verses.length) {
+      stopSpeech();
+      return;
+    }
+
+    const verse = verses[index];
+    const text = preferredLanguage === 'hindi'
+      ? (stripHindiVerseRef(verse.hindi) || verse.english)
+      : verse.english;
+    
+    if (!text) {
+      playVerseAtIndex(index + 1);
+      return;
+    }
+
+    setCurrentReadingIndex(index);
+    const language = preferredLanguage === 'hindi' ? 'hi-IN' : 'en-US';
+    
+    Speech.speak(text, {
+      language,
+      rate: 1.0,
+      pitch: 0.6,
+      onDone: () => {
+        if (isReadingChapterRef.current) {
+          playVerseAtIndex(index + 1);
+        }
+      },
+      onStopped: () => {
+        // Only reset isSpeaking if we are truly stopping
+        if (!isReadingChapterRef.current) {
+          setIsSpeaking(false);
+        }
+      },
+      onError: () => {
+        if (!isReadingChapterRef.current) {
+          stopSpeech();
+        }
+      },
+    });
+  }, [verses, preferredLanguage, stopSpeech]);
+
+  const handleReadChapter = useCallback(() => {
+    if (isReadingChapterRef.current) {
+      stopSpeech(false); // Pause, but keep currentReadingIndex
+      return;
+    }
+    
+    if (verses.length === 0) return;
+    
+    // If speaking a single verse, stop it first
+    if (isSpeaking) {
+      Speech.stop();
+      setIsSpeaking(false);
+    }
+
+    setIsReadingChapter(true);
+    isReadingChapterRef.current = true;
+
+    // Start from current index if valid
+    let startIndex = 0;
+    if (currentReadingIndex >= 0) {
+      startIndex = currentReadingIndex;
+    } else if (userBookmark && userBookmark.chapter === currentChapter) {
+      // If no active index but we have a bookmark in this chapter, start from there
+      const idx = verses.findIndex(v => v.verse_number === userBookmark.verse);
+      if (idx !== -1) {
+        startIndex = idx;
+      }
+    }
+    
+    playVerseAtIndex(startIndex);
+  }, [verses, isSpeaking, playVerseAtIndex, stopSpeech, currentReadingIndex, userBookmark, currentChapter]);
+
+  // Stop speech when popup hides or verse changes, or navigation happens
+  useEffect(() => {
+    if (!selectedVerse && isSpeaking) {
+      stopSpeech();
+    }
+  }, [selectedVerse, isSpeaking, stopSpeech]);
+
+  // Stop everything on chapter change or unmount
+  useEffect(() => {
+    return () => stopSpeech();
+  }, [currentChapter, stopSpeech]);
+
+  // Auto-scroll to verse being read
+  useEffect(() => {
+    if (isReadingChapter && currentReadingIndex >= 0) {
+      const verse = verses[currentReadingIndex];
+      const verseView = verseRefs.current[verse.verse_number];
+      const contentNode = contentRef.current;
+      
+      if (verseView && contentNode) {
+        (verseView as any).measureLayout(
+          contentNode,
+          (_x: number, y: number) => {
+            if (y > 0) {
+              scrollRef.current?.scrollTo({ y: Math.max(0, y - 120), animated: true });
+            }
+          },
+          () => {}
+        );
+      }
+    }
+  }, [currentReadingIndex, isReadingChapter, verses]);
+
   const goToChapter = (delta: number) => {
     const next = currentChapter + delta;
     if (next >= 1 && next <= 18) {
@@ -296,7 +499,6 @@ export default function ReadScreen() {
   };
 
   const getContextForVerse = (ch: number, v: number): string | null => {
-    // Only keeping Chapter 1 hardcoded for now; Chapter 2 is now database-driven
     if (ch === 1) {
       switch(v) {
         case 11: return "Duryodhana finishes his speech, the war horns blow, and the narrator (Sanjaya) takes over to describe the intense atmosphere to King Dhritarashtra.";
@@ -319,7 +521,6 @@ export default function ReadScreen() {
 
   return (
     <BackgroundLayout>
-      {/* Chapter Header */}
       <View style={styles.chapterHeader}>
         <View style={styles.chapterHeaderInner}>
           <Pressable
@@ -358,15 +559,20 @@ export default function ReadScreen() {
           </Pressable>
         </View>
 
-        {/* Static Play Button */}
         <View style={styles.playBtnWrap}>
-          <Pressable style={styles.playBtn}>
-            <Play size={20} color="white" fill="white" />
+          <Pressable 
+            style={[styles.playBtn, isReadingChapter && { borderColor: GitaColors.gold, backgroundColor: 'rgba(251,191,36,0.1)' }]}
+            onPress={handleReadChapter}
+          >
+            {isReadingChapter ? (
+              <Pause size={24} color={GitaColors.gold} fill={GitaColors.gold} />
+            ) : (
+              <Play size={24} color="white" fill="white" />
+            )}
           </Pressable>
         </View>
       </View>
 
-      {/* Reading Area */}
       {isLoading ? (
         <View style={styles.loadingWrap}>
           <LotusLoader size={90} color={GitaColors.gold} strokeWidth={2.5} />
@@ -382,7 +588,10 @@ export default function ReadScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.readScroll}
-          contentContainerStyle={styles.readScrollContent}
+          contentContainerStyle={[
+            styles.readScrollContent,
+            { paddingBottom: selectedVerse ? 300 : 40 }
+          ]}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.scriptCard} ref={contentRef}>
@@ -393,6 +602,7 @@ export default function ReadScreen() {
                     <View style={styles.dialogueBlock}>
                       {group.verses.map((verse) => {
                         const isSelected = selectedVerse?.id === verse.id;
+                        const isReading = isReadingChapter && verses[currentReadingIndex]?.id === verse.id;
                         const context = verse.context || getContextForVerse(currentChapter, verse.verse_number);
                         const isThisBookmarked = userBookmark?.chapter === currentChapter && userBookmark?.verse === verse.verse_number;
 
@@ -414,9 +624,10 @@ export default function ReadScreen() {
                                 style={[
                                   styles.verseText,
                                   isSelected && styles.verseTextSelected,
+                                  isReading && styles.verseTextReading,
                                 ]}
                               >
-                                &quot;{verse.english}&quot;
+                                &quot;{preferredLanguage === 'hindi' ? (stripHindiVerseRef(verse.hindi) || verse.english) : verse.english}&quot;
                               </Text>
 
                               {context && (
@@ -437,9 +648,6 @@ export default function ReadScreen() {
               );
             })}
           </View>
-
-          {/* Bottom padding to not overlap with popup */}
-          <View style={{ height: selectedVerse ? 280 : 40 }} />
         </ScrollView>
       )}
 
@@ -471,62 +679,83 @@ export default function ReadScreen() {
           {/* Tab content */}
           {popupTab === 'actions' && (
             <View style={styles.popupActions}>
-              <Pressable
-                style={[styles.popupActionBtn]}
-                onPress={handleSave}
-              >
-                <Heart 
-                  size={22} 
-                  color={isVerseSaved ? '#ef4444' : 'rgba(255,255,255,0.7)'} 
-                  fill={isVerseSaved ? '#ef4444' : 'transparent'}
-                />
-                <Text style={[styles.popupActionLabel, isVerseSaved && styles.popupActionLabelActive]}>
-                  {isVerseSaved ? 'Saved' : 'Save'}
-                </Text>
-              </Pressable>
+              <View style={styles.popupActionRow}>
+                <Pressable
+                  style={[styles.popupActionBtn]}
+                  onPress={handleSave}
+                >
+                  <View style={styles.popupActionIconCircle}>
+                    <Heart 
+                      size={24} 
+                      color={isVerseSaved ? '#ef4444' : 'rgba(255,255,255,0.7)'} 
+                      fill={isVerseSaved ? '#ef4444' : 'transparent'}
+                    />
+                  </View>
+                  <Text style={[styles.popupActionLabel, isVerseSaved && styles.popupActionLabelActive]}>
+                    {isVerseSaved ? 'Saved' : 'Save'}
+                  </Text>
+                </Pressable>
 
-              <Pressable
-                style={styles.popupActionBtn}
-                onPress={() => setPopupTab('note')}
-              >
-                <StickyNote size={22} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.popupActionLabel}>Note</Text>
-              </Pressable>
+                <Pressable
+                  style={styles.popupActionBtn}
+                  onPress={isBookmarked ? handleRemoveBookmark : handleBookmark}
+                >
+                  <View style={[styles.popupActionIconCircle, isBookmarked && { borderColor: GitaColors.gold }]}>
+                    <Bookmark 
+                      size={24} 
+                      color={isBookmarked ? GitaColors.gold : 'rgba(255,255,255,0.7)'} 
+                      fill={isBookmarked ? GitaColors.gold : 'transparent'}
+                    />
+                  </View>
+                  <Text style={[styles.popupActionLabel, isBookmarked && { color: GitaColors.gold }]}>
+                    {isBookmarked ? 'Bookmarked' : 'Bookmark'}
+                  </Text>
+                </Pressable>
 
-              <Pressable style={styles.popupActionBtn} onPress={handleCopy}>
-                <Copy size={22} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.popupActionLabel}>Copy</Text>
-              </Pressable>
+                <Pressable
+                  style={styles.popupActionBtn}
+                  onPress={() => setPopupTab('note')}
+                >
+                  <View style={styles.popupActionIconCircle}>
+                    <StickyNote size={24} color="rgba(255,255,255,0.7)" />
+                  </View>
+                  <Text style={styles.popupActionLabel}>Add Note</Text>
+                </Pressable>
+              </View>
 
-              <Pressable
-                style={styles.popupActionBtn}
-                onPress={handleShare}
-              >
-                <Share2 size={22} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.popupActionLabel}>Share</Text>
-              </Pressable>
+              <View style={styles.popupActionRow}>
+                <Pressable style={styles.popupActionBtn} onPress={handleCopy}>
+                  <View style={styles.popupActionIconCircle}>
+                    <Copy size={24} color="rgba(255,255,255,0.7)" />
+                  </View>
+                  <Text style={styles.popupActionLabel}>Copy Text</Text>
+                </Pressable>
 
-              <Pressable
-                style={styles.popupActionBtn}
-                onPress={isBookmarked ? handleRemoveBookmark : handleBookmark}
-              >
-                <Bookmark 
-                  size={22} 
-                  color={isBookmarked ? GitaColors.gold : 'rgba(255,255,255,0.7)'} 
-                  fill={isBookmarked ? GitaColors.gold : 'transparent'}
-                />
-                <Text style={[styles.popupActionLabel, isBookmarked && { color: GitaColors.gold }]}>
-                  {isBookmarked ? 'Remove' : 'Mark'}
-                </Text>
-              </Pressable>
+                <Pressable
+                  style={styles.popupActionBtn}
+                  onPress={handleShare}
+                >
+                  <View style={styles.popupActionIconCircle}>
+                    <Share2 size={24} color="rgba(255,255,255,0.7)" />
+                  </View>
+                  <Text style={styles.popupActionLabel}>Share Verse</Text>
+                </Pressable>
 
-              <Pressable
-                style={styles.popupActionBtn}
-                onPress={() => setPopupTab('insight')}
-              >
-                <Lightbulb size={22} color="rgba(255,255,255,0.7)" />
-                <Text style={styles.popupActionLabel}>Insight</Text>
-              </Pressable>
+                <Pressable
+                  style={[styles.popupActionBtn, isSpeaking && styles.popupActionBtnActive]}
+                  onPress={handleSpeak}
+                >
+                  <View style={[styles.popupActionIconCircle, (isSpeaking || isReadingChapter) && { backgroundColor: 'rgba(251,191,36,0.15)', borderColor: GitaColors.gold }]}>
+                    {isSpeaking || isReadingChapter
+                      ? <VolumeX size={24} color="#fbbf24" />
+                      : <Volume2 size={24} color="rgba(255,255,255,0.7)" />
+                    }
+                  </View>
+                  <Text style={[styles.popupActionLabel, (isSpeaking || isReadingChapter) && { color: '#fbbf24' }]}>
+                    {isSpeaking || isReadingChapter ? 'Stop Verse' : 'Listen Now'}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           )}
 
@@ -648,11 +877,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   playBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: 'rgba(251,191,36,0.2)',
-    borderWidth: 1.5,
+    borderWidth: 1.8,
     borderColor: 'rgba(251,191,36,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -752,8 +981,9 @@ const styles = StyleSheet.create({
   },
 
   /* ── Context Box ── */
-  verseWithContext: {
-    gap: 12,
+  verseTextReading: {
+    color: GitaColors.gold,
+    backgroundColor: 'rgba(251,191,36,0.1)',
   },
   contextBoxInside: {
     backgroundColor: 'rgba(251,191,36,0.06)',
@@ -798,9 +1028,9 @@ const styles = StyleSheet.create({
     borderLeftWidth: 1,
     borderRightWidth: 1,
     borderColor: 'rgba(251,191,36,0.15)',
-    paddingBottom: 36,
-    paddingHorizontal: 20,
-    minHeight: 180,
+    paddingBottom: 40,
+    paddingHorizontal: 8,
+    minHeight: 280,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -8 },
     shadowOpacity: 0.4,
@@ -832,25 +1062,40 @@ const styles = StyleSheet.create({
 
   /* ── Popup Actions ── */
   popupActions: {
+    paddingVertical: 12,
+    gap: 16,
+  },
+  popupActionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 10,
   },
   popupActionBtn: {
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 14,
-    minWidth: 58,
+    justifyContent: 'center',
+    width: (SCREEN_WIDTH - 60) / 3,
+  },
+  popupActionIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   popupActionBtnActive: {
-    backgroundColor: 'rgba(251,191,36,0.1)',
+    backgroundColor: 'rgba(251,191,36,0.08)',
+    borderRadius: 16,
   },
   popupActionLabel: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 11,
-    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   popupActionLabelActive: {
     color: '#ef4444',

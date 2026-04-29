@@ -4,10 +4,11 @@ import QuoteCard from '@/components/gita/QuoteCard';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts } from '@/constants/theme';
 import { MOCK_VERSES, Verse } from '@/Data/mockverses';
-import { fetchAllGitaVerses } from '@/lib/verses';
+import { fetchAllGitaVerses, stripHindiVerseRef } from '@/lib/verses';
 import { BookOpen, ChevronDown, Filter, Search } from 'lucide-react-native';
 import { FAVORITES_UPDATED_EVENT, fetchUserFavorites } from '@/lib/favorites';
 import { fetchCurrentUserAndProfile } from '@/lib/profile';
+import { loadPreferredLanguageForCurrentUser, PREFERRED_LANGUAGE_CHANGED_EVENT } from '@/lib/preferredLanguage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TouchableOpacity, 
@@ -133,6 +134,7 @@ export default function VersesScreen() {
   const [user, setUser] = useState<{ id: string; full_name: string | null; email: string | null } | null>(null);
   const [favoriteVerseIds, setFavoriteVerseIds] = useState<string[]>([]);
   const [supabaseVerses, setSupabaseVerses] = useState<Verse[]>([]);
+  const [preferredLanguage, setPreferredLanguage] = useState<'english' | 'hindi'>('english');
   const pageScrollRef = useRef<ScrollView>(null);
   const selectedVerseBoxYRef = useRef(0);
 
@@ -153,7 +155,11 @@ export default function VersesScreen() {
     const loadAll = async () => {
       refreshUserContext();
       try {
-        const gitaVerses = await fetchAllGitaVerses();
+        const [gitaVerses, lang] = await Promise.all([
+           fetchAllGitaVerses(),
+           loadPreferredLanguageForCurrentUser()
+        ]);
+        setPreferredLanguage(lang as 'english' | 'hindi');
         const mapped: Verse[] = gitaVerses.map(v => ({
           id: v.id,
           chapter: v.chapter_number,
@@ -179,7 +185,7 @@ export default function VersesScreen() {
   );
 
   useEffect(() => {
-    const sub = DeviceEventEmitter.addListener(
+    const favSub = DeviceEventEmitter.addListener(
       FAVORITES_UPDATED_EVENT,
       (data: { verseId: string; liked: boolean }) => {
         setFavoriteVerseIds((prev) => {
@@ -192,8 +198,16 @@ export default function VersesScreen() {
       }
     );
 
+    const langSub = DeviceEventEmitter.addListener(
+      PREFERRED_LANGUAGE_CHANGED_EVENT,
+      (newLang: string) => {
+        setPreferredLanguage(newLang as 'english' | 'hindi');
+      }
+    );
+
     return () => {
-      sub.remove();
+      favSub.remove();
+      langSub.remove();
     };
   }, []);
 
@@ -335,7 +349,7 @@ export default function VersesScreen() {
 
                         <View style={styles.verseContent}>
                           <Text style={styles.verseEnglish}>
-                            &quot;{verse.english}&quot;
+                            &quot;{preferredLanguage === 'hindi' ? (stripHindiVerseRef(verse.hindi) || verse.english) : verse.english}&quot;
                           </Text>
                           {verse.speaker ? <Text style={styles.verseSpeaker}>— {verse.speaker}</Text> : null}
                         </View>
@@ -360,7 +374,10 @@ export default function VersesScreen() {
               <QuoteCard
                 verse={selectedVerse}
                 user={user}
-                preferences={{ favorite_verses: favoriteVerseIds }}
+                preferences={{ 
+                  favorite_verses: favoriteVerseIds,
+                  preferred_language: preferredLanguage
+                }}
                 onFavoriteToggle={(verseId, isLiked) => {
                   setFavoriteVerseIds(prev => {
                     if (isLiked) return prev.includes(verseId) ? prev : [...prev, verseId];

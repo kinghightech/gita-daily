@@ -1,14 +1,17 @@
 import { Fonts } from '@/constants/theme';
-import { LinearGradient } from 'expo-linear-gradient';
-import {
-    Heart,
-    Share2,
-    Volume2,
-} from 'lucide-react-native';
 import { FAVORITES_UPDATED_EVENT, toggleFavoriteVerse } from '@/lib/favorites';
 import { incrementSharesCount } from '@/lib/profile';
+import { stripHindiVerseRef } from '@/lib/verses';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Speech from 'expo-speech';
+import {
+  Heart,
+  Share2,
+  Volume2,
+  VolumeX,
+} from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { TouchableOpacity,  Alert, Animated, DeviceEventEmitter, Pressable, Share, StyleSheet, Text, View, type GestureResponderEvent  } from 'react-native';
+import { Animated, DeviceEventEmitter, Share, StyleSheet, Text, TouchableOpacity, View, type GestureResponderEvent } from 'react-native';
 
 interface QuoteCardProps {
   verse: {
@@ -69,7 +72,7 @@ export default function QuoteCard({
   const getQuoteText = () => {
     const text =
       activeLanguage === 'hindi'
-        ? (verse?.hindi ?? verse?.english)
+        ? (stripHindiVerseRef(verse?.hindi) || verse?.english)
         : (verse?.english ?? verse?.hindi);
     return text ?? '';
   };
@@ -79,7 +82,7 @@ export default function QuoteCard({
 
     const currentlyLiked = isFavorite;
     const nextFavorite = !currentlyLiked;
-    
+
     // 1. Optimistic Update
     setOptimisticFavorite(nextFavorite);
 
@@ -101,8 +104,8 @@ export default function QuoteCard({
     const shareText =
       `"${verse.english ?? verse.hindi ?? ''}"\n\n` +
       `— Bhagavad Gita, Chapter ${verse.chapter}, Verse ${verse.verse}` +
-      `${verse.speaker ? ` (${verse.speaker})` : ''}\n\n` +
-      `${verse.hindi ?? ''}`;
+      `${verse.speaker ? ` (${verse.speaker})` : ''}` +
+      (activeLanguage === 'hindi' && verse.hindi ? `\n\n${verse.hindi}` : '');
 
     try {
       await Share.share({ title: 'Gita Daily Wisdom', message: shareText });
@@ -174,14 +177,32 @@ export default function QuoteCard({
     lastTapRef.current = now;
   }, [isFavorite, handleFavorite, showTapHeart, verse, user?.id]);
 
-  const speakQuote = useCallback(() => {
-    // keep your existing behavior
-    Alert.alert(
-      'Listen',
-      'Audio playback requires the web version. On mobile, you can read the verse aloud.',
-      [{ text: 'OK' }]
-    );
-  }, []);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const speakQuote = useCallback(async () => {
+    if (isSpeaking) {
+      Speech.stop();
+      setIsSpeaking(false);
+      return;
+    }
+    const text = getQuoteText();
+    if (!text) return;
+    const language = activeLanguage === 'hindi' ? 'hi-IN' : 'en-US';
+    setIsSpeaking(true);
+    Speech.speak(text, {
+      language,
+      rate: 1,
+      pitch: 0.6,
+      onDone: () => setIsSpeaking(false),
+      onStopped: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+    });
+  }, [isSpeaking, activeLanguage, verse]);
+
+  // Stop speech when verse changes or component unmounts
+  useEffect(() => {
+    return () => { Speech.stop(); };
+  }, [verse?.id]);
 
   if (!verse) return null;
 
@@ -246,8 +267,8 @@ export default function QuoteCard({
         </TouchableOpacity>
 
         <View style={styles.actions}>
-          <TouchableOpacity activeOpacity={0.7} style={styles.iconBtn} onPress={speakQuote}>
-            <Volume2 color="rgba(212,175,55,0.95)" size={20} />
+          <TouchableOpacity activeOpacity={0.7} style={[styles.iconBtn, isSpeaking && styles.speakingBtn]} onPress={speakQuote}>
+            {isSpeaking ? <VolumeX color="#fbbf24" size={20} /> : <Volume2 color="rgba(212,175,55,0.95)" size={20} />}
           </TouchableOpacity>
 
           <TouchableOpacity activeOpacity={0.7} style={styles.iconBtn} onPress={handleShare}>
@@ -385,5 +406,10 @@ const styles = StyleSheet.create({
   favoriteBtn: {
     borderColor: 'rgba(212,175,55,0.75)',
     backgroundColor: 'rgba(212,175,55,0.14)',
+  },
+
+  speakingBtn: {
+    borderColor: '#fbbf24',
+    backgroundColor: 'rgba(251,191,36,0.18)',
   },
 });
