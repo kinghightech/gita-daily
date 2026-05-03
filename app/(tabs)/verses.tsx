@@ -596,10 +596,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 24,
     padding: 14,
-    shadowColor: '#000000',
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
+    boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.3)',
     elevation: 8,
   },
   verseItem: {

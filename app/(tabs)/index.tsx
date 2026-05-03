@@ -1,7 +1,6 @@
 import QuoteCard from '@/components/gita/QuoteCard';
 import StreakModal from '@/components/gita/StreakModal';
 import LotusLoader from '@/components/ui/LotusLoader';
-import { MOCK_VERSES } from '@/Data/mockverses';
 import { FAVORITES_UPDATED_EVENT, fetchUserFavorites } from '@/lib/favorites';
 import {
     loadPreferredLanguageForCurrentUser,
@@ -9,8 +8,8 @@ import {
     type PreferredLanguage,
 } from '@/lib/preferredLanguage';
 import { fetchCurrentUserAndProfile, getProfileDisplayName, STREAK_UPDATED_EVENT } from '@/lib/profile';
+import { fetchVerseOfTheDay, type GitaVerse } from '@/lib/verses';
 import { useFocusEffect } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Flame } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { TouchableOpacity,  DeviceEventEmitter, Pressable, ScrollView, StyleSheet, Text, View  } from 'react-native';
@@ -18,7 +17,7 @@ import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Home() {
-  const [currentVerseIndex, setCurrentVerseIndex] = useState(0);
+  const [verseOfTheDay, setVerseOfTheDay] = useState<GitaVerse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [greeting, setGreeting] = useState('Good Morning');
   const [isStreakModalOpen, setIsStreakModalOpen] = useState(false);
@@ -62,13 +61,6 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const today = new Date();
-    const startOfYear = new Date(today.getFullYear(), 0, 0);
-    const diff = today.getTime() - startOfYear.getTime();
-    const dayOfYear = Math.floor(diff / (1000 * 60 * 60 * 24));
-    setCurrentVerseIndex(dayOfYear % MOCK_VERSES.length);
-
-    // Set greeting based on time of day
     const hour = new Date().getHours();
     if (hour < 12) {
       setGreeting('Good Morning');
@@ -78,7 +70,16 @@ export default function Home() {
       setGreeting('Good Evening');
     }
 
-    setTimeout(() => setIsLoading(false), 500);
+    let cancelled = false;
+    (async () => {
+      const verse = await fetchVerseOfTheDay();
+      if (!cancelled) {
+        setVerseOfTheDay(verse);
+        setIsLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -141,31 +142,19 @@ export default function Home() {
     };
   }, [refreshIdentity]);
 
-  const currentVerse = MOCK_VERSES[currentVerseIndex];
+  const currentVerse = verseOfTheDay ? {
+    id: verseOfTheDay.id,
+    chapter: verseOfTheDay.chapter_number,
+    verse: verseOfTheDay.verse_number,
+    english: verseOfTheDay.english,
+    hindi: verseOfTheDay.hindi ?? undefined,
+    speaker: verseOfTheDay.speaker ?? undefined,
+    meaning: verseOfTheDay.context ?? undefined,
+  } : null;
 
   return (
-    <LinearGradient
-      colors={['#0f172a', '#172554', '#0f172a']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{ flex: 1 }}
-    >
+    <View style={{ flex: 1, backgroundColor: '#121212' }}>
       <SafeAreaView style={{ flex: 1 }}>
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <LinearGradient
-            colors={['rgba(245, 158, 11, 0.08)', 'rgba(245, 158, 11, 0.03)', 'transparent']}
-            start={{ x: 1, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={styles.glowTopRight}
-          />
-          <LinearGradient
-            colors={['rgba(147, 197, 253, 0.05)', 'transparent']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.glowTopLeft}
-          />
-        </View>
-
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -193,7 +182,7 @@ export default function Home() {
                 <LotusLoader size={110} color="#D4AF37" strokeWidth={2.8} duration={1200} />
                 <Text style={styles.loadingText}>Loading divine wisdom...</Text>
               </Animated.View>
-            ) : MOCK_VERSES.length === 0 ? (
+            ) : verseOfTheDay === null ? (
               <Animated.View entering={FadeIn} style={styles.emptyContainer}>
                 <Text style={styles.emptyTitle}>No Verses Available</Text>
                 <Text style={styles.emptySubtitle}>
@@ -239,27 +228,11 @@ export default function Home() {
           }}
         />
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  glowTopRight: {
-    position: 'absolute',
-    top: -200,
-    right: -200,
-    width: 600,
-    height: 600,
-    borderRadius: 300,
-  },
-  glowTopLeft: {
-    position: 'absolute',
-    top: -150,
-    left: -150,
-    width: 500,
-    height: 500,
-    borderRadius: 250,
-  },
   scrollContent: {
     paddingHorizontal: 16,
     paddingVertical: 21,

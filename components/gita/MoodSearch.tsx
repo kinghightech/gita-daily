@@ -205,10 +205,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    shadowColor: '#000000',
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
+    boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.3)',
     elevation: 8,
   },
   titleRow: {
@@ -251,10 +248,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   moodBtnSelected: {
-    shadowColor: '#000000',
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.35)',
     elevation: 6,
   },
   moodLabel: {

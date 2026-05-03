@@ -2,6 +2,7 @@ import { Fonts } from '@/constants/theme';
 import { FAVORITES_UPDATED_EVENT, toggleFavoriteVerse } from '@/lib/favorites';
 import { incrementSharesCount } from '@/lib/profile';
 import { stripHindiVerseRef } from '@/lib/verses';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
 import {
@@ -9,9 +10,61 @@ import {
   Share2,
   Volume2,
   VolumeX,
+  X,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, DeviceEventEmitter, Share, StyleSheet, Text, TouchableOpacity, View, type GestureResponderEvent } from 'react-native';
+import {
+  Animated,
+  DeviceEventEmitter,
+  Dimensions,
+  Modal,
+  Pressable,
+  Share,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  type GestureResponderEvent,
+} from 'react-native';
+
+const VERSE_BACKGROUNDS = [
+  require('@/assets/images/verse-bg.jpg'),
+  require('@/assets/images/verse-bg-0.jpg'),
+  require('@/assets/images/verse-bg-2.jpg'),
+  require('@/assets/images/verse-bg-3.jpg'),
+  require('@/assets/images/verse-bg-4.jpg'),
+  require('@/assets/images/verse-bg-5.jpg'),
+  require('@/assets/images/verse-bg-6.jpg'),
+  require('@/assets/images/verse-bg-7.jpg'),
+  require('@/assets/images/verse-bg-8.jpg'),
+  require('@/assets/images/verse-bg-9.jpg'),
+  require('@/assets/images/verse-bg-10.jpg'),
+  require('@/assets/images/verse-bg-11.jpg'),
+  require('@/assets/images/verse-bg-12.jpg'),
+  require('@/assets/images/verse-bg-13.jpg'),
+  require('@/assets/images/verse-bg-14.jpg'),
+  require('@/assets/images/verse-bg-15.jpg'),
+  require('@/assets/images/verse-bg-16.jpg'),
+  require('@/assets/images/verse-bg-17.jpg'),
+  require('@/assets/images/verse-bg-18.jpg'),
+  require('@/assets/images/verse-bg-19.jpg'),
+  require('@/assets/images/verse-bg-20.jpg'),
+  require('@/assets/images/verse-bg-21.jpg'),
+  require('@/assets/images/verse-bg-22.jpg'),
+  require('@/assets/images/verse-bg-23.jpg'),
+  require('@/assets/images/verse-bg-24.jpg'),
+  require('@/assets/images/verse-bg-25.jpg'),
+];
+
+function getTodaysBgIndex(): number {
+  const epoch = new Date(2024, 0, 1);
+  const now = new Date();
+  const daysSinceEpoch = Math.floor((now.getTime() - epoch.getTime()) / (1000 * 60 * 60 * 24));
+  return daysSinceEpoch % VERSE_BACKGROUNDS.length;
+}
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 interface QuoteCardProps {
   verse: {
@@ -39,6 +92,8 @@ export default function QuoteCard({
   const activeLanguage = preferences?.preferred_language || 'english';
   const [optimisticFavorite, setOptimisticFavorite] = useState<boolean | null>(null);
   const [tapHeartPoint, setTapHeartPoint] = useState<{ x: number; y: number; nonce: number } | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const expandAnim = useRef(new Animated.Value(0)).current;
   const lastTapRef = useRef(0);
   const tapHeartScale = useRef(new Animated.Value(0.35)).current;
   const tapHeartOpacity = useRef(new Animated.Value(0)).current;
@@ -83,17 +138,14 @@ export default function QuoteCard({
     const currentlyLiked = isFavorite;
     const nextFavorite = !currentlyLiked;
 
-    // 1. Optimistic Update
     setOptimisticFavorite(nextFavorite);
 
-    // 2. Persist to DB
     try {
       const successStatus = await toggleFavoriteVerse(user.id, verse.id, currentlyLiked);
       if (onFavoriteToggle) {
         onFavoriteToggle(verse.id, successStatus);
       }
     } catch (error) {
-      // Revert on error
       setOptimisticFavorite(currentlyLiked);
       console.error('Favorite toggle failed:', error);
     }
@@ -157,26 +209,55 @@ export default function QuoteCard({
     });
   }, [tapHeartOpacity, tapHeartScale]);
 
-  const handleQuoteDoubleTap = useCallback((event: GestureResponderEvent) => {
+  const handleDoubleTap = useCallback((event: GestureResponderEvent) => {
     const now = Date.now();
     const diff = now - lastTapRef.current;
     const { locationX, locationY } = event.nativeEvent;
 
-    if (diff < 400 && diff > 0) {
+    if (diff < 300 && diff > 0) {
       showTapHeart(locationX, locationY);
 
       if (verse && !isFavorite && user?.id) {
-        // Double tap always ensures "liked" if not already liked
         void handleFavorite();
       }
 
       lastTapRef.current = 0;
-      return;
+      return true;
     }
 
     lastTapRef.current = now;
+    return false;
   }, [isFavorite, handleFavorite, showTapHeart, verse, user?.id]);
 
+  const handleCardPress = useCallback((event: GestureResponderEvent) => {
+    const wasDoubleTap = handleDoubleTap(event);
+    if (!wasDoubleTap) {
+      setTimeout(() => {
+        if (lastTapRef.current !== 0) {
+          setExpanded(true);
+          Animated.spring(expandAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            tension: 200,
+            friction: 18,
+          }).start();
+        }
+      }, 310);
+    }
+  }, [handleDoubleTap, expandAnim]);
+
+  const handleCollapse = useCallback(() => {
+    Animated.spring(expandAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 200,
+      friction: 18,
+    }).start(() => {
+      setExpanded(false);
+    });
+  }, [expandAnim]);
+
+  const bgIndex = getTodaysBgIndex();
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   const speakQuote = useCallback(async () => {
@@ -199,96 +280,166 @@ export default function QuoteCard({
     });
   }, [isSpeaking, activeLanguage, verse]);
 
-  // Stop speech when verse changes or component unmounts
   useEffect(() => {
     return () => { Speech.stop(); };
   }, [verse?.id]);
 
   if (!verse) return null;
 
-  return (
-    <View style={styles.wrapper}>
-      <LinearGradient
-        // closer to the website “deep navy → rich blue” look
-        colors={['rgba(10,16,30,0.97)', 'rgba(12,34,74,0.97)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.card}
+  const cardContent = (isFullscreen: boolean) => (
+    <View style={isFullscreen ? styles.fullscreenCard : styles.cardOuter}>
+      <View style={isFullscreen ? styles.fullscreenCardInner : styles.cardInner}>
+        <Image
+          source={VERSE_BACKGROUNDS[bgIndex]}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={300}
+        />
+
+        {/* Readability overlay */}
+        <LinearGradient
+          colors={
+            isFullscreen
+              ? ['rgba(0,0,0,0.45)', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.55)']
+              : ['rgba(15,23,42,0.35)', 'rgba(15,23,42,0.15)', 'rgba(15,23,42,0.25)', 'rgba(15,23,42,0.6)']
+          }
+          locations={isFullscreen ? [0, 0.25, 0.65, 1] : [0, 0.3, 0.6, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+
+      <Pressable
+        style={isFullscreen ? styles.fullscreenContent : styles.content}
+        onPress={isFullscreen ? handleDoubleTap : handleCardPress}
       >
-        {/* Header */}
-        <TouchableOpacity activeOpacity={0.7} style={styles.pressable}>
-          <LinearGradient
-            colors={['rgba(20,30,55,1)', 'rgba(20,60,160,0.55)', 'rgba(20,30,55,1)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.header}
-          >
-            {isToday && (
-              <View style={styles.todayRow}>
-                <View style={styles.todayLine} />
-                <Text style={styles.todayLabel}>TODAY&apos;S VERSE</Text>
-                <View style={styles.todayLine} />
-              </View>
-            )}
-
-            <Text style={styles.chapterVerse}>
-              Chapter {verse.chapter}, Verse {verse.verse}
-            </Text>
-
-            {verse.speaker && <Text style={styles.speaker}>Spoken by {verse.speaker}</Text>}
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* Quote */}
-        <TouchableOpacity activeOpacity={0.7} style={styles.quoteTapArea} onPress={handleQuoteDoubleTap}>
-          <View style={styles.quoteBlock}>
-            <Text style={[styles.quoteText, activeLanguage === 'hindi' && styles.quoteHindi]}>
-              &quot;{getQuoteText()}&quot;
-            </Text>
-          </View>
-
-          {tapHeartPoint && (
-            <Animated.View
-              key={`tap-heart-${tapHeartPoint.nonce}`}
-              pointerEvents="none"
-              style={[
-                styles.tapHeart,
-                {
-                  left: tapHeartPoint.x - 22,
-                  top: tapHeartPoint.y - 22,
-                  opacity: tapHeartOpacity,
-                  transform: [{ scale: tapHeartScale }],
-                },
-              ]}
+        {/* Top label */}
+        <View style={isFullscreen ? styles.fullscreenTopSection : styles.topSection}>
+          {isFullscreen && (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.closeBtn}
+              onPress={handleCollapse}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <Heart size={44} color="#FE2C55" fill="#FE2C55" />
-            </Animated.View>
+              <X color="#fff" size={24} strokeWidth={2} />
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+          {isToday && (
+            <Text style={styles.vodLabel}>Verse of the Day</Text>
+          )}
+          <Text style={isFullscreen ? styles.fullscreenReference : styles.reference}>
+            Chapter {verse.chapter}, Verse {verse.verse}
+          </Text>
+          {verse.speaker && (
+            <Text style={styles.speaker}>Spoken by {verse.speaker}</Text>
+          )}
+        </View>
 
-        <View style={styles.actions}>
-          <TouchableOpacity activeOpacity={0.7} style={[styles.iconBtn, isSpeaking && styles.speakingBtn]} onPress={speakQuote}>
-            {isSpeaking ? <VolumeX color="#fbbf24" size={20} /> : <Volume2 color="rgba(212,175,55,0.95)" size={20} />}
-          </TouchableOpacity>
+        {/* Verse text */}
+        <View style={styles.quoteSection}>
+          <Text style={[
+            isFullscreen ? styles.fullscreenQuoteText : styles.quoteText,
+            activeLanguage === 'hindi' && styles.quoteHindi,
+          ]}>
+            {getQuoteText()}
+          </Text>
+        </View>
 
-          <TouchableOpacity activeOpacity={0.7} style={styles.iconBtn} onPress={handleShare}>
-            <Share2 color="rgba(212,175,55,0.95)" size={20} />
-          </TouchableOpacity>
+        {/* Double-tap heart animation */}
+        {tapHeartPoint && (
+          <Animated.View
+            key={`tap-heart-${tapHeartPoint.nonce}`}
+            pointerEvents="none"
+            style={[
+              styles.tapHeart,
+              {
+                left: tapHeartPoint.x - 22,
+                top: tapHeartPoint.y - 22,
+                opacity: tapHeartOpacity,
+                transform: [{ scale: tapHeartScale }],
+              },
+            ]}
+          >
+            <Heart size={44} color="#FE2C55" fill="#FE2C55" />
+          </Animated.View>
+        )}
 
-          <TouchableOpacity activeOpacity={0.7} style={[styles.iconBtn, isFavorite && styles.favoriteBtn]} onPress={handleFavorite}>
+        {/* Actions — spread evenly */}
+        <View style={styles.actionBar}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.actionBtn}
+            onPress={handleFavorite}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Heart
-              color={isFavorite ? '#FE2C55' : 'rgba(212,175,55,0.95)'}
-              size={20}
+              color="#fff"
+              size={24}
               fill={isFavorite ? '#FE2C55' : 'transparent'}
+              strokeWidth={isFavorite ? 0 : 1.6}
             />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.actionBtn}
+            onPress={speakQuote}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            {isSpeaking
+              ? <VolumeX color="#fbbf24" size={24} />
+              : <Volume2 color="#fff" size={24} strokeWidth={1.6} />
+            }
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.actionBtn}
+            onPress={handleShare}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Share2 color="#fff" size={24} strokeWidth={1.6} />
+          </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </Pressable>
+      </View>
     </View>
   );
-}
 
-const GOLD = 'rgba(212,175,55,0.65)'; // slightly “richer” gold than your old amber
+  return (
+    <>
+      <View style={styles.wrapper}>
+        {cardContent(false)}
+
+      </View>
+
+      <Modal
+        visible={expanded}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        onRequestClose={handleCollapse}
+      >
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        <Animated.View
+          style={[
+            styles.fullscreenOverlay,
+            {
+              opacity: expandAnim,
+              transform: [{
+                scale: expandAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.92, 1],
+                }),
+              }],
+            },
+          ]}
+        >
+          {cardContent(true)}
+        </Animated.View>
+      </Modal>
+    </>
+  );
+}
 
 const styles = StyleSheet.create({
   wrapper: {
@@ -297,83 +448,122 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
 
-  card: {
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.3)',
+  cardOuter: {
+    borderRadius: 22,
+    minHeight: 420,
+  },
+
+  cardInner: {
+    flex: 1,
+    borderRadius: 22,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.18)',
   },
 
-  pressable: { width: '100%' },
-
-  header: {
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(251,191,36,0.2)',
-    alignItems: 'center',
+  fullscreenCard: {
+    flex: 1,
   },
 
-  todayRow: {
-    flexDirection: 'row',
+  fullscreenCardInner: {
+    flex: 1,
+  },
+
+  content: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingTop: 28,
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+    minHeight: 360,
+    position: 'relative',
+    zIndex: 2,
+  },
+
+  fullscreenContent: {
+    flex: 1,
+    justifyContent: 'space-between',
+    paddingTop: 48,
+    paddingHorizontal: 28,
+    paddingBottom: 40,
+    position: 'relative',
+  },
+
+  fullscreenOverlay: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+
+  closeBtn: {
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    marginBottom: 4,
-  },
-  todayLine: {
-    width: 40,
-    height: 1,
-    backgroundColor: 'rgba(251,191,36,0.6)',
-  },
-  todayLabel: {
-    color: '#fbbf24',
-    fontSize: 12,
-    letterSpacing: 4.8,
-    fontWeight: '300',
-    textTransform: 'uppercase',
   },
 
-  chapterVerse: {
-    color: '#fef3c7',
-    fontSize: 20,
-    fontWeight: '500',
+  topSection: {
+    gap: 2,
+  },
+
+  fullscreenTopSection: {
+    gap: 4,
+  },
+
+  vodLabel: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 13,
+    fontWeight: '400',
     letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+
+  reference: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '700',
+    fontFamily: Fonts.serif,
+  },
+
+  fullscreenReference: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '700',
     fontFamily: Fonts.serif,
   },
 
   speaker: {
-    color: 'rgba(251,191,36,0.7)',
+    color: 'rgba(255,255,255,0.55)',
     fontSize: 14,
+    fontWeight: '400',
     fontStyle: 'italic',
-    marginTop: 2,
-    fontWeight: '300',
+    marginTop: 4,
   },
 
-  quoteTapArea: {
-    position: 'relative',
-  },
-
-  quoteBlock: {
-    paddingTop: 34,
-    paddingBottom: 26,
-    paddingHorizontal: 22,
-    minHeight: 212,
+  quoteSection: {
+    flex: 1,
     justifyContent: 'center',
+    paddingTop: 10,
+    paddingBottom: 28,
   },
 
   quoteText: {
-    color: '#fef3c7',
-    fontSize: 26,
-    lineHeight: 38,
-    textAlign: 'center',
-    fontStyle: 'italic',
+    color: '#fff',
+    fontSize: 24,
+    lineHeight: 36,
     fontFamily: Fonts.serif,
     fontWeight: '400',
   },
 
-  tapHeart: {
-    position: 'absolute',
+  fullscreenQuoteText: {
+    color: '#fff',
+    fontSize: 28,
+    lineHeight: 42,
+    fontFamily: Fonts.serif,
+    fontWeight: '400',
   },
 
   quoteHindi: {
@@ -382,34 +572,22 @@ const styles = StyleSheet.create({
     fontFamily: undefined,
   },
 
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 14,
-    paddingTop: 4,
-    paddingBottom: 20,
-    paddingHorizontal: 18,
+  tapHeart: {
+    position: 'absolute',
   },
 
-  iconBtn: {
-    borderRadius: 999,
+  actionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 8,
+  },
+
+  actionBtn: {
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: GOLD,
-    backgroundColor: 'transparent',
-    paddingHorizontal: 22,
-    paddingVertical: 9,
-    minHeight: 44,
   },
 
-  favoriteBtn: {
-    borderColor: 'rgba(212,175,55,0.75)',
-    backgroundColor: 'rgba(212,175,55,0.14)',
-  },
-
-  speakingBtn: {
-    borderColor: '#fbbf24',
-    backgroundColor: 'rgba(251,191,36,0.18)',
-  },
 });

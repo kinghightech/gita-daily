@@ -96,3 +96,27 @@ export const fetchAllGitaVerses = async (): Promise<GitaVerse[]> => {
 
   return data ?? [];
 };
+
+const TOTAL_VERSES = 716;
+const EPOCH = new Date(2024, 0, 1); // Jan 1 2024 — fixed anchor so index never shifts
+
+export const fetchVerseOfTheDay = async (): Promise<GitaVerse | null> => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dayIndex = Math.floor((today.getTime() - EPOCH.getTime()) / 86400000) % TOTAL_VERSES;
+
+  const { data, error } = await supabase
+    .from('gita_verses')
+    .select('*')
+    .order('chapter_number', { ascending: true })
+    .order('verse_number', { ascending: true })
+    .range(dayIndex, dayIndex)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching verse of the day:', error);
+    return null;
+  }
+
+  return data;
+};

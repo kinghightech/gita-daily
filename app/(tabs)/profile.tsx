@@ -823,10 +823,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(251, 191, 36, 0.2)',
-    shadowColor: '#fbbf24',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    boxShadow: '0px 4px 8px rgba(251, 191, 36, 0.1)',
   },
   badgeName: {
     color: 'rgba(255,255,255,0.7)',

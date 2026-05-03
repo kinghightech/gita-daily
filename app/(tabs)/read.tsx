@@ -1031,10 +1031,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     paddingHorizontal: 8,
     minHeight: 280,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
+    boxShadow: '0px -8px 16px rgba(0, 0, 0, 0.4)',
     elevation: 20,
   },
   popupHeader: {
