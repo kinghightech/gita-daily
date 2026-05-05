@@ -282,7 +282,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   modalTitle: { color: theme.text, fontSize: 22, fontWeight: '700', letterSpacing: -0.3, marginBottom: 8, textAlign: 'center' },
   modalDescription: { color: theme.subtext, fontSize: 15, lineHeight: 22, textAlign: 'center', marginBottom: 20 },
   criteriaBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(251,191,36,0.06)', borderWidth: 1, borderColor: 'rgba(251,191,36,0.12)', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, marginBottom: 22, width: '100%' },
-  criteriaText: { color: 'rgba(251,191,36,0.85)', fontSize: 12.5, flex: 1, fontWeight: '500', lineHeight: 17 },
+  criteriaText: { color: theme.goldText, fontSize: 12.5, flex: 1, fontWeight: '500', lineHeight: 17 },
   modalButton: { backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border, height: 48, borderRadius: 14, width: '100%', alignItems: 'center', justifyContent: 'center' },
   modalButtonText: { color: theme.text, fontSize: 14, fontWeight: '600', letterSpacing: 0.2 },
 });

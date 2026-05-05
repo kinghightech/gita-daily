@@ -165,13 +165,13 @@ export default function VersesScreen() {
         <View style={styles.container}>
           <View style={styles.filtersSection}>
             <View style={[styles.searchInputWrap, isSearchFocused && styles.searchInputWrapFocused]}>
-              <Search size={16} color="rgba(251,191,36,0.5)" />
+              <Search size={16} color={theme.goldSubtle} />
               <TextInput
                 style={styles.searchInput}
                 value={search}
                 onChangeText={setSearch}
                 placeholder="Search verses or type 2.47..."
-                placeholderTextColor="rgba(251,191,36,0.3)"
+                placeholderTextColor={theme.goldSubtle}
                 selectionColor={theme.primary}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
@@ -180,11 +180,11 @@ export default function VersesScreen() {
 
             <View style={styles.chapterWrap}>
               <TouchableOpacity activeOpacity={0.7} style={styles.chapterTrigger} onPress={() => setIsChapterOpen((prev) => !prev)}>
-                <Filter size={16} color="rgba(251,191,36,0.5)" />
+                <Filter size={16} color={theme.goldSubtle} />
                 <Text style={styles.chapterTriggerText}>
                   {selectedChapter === 'all' ? 'All Chapters' : `Chapter ${selectedChapter}`}
                 </Text>
-                <ChevronDown size={20} color="rgba(251,191,36,0.5)" />
+                <ChevronDown size={20} color={theme.goldSubtle} />
               </TouchableOpacity>
 
               {isChapterOpen && (
@@ -213,7 +213,7 @@ export default function VersesScreen() {
               </View>
             ) : filteredVerses.length === 0 ? (
               <View style={styles.emptyWrap}>
-                <BookOpen size={48} color="rgba(251,191,36,0.3)" />
+                <BookOpen size={48} color={theme.goldSubtle} />
                 <Text style={styles.emptyText}>No verses found</Text>
               </View>
             ) : (
@@ -270,7 +270,7 @@ export default function VersesScreen() {
             ) : (
               <View style={styles.selectedVerseEmpty}>
                 <View style={styles.selectedVerseIconCircle}>
-                  <BookOpen size={32} color="rgba(251,191,36,0.4)" />
+                  <BookOpen size={32} color={theme.goldSubtle} />
                 </View>
                 <Text style={styles.selectedVerseTitle}>Select a Verse</Text>
                 <Text style={styles.selectedVerseDescription}>
@@ -326,7 +326,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     marginBottom: 10,
   },
   selectedVerseDescription: {
-    color: 'rgba(251,191,36,0.5)',
+    color: theme.goldSubtle,
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 22,
@@ -413,7 +413,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     gap: 12,
   },
   loadingText: {
-    color: 'rgba(251,191,36,0.7)',
+    color: theme.goldText,
     fontSize: 16,
   },
   emptyWrap: {
@@ -423,7 +423,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     gap: 14,
   },
   emptyText: {
-    color: 'rgba(251,191,36,0.6)',
+    color: theme.goldText,
     fontSize: 16,
   },
   listCard: {
@@ -474,13 +474,13 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   },
   verseSpeaker: {
     marginTop: 6,
-    color: 'rgba(251,191,36,0.6)',
+    color: theme.goldText,
     fontSize: 12,
   },
   footerCount: {
     marginTop: 8,
     textAlign: 'center',
-    color: 'rgba(251,191,36,0.5)',
+    color: theme.goldSubtle,
     fontSize: 14,
   },
 });

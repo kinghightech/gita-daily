@@ -239,7 +239,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     flex: 1,
   },
   greeting: {
-    color: 'rgba(251,191,36,0.5)',
+    color: theme.goldSubtle,
     fontSize: 13,
     fontWeight: '500',
     letterSpacing: 2.4,
@@ -297,7 +297,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     marginBottom: 8,
   },
   emptySubtitle: {
-    color: 'rgba(251,191,36,0.7)',
+    color: theme.goldText,
   },
   footerContainer: {
     marginTop: 48,
@@ -305,14 +305,14 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   },
   hindiQuote: {
     fontSize: 14,
-    color: 'rgba(251,191,36,0.4)',
+    color: theme.goldSubtle,
     fontStyle: 'italic',
     textAlign: 'center',
   },
   englishQuote: {
     marginTop: 4,
     fontSize: 14,
-    color: 'rgba(251,191,36,0.4)',
+    color: theme.goldSubtle,
     textAlign: 'center',
     fontWeight: '300',
   },

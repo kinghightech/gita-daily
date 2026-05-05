@@ -1,22 +1,23 @@
+import QuoteCard from '@/components/gita/QuoteCard';
 import { Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
-import type { Theme } from '@/theme/colors';
 import { fetchUserFavorites } from '@/lib/favorites';
+import { loadPreferredLanguageForCurrentUser } from '@/lib/preferredLanguage';
 import { fetchCurrentUserAndProfile } from '@/lib/profile';
-import { fetchAllGitaVerses } from '@/lib/verses';
+import { fetchAllGitaVerses, getVerseDisplayText } from '@/lib/verses';
+import type { Theme } from '@/theme/colors';
 import { BlurView } from 'expo-blur';
 import { Stack, useRouter } from 'expo-router';
 import { ChevronLeft, Heart, X } from 'lucide-react-native';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Pressable,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -39,16 +40,19 @@ export default function SavedVersesScreen() {
   const [verses, setVerses] = useState<Verse[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedVerse, setSelectedVerse] = useState<Verse | null>(null);
+  const [preferredLanguage, setPreferredLanguage] = useState<'english' | 'hindi'>('english');
 
   useEffect(() => {
     const load = async () => {
       try {
         const { user } = await fetchCurrentUserAndProfile();
         if (!user) return;
-        const [favIds, allVerses] = await Promise.all([
+        const [favIds, allVerses, lang] = await Promise.all([
           fetchUserFavorites(user.id),
           fetchAllGitaVerses(),
+          loadPreferredLanguageForCurrentUser(),
         ]);
+        setPreferredLanguage(lang);
         const mapped: Verse[] = allVerses.map((v) => ({
           id: v.id,
           chapter: v.chapter_number,
@@ -146,7 +150,7 @@ export default function SavedVersesScreen() {
                       )}
                     </View>
                     <Text style={styles.verseText} numberOfLines={3}>
-                      {verse.english}
+                      {getVerseDisplayText({ english: verse.english, hindi: verse.hindi }, preferredLanguage)}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -156,61 +160,39 @@ export default function SavedVersesScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      {/* Detail Modal */}
-      <Modal
-        visible={!!selectedVerse}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => setSelectedVerse(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <BlurView intensity={40} tint={theme.blurTint} style={StyleSheet.absoluteFill} />
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setSelectedVerse(null)} />
-
-          {selectedVerse && (
-            <View style={styles.modalCard}>
-              <BlurView intensity={30} tint={theme.blurTint} style={StyleSheet.absoluteFill} />
-
+      {selectedVerse && (
+        <View style={styles.sheetOverlay} pointerEvents="box-none">
+          <Pressable style={styles.sheetBackdrop} onPress={() => setSelectedVerse(null)} />
+          <View style={styles.sheetCardWrap} pointerEvents="box-none">
+            <View style={styles.sheetCardHeader}>
+              <Text style={styles.sheetTitle}>Revisiting Wisdom</Text>
               <TouchableOpacity
                 activeOpacity={0.7}
-                style={styles.modalClose}
                 onPress={() => setSelectedVerse(null)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <X color={theme.subtext} size={20} strokeWidth={2} />
+                <X color={theme.subtext} size={22} strokeWidth={1.8} />
               </TouchableOpacity>
-
-              <View style={styles.modalRefRow}>
-                <Text style={styles.modalRef}>
-                  {selectedVerse.chapter}.{selectedVerse.verse}
-                </Text>
-                {selectedVerse.speaker && (
-                  <Text style={styles.modalSpeaker}>{selectedVerse.speaker}</Text>
-                )}
-              </View>
-
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                style={styles.modalScroll}
-                contentContainerStyle={styles.modalScrollContent}
-              >
-                <Text style={styles.modalText}>{selectedVerse.english}</Text>
-                {selectedVerse.hindi ? (
-                  <Text style={styles.modalHindi}>{selectedVerse.hindi}</Text>
-                ) : null}
-              </ScrollView>
-
-              <Pressable
-                onPress={() => setSelectedVerse(null)}
-                style={({ pressed }) => [styles.modalButton, pressed && { opacity: 0.7 }]}
-              >
-                <Text style={styles.modalButtonText}>Close</Text>
-              </Pressable>
             </View>
-          )}
+            <QuoteCard
+              verse={{
+                id: selectedVerse.id,
+                chapter: selectedVerse.chapter,
+                verse: selectedVerse.verse,
+                english: selectedVerse.english,
+                hindi: selectedVerse.hindi,
+                speaker: selectedVerse.speaker,
+              }}
+              user={null}
+              preferences={{
+                preferred_language: preferredLanguage,
+                favorite_verses: verses.map((v) => v.id),
+              }}
+              isToday={false}
+            />
+          </View>
         </View>
-      </Modal>
+      )}
     </View>
   );
 }
@@ -258,4 +240,31 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   modalHindi: { color: theme.subtext, fontSize: 14, lineHeight: 22, fontWeight: '400' },
   modalButton: { backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   modalButtonText: { color: theme.text, fontSize: 14, fontWeight: '600', letterSpacing: 0.2 },
+
+  sheetOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.42)',
+  },
+  sheetBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  sheetCardWrap: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  sheetCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingHorizontal: 6,
+  },
+  sheetTitle: {
+    color: theme.subtext,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+  },
 });

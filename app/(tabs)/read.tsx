@@ -1,49 +1,49 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
-import type { Theme } from '@/theme/colors';
-import * as Clipboard from 'expo-clipboard';
-import { fetchChapter, fetchVersesByChapter, stripHindiVerseRef, type GitaChapter, type GitaVerse } from '@/lib/verses';
+import { FAVORITES_UPDATED_EVENT, fetchUserFavorites, toggleFavoriteVerse } from '@/lib/favorites';
 import { saveNote } from '@/lib/notes';
-import { FAVORITES_UPDATED_EVENT, toggleFavoriteVerse, fetchUserFavorites } from '@/lib/favorites';
-import { fetchCurrentUserAndProfile, incrementSharesCount, updateBookmark } from '@/lib/profile';
 import { loadPreferredLanguageForCurrentUser, PREFERRED_LANGUAGE_CHANGED_EVENT } from '@/lib/preferredLanguage';
-import * as Speech from 'expo-speech';
+import { fetchCurrentUserAndProfile, incrementSharesCount, updateBookmark } from '@/lib/profile';
+import { fetchChapter, fetchVersesByChapter, getVerseDisplayText, stripHindiVerseRef, type GitaChapter, type GitaVerse } from '@/lib/verses';
+import type { Theme } from '@/theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Clipboard from 'expo-clipboard';
+import * as Speech from 'expo-speech';
 import {
-  Bookmark,
-  ChevronLeft,
-  ChevronRight,
-  Copy,
-  FileText,
-  Heart,
-  Lightbulb,
-  Pause,
-  Play,
-  Share2,
-  StickyNote,
-  Volume2,
-  VolumeX,
-  X,
+    Bookmark,
+    ChevronLeft,
+    ChevronRight,
+    Copy,
+    FileText,
+    Heart,
+    Lightbulb,
+    Pause,
+    Play,
+    Share2,
+    StickyNote,
+    Volume2,
+    VolumeX,
+    X,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
-  Animated,
-  DeviceEventEmitter,
-  Dimensions,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    Alert,
+    Animated,
+    DeviceEventEmitter,
+    Dimensions,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    Share,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -300,21 +300,23 @@ export default function ReadScreen() {
 
   const handleCopy = useCallback(async () => {
     if (!selectedVerse) return;
-    const text = `"${selectedVerse.english}"\n— Bhagavad Gita ${selectedVerse.chapter_number}.${selectedVerse.verse_number}${selectedVerse.speaker ? ` (${selectedVerse.speaker})` : ''}`;
+    const verseText = getVerseDisplayText(selectedVerse, preferredLanguage);
+    const text = `"${verseText}"\n— Bhagavad Gita ${selectedVerse.chapter_number}.${selectedVerse.verse_number}${selectedVerse.speaker ? ` (${selectedVerse.speaker})` : ''}`;
     await Clipboard.setStringAsync(text);
     Alert.alert('Copied', 'Verse copied to clipboard');
-  }, [selectedVerse]);
+  }, [selectedVerse, preferredLanguage]);
 
   const handleShare = useCallback(async () => {
     if (!selectedVerse) return;
-    const text = `"${selectedVerse.english}"\n\n— Bhagavad Gita, Chapter ${selectedVerse.chapter_number}, Verse ${selectedVerse.verse_number}${selectedVerse.speaker ? ` (${selectedVerse.speaker})` : ''}\n\nShared via Gita Daily`;
+    const verseText = getVerseDisplayText(selectedVerse, preferredLanguage);
+    const text = `"${verseText}"\n\n— Bhagavad Gita, Chapter ${selectedVerse.chapter_number}, Verse ${selectedVerse.verse_number}${selectedVerse.speaker ? ` (${selectedVerse.speaker})` : ''}\n\nShared via Gita Daily`;
     try {
       await Share.share({ title: 'Gita Daily', message: text });
       if (user?.id) {
         await incrementSharesCount(user.id);
       }
     } catch {}
-  }, [selectedVerse, user]);
+  }, [selectedVerse, user, preferredLanguage]);
 
   const handleSaveNote = useCallback(async () => {
     if (!selectedVerse || !user?.id || !noteText.trim()) return;
@@ -633,7 +635,7 @@ export default function ReadScreen() {
                                   isReading && styles.verseTextReading,
                                 ]}
                               >
-                                &quot;{preferredLanguage === 'hindi' ? (stripHindiVerseRef(verse.hindi) || verse.english) : verse.english}&quot;
+                                  &quot;{getVerseDisplayText(verse, preferredLanguage)}&quot;
                               </Text>
 
                               {context && (
@@ -678,7 +680,7 @@ export default function ReadScreen() {
               {selectedVerse.speaker ? ` — ${selectedVerse.speaker}` : ''}
             </Text>
             <Pressable onPress={hidePopup} hitSlop={16}>
-              <X size={20} color="rgba(255,255,255,0.5)" />
+              <X size={20} color={theme.subtext} />
             </Pressable>
           </View>
 
@@ -693,7 +695,7 @@ export default function ReadScreen() {
                   <View style={styles.popupActionIconCircle}>
                     <Heart
                       size={24}
-                      color={isVerseSaved ? '#ef4444' : theme.subtext}
+                      color={isVerseSaved ? '#ef4444' : theme.primary}
                       fill={isVerseSaved ? '#ef4444' : 'transparent'}
                     />
                   </View>
@@ -709,7 +711,7 @@ export default function ReadScreen() {
                   <View style={[styles.popupActionIconCircle, isBookmarked && { borderColor: GitaColors.gold }]}>
                     <Bookmark
                       size={24}
-                      color={isBookmarked ? GitaColors.gold : theme.subtext}
+                      color={isBookmarked ? GitaColors.gold : theme.primary}
                       fill={isBookmarked ? GitaColors.gold : 'transparent'}
                     />
                   </View>
@@ -723,7 +725,7 @@ export default function ReadScreen() {
                   onPress={() => setPopupTab('note')}
                 >
                   <View style={styles.popupActionIconCircle}>
-                    <StickyNote size={24} color="rgba(255,255,255,0.7)" />
+                    <StickyNote size={24} color={theme.primary} />
                   </View>
                   <Text style={styles.popupActionLabel}>Add Note</Text>
                 </Pressable>
@@ -732,7 +734,7 @@ export default function ReadScreen() {
               <View style={styles.popupActionRow}>
                 <Pressable style={styles.popupActionBtn} onPress={handleCopy}>
                   <View style={styles.popupActionIconCircle}>
-                    <Copy size={24} color="rgba(255,255,255,0.7)" />
+                    <Copy size={24} color={theme.primary} />
                   </View>
                   <Text style={styles.popupActionLabel}>Copy Text</Text>
                 </Pressable>
@@ -742,7 +744,7 @@ export default function ReadScreen() {
                   onPress={handleShare}
                 >
                   <View style={styles.popupActionIconCircle}>
-                    <Share2 size={24} color="rgba(255,255,255,0.7)" />
+                    <Share2 size={24} color={theme.primary} />
                   </View>
                   <Text style={styles.popupActionLabel}>Share Verse</Text>
                 </Pressable>
@@ -753,8 +755,8 @@ export default function ReadScreen() {
                 >
                   <View style={[styles.popupActionIconCircle, (isSpeaking || isReadingChapter) && { backgroundColor: 'rgba(251,191,36,0.15)', borderColor: GitaColors.gold }]}>
                     {isSpeaking || isReadingChapter
-                      ? <VolumeX size={24} color="#fbbf24" />
-                      : <Volume2 size={24} color="rgba(255,255,255,0.7)" />
+                      ? <VolumeX size={24} color={GitaColors.gold} />
+                      : <Volume2 size={24} color={theme.primary} />
                     }
                   </View>
                   <Text style={[styles.popupActionLabel, (isSpeaking || isReadingChapter) && { color: '#fbbf24' }]}>
@@ -772,7 +774,7 @@ export default function ReadScreen() {
                 <Text style={styles.backBtnText}>Back</Text>
               </Pressable>
               <View style={styles.insightContent}>
-                <Lightbulb size={28} color="rgba(251,191,36,0.4)" />
+                <Lightbulb size={28} color={theme.goldSubtle} />
                 <Text style={styles.insightTitle}>Insight</Text>
                 <Text style={styles.insightPlaceholder}>
                   Deeper commentary and analysis for this verse will appear here in a future update.
@@ -809,7 +811,7 @@ export default function ReadScreen() {
                     style={styles.noteInput}
                     multiline
                     placeholder="Write your reflection..."
-                    placeholderTextColor="rgba(251,191,36,0.3)"
+                    placeholderTextColor={theme.goldSubtle}
                     value={noteText}
                     onChangeText={setNoteText}
                     selectionColor="#fbbf24"
@@ -869,7 +871,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     paddingHorizontal: 16,
   },
   chapterLabel: {
-    color: 'rgba(251,191,36,0.6)',
+    color: theme.goldText,
     fontSize: 13,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -906,7 +908,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     gap: 16,
   },
   loadingText: {
-    color: 'rgba(251,191,36,0.6)',
+    color: theme.goldText,
     fontSize: 16,
     fontFamily: Fonts.serif,
   },
@@ -918,13 +920,13 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     gap: 12,
   },
   emptyText: {
-    color: 'rgba(251,191,36,0.5)',
+    color: theme.goldSubtle,
     fontSize: 16,
     textAlign: 'center',
     fontFamily: Fonts.serif,
   },
   emptySubtext: {
-    color: 'rgba(251,191,36,0.3)',
+    color: theme.goldSubtle,
     fontSize: 13,
     textAlign: 'center',
   },
@@ -1088,9 +1090,9 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: theme.surface,
+    backgroundColor: theme.popup,
     borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.12)',
+    borderColor: 'rgba(251,191,36,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,

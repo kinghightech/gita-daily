@@ -82,6 +82,17 @@ export const stripHindiVerseRef = (text: string | null | undefined): string => {
   return text.replace(/^।।[\d\.\s\-]+।।\s*/, '');
 };
 
+export const getVerseDisplayText = (
+  verse: Pick<GitaVerse, 'english' | 'hindi'>,
+  preferredLanguage: 'english' | 'hindi'
+): string => {
+  if (preferredLanguage === 'hindi') {
+    return stripHindiVerseRef(verse.hindi) || verse.english;
+  }
+
+  return verse.english;
+};
+
 export const fetchAllGitaVerses = async (): Promise<GitaVerse[]> => {
   const { data, error } = await supabase
     .from('gita_verses')

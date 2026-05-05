@@ -1,18 +1,18 @@
+import FestivalModal from '@/components/gita/FestivalModal';
 import LearnBackground from '@/components/LearnBackground';
 import LotusLevel from '@/components/learning/LotusLevel';
+import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
-import type { Theme } from '@/theme/colors';
-import { fetchLotusLevels, updateCurrentLotusLevel, type LotusLevelData, type LotusQuestion } from '@/lib/lotus';
-import { fetchAllFestivals, type Festival, getFestivalSymbol } from '@/lib/festivals';
-import FestivalModal from '@/components/gita/FestivalModal';
+import { fetchAllFestivals, getFestivalSymbol, type Festival } from '@/lib/festivals';
+import { fetchLotusLevels, updateCurrentLotusLevel, type LotusLevelData } from '@/lib/lotus';
 import { fetchCurrentUserAndProfile, STREAK_UPDATED_EVENT } from '@/lib/profile';
+import type { Theme } from '@/theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
 import { Calendar, Check, ChevronRight, Flower2, Sparkles, X } from 'lucide-react-native';
-import LotusLoader from '@/components/ui/LotusLoader';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { TouchableOpacity,  Animated, DeviceEventEmitter, Dimensions, Easing, InteractionManager, Modal, Pressable, ScrollView, StyleSheet, Text, View  } from 'react-native';
-import Reanimated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, runOnJS } from 'react-native-reanimated';
+import { Animated, DeviceEventEmitter, Dimensions, Easing, InteractionManager, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Reanimated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 
 type LearnTab = 'lotus' | 'festivals';
@@ -104,11 +104,11 @@ export default function LearnScreen() {
             ]}
           />
           <TouchableOpacity activeOpacity={0.7} style={styles.topTab} onPress={() => switchTab('lotus')}>
-            <Flower2 size={15} color={tab === 'lotus' ? theme.text : theme.subtext} />
+            <Flower2 size={15} color="#FFFFFF" />
             <Text style={[styles.topTabText, tab === 'lotus' && styles.topTabTextActive]}>Lotus Path</Text>
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.7} style={styles.topTab} onPress={() => switchTab('festivals')}>
-            <Calendar size={15} color={tab === 'festivals' ? theme.text : theme.subtext} />
+            <Calendar size={15} color="#FFFFFF" />
             <Text style={[styles.topTabText, tab === 'festivals' && styles.topTabTextActive]}>Festivals</Text>
           </TouchableOpacity>
         </View>
@@ -583,8 +583,8 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   topTabs: { flexDirection: 'row', backgroundColor: 'rgba(15,25,50,0.65)', borderRadius: 9999, padding: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', position: 'relative' },
   slidingPill: { position: 'absolute', top: 4, bottom: 4, left: 4, width: 128, borderRadius: 9999, backgroundColor: GitaColors.orange },
   topTab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, width: 128 },
-  topTabText: { color: theme.subtext, fontSize: 13, fontWeight: '600' },
-  topTabTextActive: { color: theme.text },
+  topTabText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
+  topTabTextActive: { color: '#FFFFFF' },
   tabContentWrap: { flex: 1 },
   lockedBanner: { marginHorizontal: 16, marginBottom: 8, backgroundColor: 'rgba(248,113,113,0.2)', borderWidth: 1, borderColor: '#ef4444', borderRadius: 12, padding: 10, alignItems: 'center' },
   lockedBannerText: { color: '#fca5a5', fontSize: 13, fontWeight: '700' },
@@ -592,7 +592,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   lotusContent: { alignItems: 'center', paddingBottom: 120 },
   header: { paddingVertical: 16, alignItems: 'center' },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  title: { fontSize: 24, color: theme.text, fontFamily: Fonts.serif, fontWeight: '700' },
+  title: { fontSize: 24, color: '#FFFFFF', fontFamily: Fonts.serif, fontWeight: '700' },
   subtitle: { color: 'rgba(207,250,254,0.8)', fontSize: 14, fontWeight: '500' },
   progressContainer: { width: '100%', alignItems: 'center', marginTop: 8 },
   progress: { color: 'rgba(165,243,252,0.6)', fontSize: 12, marginBottom: 6 },

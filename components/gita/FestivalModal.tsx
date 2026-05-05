@@ -248,7 +248,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     flexShrink: 1,
   },
   deityName: {
-    color: 'rgba(251,191,36,0.7)',
+    color: theme.goldText,
     fontSize: 15,
     fontStyle: 'italic',
     marginTop: 2,
@@ -322,7 +322,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: {
-    color: 'rgba(251,191,36,0.6)',
+    color: theme.goldSubtle,
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 2,
@@ -340,7 +340,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     marginBottom: 4,
   },
   dateTextSecondary: {
-    color: 'rgba(251,191,36,0.5)',
+    color: theme.goldSubtle,
     fontSize: 14,
   },
   actionBtn: {

@@ -183,7 +183,7 @@ export default function StreakModal({ open, onClose, preferences }: StreakModalP
               </GestureDetector>
 
               <TouchableOpacity activeOpacity={0.7} style={[styles.headerIconBtn, styles.headerLeft]} onPress={shareStreak} hitSlop={12}>
-                <Share2 size={20} color="rgba(252,211,77,0.5)" />
+                <Share2 size={20} color={theme.goldSubtle} />
               </TouchableOpacity>
               <TouchableOpacity activeOpacity={0.7} style={[styles.headerIconBtn, styles.headerRight]} onPress={closeModal} hitSlop={12}>
                 <X size={20} color={theme.subtext} />
@@ -296,17 +296,17 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 10,
   },
-  currentLabel: { color: 'rgba(252,211,77,0.7)', fontSize: 11, letterSpacing: 2.2, fontWeight: '600' },
+  currentLabel: { color: theme.goldText, fontSize: 11, letterSpacing: 2.2, fontWeight: '600' },
   currentValue: { color: theme.text, fontSize: 42, fontWeight: '800', lineHeight: 46, marginTop: 2, fontFamily: 'serif' },
-  currentSub: { color: 'rgba(252,211,77,0.6)', fontSize: 13, marginTop: 1 },
+  currentSub: { color: theme.goldSubtle, fontSize: 13, marginTop: 1 },
   statsRow: { flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.border },
   statBlock: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
   statDivider: { borderRightWidth: 1, borderColor: theme.border },
   statValue: { color: theme.text, fontSize: 20, fontWeight: '700', marginTop: 3 },
   statLabel: { color: theme.subtext, fontSize: 11, marginTop: 2 },
-  calendarTitle: { color: 'rgba(252,211,77,0.5)', fontSize: 11, letterSpacing: 1.4, fontWeight: '600', paddingHorizontal: 20, paddingTop: 14, paddingBottom: 8 },
+  calendarTitle: { color: theme.goldSubtle, fontSize: 11, letterSpacing: 1.4, fontWeight: '600', paddingHorizontal: 20, paddingTop: 14, paddingBottom: 8 },
   weekdayRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 8, marginBottom: 6 },
-  weekdayText: { flex: 1, textAlign: 'center', color: 'rgba(252,211,77,0.4)', fontSize: 12, fontWeight: '600' },
+  weekdayText: { flex: 1, textAlign: 'center', color: theme.goldSubtle, fontSize: 12, fontWeight: '600' },
   calendarWrap: { paddingHorizontal: 20 },
   weekRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   dayCell: { flex: 1, aspectRatio: 1, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

@@ -13,6 +13,7 @@ export type UserNote = {
     verse_number: number;
     speaker: string | null;
     english: string;
+    hindi: string | null;
   };
 };
 
@@ -37,7 +38,8 @@ export const fetchUserNotes = async (userId: string): Promise<UserNote[]> => {
         chapter_number,
         verse_number,
         speaker,
-        english
+        english,
+        hindi
       )
     `)
     .eq('user_id', userId)

@@ -1,57 +1,59 @@
-import QuoteCard from '@/components/gita/QuoteCard';
 import FestivalModal from '@/components/gita/FestivalModal';
+import QuoteCard from '@/components/gita/QuoteCard';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts } from '@/constants/theme';
-import { useTheme } from '@/hooks/useTheme';
-import type { Theme } from '@/theme/colors';
 import { MOCK_VERSES, Verse } from '@/Data/mockverses';
+import { useTheme } from '@/hooks/useTheme';
 import { BADGE_DEFINITIONS, BADGE_ICONS, UserStats, checkAndAwardBadges, fetchUserBadges } from '@/lib/badges';
 import {
-  FAVORITES_UPDATED_EVENT,
-  FESTIVALS_UPDATED_EVENT,
-  fetchUserFavorites,
-  fetchUserFestivalFavorites,
+    FAVORITES_UPDATED_EVENT,
+    FESTIVALS_UPDATED_EVENT,
+    fetchUserFavorites,
+    fetchUserFestivalFavorites,
 } from '@/lib/favorites';
 import { Festival, fetchAllFestivals, getFestivalSymbol } from '@/lib/festivals';
 import { NOTES_UPDATED_EVENT, fetchUserNotes, type UserNote } from '@/lib/notes';
 import {
-  PREFERRED_LANGUAGE_CHANGED_EVENT,
-  loadPreferredLanguageForCurrentUser,
-  mapLabelToPreferredLanguage,
-  mapPreferredLanguageToLabel,
-  savePreferredLanguageForCurrentUser,
+    PREFERRED_LANGUAGE_CHANGED_EVENT,
+    loadPreferredLanguageForCurrentUser,
+    mapLabelToPreferredLanguage,
+    mapPreferredLanguageToLabel,
+    savePreferredLanguageForCurrentUser,
 } from '@/lib/preferredLanguage';
 import { STREAK_UPDATED_EVENT, fetchCurrentUserAndProfile, getProfileDisplayName } from '@/lib/profile';
 import { supabase } from '@/lib/supabase';
-import { fetchAllGitaVerses } from '@/lib/verses';
+import { fetchAllGitaVerses, getVerseDisplayText } from '@/lib/verses';
+import type { Theme } from '@/theme/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import {
-  Check,
-  ChevronRight,
-  Feather,
-  Flame,
-  Flower2,
-  Heart,
-  LogOut,
-  RotateCcw,
-  Settings,
-  Star,
-  Trash2,
-  X,
+    Check,
+    ChevronRight,
+    Feather,
+    Flame,
+    Flower2,
+    Heart,
+    LogOut,
+    RotateCcw,
+    Settings,
+    Star,
+    Trash2,
+    X,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
-  DeviceEventEmitter,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    DeviceEventEmitter,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -114,9 +116,23 @@ export default function ProfileScreen() {
   const [supabaseVerses, setSupabaseVerses] = useState<Verse[]>([]);
   const [selectedFavVerse, setSelectedFavVerse] = useState<Verse | null>(null);
   const [selectedFestival, setSelectedFestival] = useState<Festival | null>(null);
+  const [isOnboardingVideoVisible, setIsOnboardingVideoVisible] = useState(false);
+
+  const player = useVideoPlayer(require('@/assets/images/onboarding.MOV'), player => {
+    player.loop = true;
+  });
   const pageScrollRef = useRef<ScrollView>(null);
   const quoteBoxYRef = useRef(0);
   const profileIdRef = useRef('');
+
+  useEffect(() => {
+    if (isOnboardingVideoVisible) {
+      player.play();
+      return;
+    }
+
+    player.pause();
+  }, [isOnboardingVideoVisible, player]);
 
   const refreshProfileIdentity = async () => {
     try {
@@ -421,7 +437,10 @@ export default function ProfileScreen() {
                           <Heart size={11} color="#f87171" fill="#f87171" strokeWidth={0} />
                         </View>
                         <Text style={styles.listItemBody} numberOfLines={2}>
-                          {verse.english}
+                          {getVerseDisplayText(
+                            { english: verse.english, hindi: verse.hindi },
+                            profile.preferred_language === 'hindi' ? 'hindi' : 'english'
+                          )}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -483,7 +502,7 @@ export default function ProfileScreen() {
           {/* ── Reflections (Notes) ── */}
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
-              <Feather size={14} color="rgba(251,191,36,0.85)" strokeWidth={1.8} />
+              <Feather size={14} color={theme.goldText} strokeWidth={1.8} />
               <Text style={styles.sectionEyebrow}>Reflections</Text>
               {userNotes.length > 0 && (
                 <Text style={styles.sectionCount}>{userNotes.length}</Text>
@@ -526,7 +545,10 @@ export default function ProfileScreen() {
                         </View>
                         {verseData && (
                           <Text style={styles.notePreview} numberOfLines={1}>
-                            {verseData.english}
+                            {getVerseDisplayText(
+                              { english: verseData.english, hindi: verseData.hindi },
+                              profile.preferred_language === 'hindi' ? 'hindi' : 'english'
+                            )}
                           </Text>
                         )}
                         <Text style={styles.noteBody} numberOfLines={3}>
@@ -668,9 +690,42 @@ export default function ProfileScreen() {
             </View>
           )}
 
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setIsOnboardingVideoVisible(true)}
+            style={styles.videoButton}
+          >
+            <Text style={styles.videoButtonText}>Watch Onboarding Video</Text>
+          </TouchableOpacity>
+
           <FestivalModal festival={selectedFestival} onClose={() => setSelectedFestival(null)} />
         </ScrollView>
       </SafeAreaView>
+
+      <Modal
+        visible={isOnboardingVideoVisible}
+        transparent={false}
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setIsOnboardingVideoVisible(false)}
+      >
+        <View style={styles.videoModal}>
+          <VideoView
+            player={player}
+            style={styles.video}
+            nativeControls={false}
+          />
+
+          <View style={styles.videoOverlay}>
+            <Pressable
+              onPress={() => setIsOnboardingVideoVisible(false)}
+              style={({ pressed }) => [styles.videoCloseBtn, pressed && styles.videoCloseBtnPressed]}
+            >
+              <Text style={styles.videoCloseText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -769,6 +824,41 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   dangerBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 14, backgroundColor: 'rgba(248,113,113,0.06)', borderWidth: 1, borderColor: 'rgba(248,113,113,0.15)' },
   dangerBtnText: { color: 'rgba(248,113,113,0.95)', fontSize: 14, fontWeight: '600' },
   btnPressed: { opacity: 0.65 },
+
+  videoButton: {
+    marginTop: 10,
+    marginBottom: 4,
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  videoButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase' },
+
+  videoModal: { flex: 1, backgroundColor: '#000' },
+  video: { flex: 1, width: '100%', height: '100%' },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 56,
+    paddingHorizontal: 16,
+    alignItems: 'flex-end',
+  },
+  videoCloseBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  videoCloseBtnPressed: { opacity: 0.75 },
+  videoCloseText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
 
   quoteBox: { marginTop: 24 },
   quoteBoxHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingHorizontal: 4 },
