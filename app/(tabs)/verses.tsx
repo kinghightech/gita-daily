@@ -9,122 +9,35 @@ import { BookOpen, ChevronDown, Filter, Search } from 'lucide-react-native';
 import { FAVORITES_UPDATED_EVENT, fetchUserFavorites } from '@/lib/favorites';
 import { fetchCurrentUserAndProfile } from '@/lib/profile';
 import { loadPreferredLanguageForCurrentUser, PREFERRED_LANGUAGE_CHANGED_EVENT } from '@/lib/preferredLanguage';
+import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { TouchableOpacity, 
-    DeviceEventEmitter,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
- } from 'react-native';
+import { TouchableOpacity, DeviceEventEmitter, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 type ChapterFilter = 'all' | number;
 
 const PLACEHOLDER_VERSES: Verse[] = [
-  {
-    id: 'placeholder-1',
-    chapter: 1,
-    verse: 47,
-    english: 'Placeholder quote alpha for scroll testing only.',
-    hindi: 'placeholder',
-    speaker: 'Sanjaya',
-  },
-  {
-    id: 'placeholder-2',
-    chapter: 1,
-    verse: 1,
-    english: 'Placeholder quote beta to test long scrolling behavior.',
-    hindi: 'placeholder',
-    speaker: 'Dhritarashtra',
-  },
-  {
-    id: 'placeholder-3',
-    chapter: 1,
-    verse: 21,
-    english: 'Placeholder quote gamma with italic serif visual alignment.',
-    hindi: 'placeholder',
-    speaker: 'Arjuna',
-  },
-  {
-    id: 'placeholder-4',
-    chapter: 2,
-    verse: 11,
-    english: 'Placeholder quote delta for card height consistency.',
-    hindi: 'placeholder',
-    speaker: 'Krishna',
-  },
-  {
-    id: 'placeholder-5',
-    chapter: 2,
-    verse: 13,
-    english: 'Placeholder quote epsilon showing truncated two-line text.',
-    hindi: 'placeholder',
-    speaker: 'Krishna',
-  },
-  {
-    id: 'placeholder-6',
-    chapter: 2,
-    verse: 17,
-    english: 'Placeholder quote zeta used to verify list card scrolling.',
-    hindi: 'placeholder',
-    speaker: 'Krishna',
-  },
-  {
-    id: 'placeholder-7',
-    chapter: 3,
-    verse: 30,
-    english: 'Placeholder quote eta for UI-only layout testing.',
-    hindi: 'placeholder',
-    speaker: 'Krishna',
-  },
-  {
-    id: 'placeholder-8',
-    chapter: 4,
-    verse: 7,
-    english: 'Placeholder quote theta to increase vertical content length.',
-    hindi: 'placeholder',
-    speaker: 'Krishna',
-  },
-  {
-    id: 'placeholder-9',
-    chapter: 5,
-    verse: 10,
-    english: 'Placeholder quote iota for repeated card style validation.',
-    hindi: 'placeholder',
-    speaker: 'Krishna',
-  },
-  {
-    id: 'placeholder-10',
-    chapter: 6,
-    verse: 5,
-    english: 'Placeholder quote kappa to verify footer stays below list.',
-    hindi: 'placeholder',
-    speaker: 'Krishna',
-  },
-  {
-    id: 'placeholder-11',
-    chapter: 8,
-    verse: 6,
-    english: 'Placeholder quote lambda for style-only testing.',
-    hindi: 'placeholder',
-    speaker: 'Krishna',
-  },
-  {
-    id: 'placeholder-12',
-    chapter: 9,
-    verse: 22,
-    english: 'Placeholder quote mu to stress-test internal scroll area.',
-    hindi: 'placeholder',
-    speaker: 'Krishna',
-  },
+  { id: 'placeholder-1', chapter: 1, verse: 47, english: 'Placeholder quote alpha for scroll testing only.', hindi: 'placeholder', speaker: 'Sanjaya' },
+  { id: 'placeholder-2', chapter: 1, verse: 1, english: 'Placeholder quote beta to test long scrolling behavior.', hindi: 'placeholder', speaker: 'Dhritarashtra' },
+  { id: 'placeholder-3', chapter: 1, verse: 21, english: 'Placeholder quote gamma with italic serif visual alignment.', hindi: 'placeholder', speaker: 'Arjuna' },
+  { id: 'placeholder-4', chapter: 2, verse: 11, english: 'Placeholder quote delta for card height consistency.', hindi: 'placeholder', speaker: 'Krishna' },
+  { id: 'placeholder-5', chapter: 2, verse: 13, english: 'Placeholder quote epsilon showing truncated two-line text.', hindi: 'placeholder', speaker: 'Krishna' },
+  { id: 'placeholder-6', chapter: 2, verse: 17, english: 'Placeholder quote zeta used to verify list card scrolling.', hindi: 'placeholder', speaker: 'Krishna' },
+  { id: 'placeholder-7', chapter: 3, verse: 30, english: 'Placeholder quote eta for UI-only layout testing.', hindi: 'placeholder', speaker: 'Krishna' },
+  { id: 'placeholder-8', chapter: 4, verse: 7, english: 'Placeholder quote theta to increase vertical content length.', hindi: 'placeholder', speaker: 'Krishna' },
+  { id: 'placeholder-9', chapter: 5, verse: 10, english: 'Placeholder quote iota for repeated card style validation.', hindi: 'placeholder', speaker: 'Krishna' },
+  { id: 'placeholder-10', chapter: 6, verse: 5, english: 'Placeholder quote kappa to verify footer stays below list.', hindi: 'placeholder', speaker: 'Krishna' },
+  { id: 'placeholder-11', chapter: 8, verse: 6, english: 'Placeholder quote lambda for style-only testing.', hindi: 'placeholder', speaker: 'Krishna' },
+  { id: 'placeholder-12', chapter: 9, verse: 22, english: 'Placeholder quote mu to stress-test internal scroll area.', hindi: 'placeholder', speaker: 'Krishna' },
 ];
 
 const LOCAL_VERSES: Verse[] = [...MOCK_VERSES, ...PLACEHOLDER_VERSES];
 
 export default function VersesScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [search, setSearch] = useState('');
   const [selectedChapter, setSelectedChapter] = useState<ChapterFilter>('all');
   const [isChapterOpen, setIsChapterOpen] = useState(false);
@@ -156,8 +69,8 @@ export default function VersesScreen() {
       refreshUserContext();
       try {
         const [gitaVerses, lang] = await Promise.all([
-           fetchAllGitaVerses(),
-           loadPreferredLanguageForCurrentUser()
+          fetchAllGitaVerses(),
+          loadPreferredLanguageForCurrentUser(),
         ]);
         setPreferredLanguage(lang as 'english' | 'hindi');
         const mapped: Verse[] = gitaVerses.map(v => ({
@@ -189,30 +102,19 @@ export default function VersesScreen() {
       FAVORITES_UPDATED_EVENT,
       (data: { verseId: string; liked: boolean }) => {
         setFavoriteVerseIds((prev) => {
-          if (data.liked) {
-            return prev.includes(data.verseId) ? prev : [...prev, data.verseId];
-          } else {
-            return prev.filter((id) => id !== data.verseId);
-          }
+          if (data.liked) return prev.includes(data.verseId) ? prev : [...prev, data.verseId];
+          return prev.filter((id) => id !== data.verseId);
         });
       }
     );
-
     const langSub = DeviceEventEmitter.addListener(
       PREFERRED_LANGUAGE_CHANGED_EVENT,
-      (newLang: string) => {
-        setPreferredLanguage(newLang as 'english' | 'hindi');
-      }
+      (newLang: string) => { setPreferredLanguage(newLang as 'english' | 'hindi'); }
     );
-
-    return () => {
-      favSub.remove();
-      langSub.remove();
-    };
+    return () => { favSub.remove(); langSub.remove(); };
   }, []);
 
   const ALL_VERSES = useMemo(() => {
-    // Deduplicate by id: Supabase verses take priority
     const supaIds = new Set(supabaseVerses.map(v => v.id));
     const filtered = LOCAL_VERSES.filter(v => !supaIds.has(v.id));
     return [...supabaseVerses, ...filtered];
@@ -225,17 +127,14 @@ export default function VersesScreen() {
 
   const filteredVerses = useMemo(() => {
     const query = search.trim().toLowerCase();
-
     return ALL_VERSES.filter((verse) => {
       const matchesChapter = selectedChapter === 'all' || verse.chapter === selectedChapter;
-
       const verseRef = `${verse.chapter}.${verse.verse}`;
       const matchesSearch =
         query.length === 0 ||
         verseRef.includes(query) ||
         verse.english.toLowerCase().includes(query) ||
         verse.speaker?.toLowerCase().includes(query);
-
       return matchesChapter && matchesSearch;
     });
   }, [search, selectedChapter, ALL_VERSES]);
@@ -248,7 +147,6 @@ export default function VersesScreen() {
   const handleVerseSelect = (verse: Verse) => {
     if (verse.english) {
       setSelectedVerse(verse);
-
       setTimeout(() => {
         pageScrollRef.current?.scrollTo({
           y: Math.max(selectedVerseBoxYRef.current - 16, 0),
@@ -265,11 +163,6 @@ export default function VersesScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
-          <View style={styles.headerBlock}>
-            <Text style={styles.title}>All Verses</Text>
-            <Text style={styles.subtitle}>Explore the complete collection of wisdom</Text>
-          </View>
-
           <View style={styles.filtersSection}>
             <View style={[styles.searchInputWrap, isSearchFocused && styles.searchInputWrapFocused]}>
               <Search size={16} color="rgba(251,191,36,0.5)" />
@@ -279,7 +172,7 @@ export default function VersesScreen() {
                 onChangeText={setSearch}
                 placeholder="Search verses or type 2.47..."
                 placeholderTextColor="rgba(251,191,36,0.3)"
-                selectionColor="#fbbf24"
+                selectionColor={theme.primary}
                 onFocus={() => setIsSearchFocused(true)}
                 onBlur={() => setIsSearchFocused(false)}
               />
@@ -332,21 +225,14 @@ export default function VersesScreen() {
                   nestedScrollEnabled>
                   {filteredVerses.map((verse) => {
                     const isSelected = selectedVerse?.id === verse.id;
-
                     return (
                       <TouchableOpacity activeOpacity={0.7}
                         key={verse.id}
                         onPress={() => handleVerseSelect(verse)}
-                        style={[
-                          styles.verseItem,
-                          isSelected && styles.verseItemSelected,
-                        ]}>
+                        style={[styles.verseItem, isSelected && styles.verseItemSelected]}>
                         <View style={styles.verseRefCircle}>
-                          <Text style={styles.verseRefText}>
-                            {verse.chapter}.{verse.verse}
-                          </Text>
+                          <Text style={styles.verseRefText}>{verse.chapter}.{verse.verse}</Text>
                         </View>
-
                         <View style={styles.verseContent}>
                           <Text style={styles.verseEnglish}>
                             &quot;{preferredLanguage === 'hindi' ? (stripHindiVerseRef(verse.hindi) || verse.english) : verse.english}&quot;
@@ -367,17 +253,12 @@ export default function VersesScreen() {
 
           <View
             style={styles.selectedVerseBox}
-            onLayout={(event) => {
-              selectedVerseBoxYRef.current = event.nativeEvent.layout.y;
-            }}>
+            onLayout={(event) => { selectedVerseBoxYRef.current = event.nativeEvent.layout.y; }}>
             {selectedVerse ? (
               <QuoteCard
                 verse={selectedVerse}
                 user={user}
-                preferences={{ 
-                  favorite_verses: favoriteVerseIds,
-                  preferred_language: preferredLanguage
-                }}
+                preferences={{ favorite_verses: favoriteVerseIds, preferred_language: preferredLanguage }}
                 onFavoriteToggle={(verseId, isLiked) => {
                   setFavoriteVerseIds(prev => {
                     if (isLiked) return prev.includes(verseId) ? prev : [...prev, verseId];
@@ -404,7 +285,7 @@ export default function VersesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 8,
@@ -416,11 +297,10 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: 14,
   },
-
   selectedVerseBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: theme.border,
     borderRadius: 22,
     paddingHorizontal: 18,
     paddingVertical: 22,
@@ -439,7 +319,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   selectedVerseTitle: {
-    color: '#fef3c7',
+    color: theme.textWarm,
     fontSize: 18,
     fontWeight: '500',
     fontFamily: Fonts.serif,
@@ -452,47 +332,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     maxWidth: 460,
   },
-  selectedVerseContent: {
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
-  },
-  selectedVerseRef: {
-    color: '#fbbf24',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  selectedVerseSpeaker: {
-    color: 'rgba(251,191,36,0.5)',
-    fontSize: 12,
-  },
-  selectedVerseText: {
-    color: '#fef3c7',
-    fontSize: 14,
-    fontStyle: 'italic',
-    fontFamily: Fonts.serif,
-    lineHeight: 23,
-    textAlign: 'center',
-  },
-
-  headerBlock: {
-    marginTop: 6,
-    marginBottom: 4,
-    alignItems: 'center',
-  },
-  title: {
-    color: '#fef3c7',
-    fontSize: 30,
-    fontWeight: '700',
-    fontFamily: Fonts.serif,
-  },
-  subtitle: {
-    marginTop: 6,
-    color: 'rgba(251,191,36,0.6)',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-
   filtersSection: {
     gap: 10,
     marginTop: 6,
@@ -500,9 +339,9 @@ const styles = StyleSheet.create({
   searchInputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: theme.border,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 13,
@@ -513,11 +352,10 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    color: '#fef3c7',
+    color: theme.textWarm,
     fontSize: 16,
     paddingVertical: 0,
   },
-
   chapterWrap: {
     position: 'relative',
     zIndex: 5,
@@ -526,23 +364,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: theme.border,
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 13,
   },
   chapterTriggerText: {
     flex: 1,
-    color: '#fef3c7',
+    color: theme.textWarm,
     fontSize: 16,
     textAlign: 'center',
     marginRight: 14,
   },
   chapterMenu: {
     marginTop: 8,
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.card,
     borderWidth: 1,
     borderColor: 'rgba(251,191,36,0.2)',
     borderRadius: 14,
@@ -555,10 +393,9 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(251,191,36,0.1)',
   },
   chapterMenuItemText: {
-    color: '#fef3c7',
+    color: theme.textWarm,
     fontSize: 15,
   },
-
   versesSection: {
     marginTop: 8,
   },
@@ -589,33 +426,28 @@ const styles = StyleSheet.create({
     color: 'rgba(251,191,36,0.6)',
     fontSize: 16,
   },
-
   listCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: theme.border,
     borderRadius: 24,
     padding: 14,
-    boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.3)',
     elevation: 8,
   },
   verseItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: theme.border,
     borderRadius: 10,
     padding: 14,
   },
   verseItemSelected: {
     backgroundColor: 'rgba(251,191,36,0.2)',
     borderWidth: 2,
-    borderColor: '#fbbf24',
-  },
-  verseItemPressed: {
-    transform: [{ scale: 0.985 }],
+    borderColor: theme.primary,
   },
   verseRefCircle: {
     width: 40,
@@ -626,7 +458,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   verseRefText: {
-    color: '#fbbf24',
+    color: theme.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -634,7 +466,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   verseEnglish: {
-    color: '#fef3c7',
+    color: theme.textWarm,
     fontSize: 15,
     fontFamily: Fonts.serif,
     fontStyle: 'italic',
@@ -645,7 +477,6 @@ const styles = StyleSheet.create({
     color: 'rgba(251,191,36,0.6)',
     fontSize: 12,
   },
-
   footerCount: {
     marginTop: 8,
     textAlign: 'center',
@@ -653,4 +484,3 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
-

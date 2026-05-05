@@ -327,7 +327,7 @@ export default function RootLayout() {
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>
           {Platform.OS === 'web' && <Toaster richColors position="top-center" />}
-          <StatusBar style="light" />
+          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         </ThemeProvider>
       )}
     </GestureHandlerRootView>

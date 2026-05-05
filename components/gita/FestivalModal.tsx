@@ -1,8 +1,9 @@
 import { GitaColors } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import { Festival, getFestivalSymbol } from '@/lib/festivals';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Bookmark, Calendar, Check, Heart, Info, Map, Share2, Sparkles, X } from 'lucide-react-native';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Theme } from '@/theme/colors';
+import { Bookmark, Calendar, Check, Info, Map, Share2, Sparkles, X } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Pressable, Share, ScrollView, StyleSheet, Text, View, DeviceEventEmitter } from 'react-native';
 import { fetchUserFestivalFavorites, toggleFavoriteFestival, FESTIVALS_UPDATED_EVENT } from '@/lib/favorites';
 import { supabase } from '@/lib/supabase';
@@ -13,12 +14,14 @@ interface FestivalModalProps {
 }
 
 export default function FestivalModal({ festival, onClose }: FestivalModalProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [isFavorite, setIsFavorite] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!festival) return;
-    
+
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -41,9 +44,9 @@ export default function FestivalModal({ festival, onClose }: FestivalModalProps)
   const toggleFavorite = async () => {
     if (!userId || !festival) return;
     const nextState = !isFavorite;
-    setIsFavorite(nextState); // Optimistic UI
+    setIsFavorite(nextState);
     const success = await toggleFavoriteFestival(userId, festival.id, isFavorite);
-    if (!success) setIsFavorite(isFavorite); // Revert on failure
+    if (!success) setIsFavorite(isFavorite);
   };
 
   const closeModal = useCallback(() => {
@@ -77,10 +80,7 @@ export default function FestivalModal({ festival, onClose }: FestivalModalProps)
     <Modal visible={!!festival} transparent animationType="slide" onRequestClose={closeModal} statusBarTranslucent>
       <View style={styles.modalBackdrop}>
         <View style={styles.modalCard}>
-          <LinearGradient
-            colors={['#090e1a', '#0f172a']}
-            style={styles.sheetGradient}
-          >
+          <View style={styles.sheetBg}>
             <View style={styles.header}>
               <View style={styles.headerTitleRow}>
                 <View style={styles.titleInfo}>
@@ -90,21 +90,21 @@ export default function FestivalModal({ festival, onClose }: FestivalModalProps)
                   <Text style={styles.deityName}>{festival.deity}</Text>
                 </View>
               </View>
-              
+
               <View style={styles.headerRightGroup}>
                 <View style={styles.dateBadge}>
                   <Text style={styles.dateBadgeMonth}>{festival.month}</Text>
                   <Text style={styles.dateBadgeMain}>{festival.main_day_info}</Text>
                 </View>
-                
+
                 <Pressable style={styles.closeBtn} onPress={closeModal}>
-                  <X size={20} color="rgba(255,255,255,0.4)" />
+                  <X size={20} color={theme.subtext} />
                 </Pressable>
               </View>
             </View>
 
-            <ScrollView 
-              style={styles.scroll} 
+            <ScrollView
+              style={styles.scroll}
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
             >
@@ -119,21 +119,21 @@ export default function FestivalModal({ festival, onClose }: FestivalModalProps)
                     <Text style={styles.dateTextSecondary}>{festival.main_day_info.replace('Main:', 'Main celebration:')}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-                    <Pressable 
+                    <Pressable
                       onPress={toggleFavorite}
                       style={styles.actionBtn}
                     >
-                      <Bookmark 
-                        size={22} 
-                        color={isFavorite ? GitaColors.gold : 'rgba(255,255,255,0.5)'} 
-                        fill={isFavorite ? GitaColors.gold : 'transparent'} 
+                      <Bookmark
+                        size={22}
+                        color={isFavorite ? GitaColors.gold : theme.subtext}
+                        fill={isFavorite ? GitaColors.gold : 'transparent'}
                       />
                     </Pressable>
-                    <Pressable 
+                    <Pressable
                       onPress={handleShare}
                       style={styles.actionBtn}
                     >
-                      <Share2 size={22} color="rgba(255,255,255,0.5)" />
+                      <Share2 size={22} color={theme.subtext} />
                     </Pressable>
                   </View>
                 </View>
@@ -190,24 +190,24 @@ export default function FestivalModal({ festival, onClose }: FestivalModalProps)
                   ))}
                 </View>
               </View>
-              
+
               <View style={styles.footerSpace} />
             </ScrollView>
-          </LinearGradient>
+          </View>
         </View>
       </View>
     </Modal>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(9,15,28,0.9)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: '#0f172a',
+    backgroundColor: theme.popup,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     borderWidth: 1,
@@ -215,8 +215,9 @@ const styles = StyleSheet.create({
     height: '90%',
     overflow: 'hidden',
   },
-  sheetGradient: {
+  sheetBg: {
     flex: 1,
+    backgroundColor: theme.popup,
   },
   header: {
     flexDirection: 'row',
@@ -287,7 +288,7 @@ const styles = StyleSheet.create({
   },
   favoriteBtn: {
     padding: 8,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: theme.surface,
     borderRadius: 12,
   },
   favoriteBtnActive: {
@@ -301,7 +302,7 @@ const styles = StyleSheet.create({
   },
   closeBtn: {
     padding: 8,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: theme.surface,
     borderRadius: 12,
   },
   scroll: {
@@ -327,13 +328,13 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   bodyText: {
-    color: 'rgba(255,255,255,0.85)',
+    color: theme.text,
     fontSize: 16,
     lineHeight: 24,
     fontFamily: 'serif',
   },
   dateTextPrimary: {
-    color: 'rgba(255,255,255,0.95)',
+    color: theme.text,
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 4,
@@ -344,10 +345,10 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     padding: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: theme.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: theme.border,
   },
   gridRow: {
     flexDirection: 'row',
@@ -376,7 +377,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   itemText: {
-    color: 'rgba(255,255,255,0.8)',
+    color: theme.text,
     fontSize: 14,
     lineHeight: 20,
     flex: 1,

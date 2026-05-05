@@ -9,14 +9,19 @@ import {
 } from '@/lib/preferredLanguage';
 import { fetchCurrentUserAndProfile, getProfileDisplayName, STREAK_UPDATED_EVENT } from '@/lib/profile';
 import { fetchVerseOfTheDay, type GitaVerse } from '@/lib/verses';
+import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
 import { Flame } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
-import { TouchableOpacity,  DeviceEventEmitter, Pressable, ScrollView, StyleSheet, Text, View  } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { TouchableOpacity, DeviceEventEmitter, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function Home() {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [verseOfTheDay, setVerseOfTheDay] = useState<GitaVerse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [greeting, setGreeting] = useState('Good Morning');
@@ -84,15 +89,11 @@ export default function Home() {
 
   useEffect(() => {
     let mounted = true;
-
     (async () => {
       if (!mounted) return;
       await refreshIdentity();
     })();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [refreshIdentity]);
 
   useFocusEffect(
@@ -106,40 +107,26 @@ export default function Home() {
   useEffect(() => {
     const sub1 = DeviceEventEmitter.addListener(
       PREFERRED_LANGUAGE_CHANGED_EVENT,
-      (language: PreferredLanguage) => {
-        setPreferredLanguage(language);
-      }
+      (language: PreferredLanguage) => { setPreferredLanguage(language); }
     );
-
     const sub2 = DeviceEventEmitter.addListener(
       FAVORITES_UPDATED_EVENT,
       (data: { verseId: string; liked: boolean }) => {
         setFavoriteVerseIds(prev => {
-          if (data.liked) {
-            return prev.includes(data.verseId) ? prev : [...prev, data.verseId];
-          } else {
-            return prev.filter(id => id !== data.verseId);
-          }
+          if (data.liked) return prev.includes(data.verseId) ? prev : [...prev, data.verseId];
+          return prev.filter(id => id !== data.verseId);
         });
       }
     );
-
-    return () => {
-      sub1.remove();
-      sub2.remove();
-    };
+    return () => { sub1.remove(); sub2.remove(); };
   }, []);
 
   useEffect(() => {
     const subscription = DeviceEventEmitter.addListener(STREAK_UPDATED_EVENT, (newStreak: number) => {
       setCurrentStreak(newStreak);
-      // Also refresh the whole identity to get longest_streak etc. up to date
       void refreshIdentity();
     });
-
-    return () => {
-      subscription.remove();
-    };
+    return () => { subscription.remove(); };
   }, [refreshIdentity]);
 
   const currentVerse = verseOfTheDay ? {
@@ -153,7 +140,7 @@ export default function Home() {
   } : null;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#121212' }}>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <SafeAreaView style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -169,7 +156,7 @@ export default function Home() {
                 style={styles.streakIndicator}
                 onPress={() => setIsStreakModalOpen(true)}
               >
-                <Flame size={20} color="#fbbf24" />
+                <Flame size={20} color={theme.primary} />
                 <Text style={styles.streakText}>
                   <Text style={styles.streakNumber}>{currentStreak}</Text>
                   <Text style={styles.streakLabel}> days</Text>
@@ -196,7 +183,6 @@ export default function Home() {
                   user={user ? { id: user.id, full_name: displayName, email: user.email } : null}
                   preferences={{ preferred_language: preferredLanguage, favorite_verses: favoriteVerseIds }}
                   onFavoriteToggle={(verseId, isLiked) => {
-                    // Local state update if needed (mostly handled by listener)
                     setFavoriteVerseIds(prev => {
                       if (isLiked) return prev.includes(verseId) ? prev : [...prev, verseId];
                       return prev.filter(id => id !== verseId);
@@ -232,7 +218,7 @@ export default function Home() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingVertical: 21,
@@ -261,19 +247,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   userName: {
-    color: '#fef3c7',
+    color: theme.textWarm,
     fontSize: 26,
     fontWeight: '700',
     fontFamily: 'Georgia',
     lineHeight: 32,
     marginBottom: 2,
-  },
-  subtitle: {
-    color: 'rgba(251,191,36,0.4)',
-    fontSize: 12,
-    fontWeight: '400',
-    letterSpacing: 2.4,
-    textTransform: 'uppercase',
   },
   streakIndicator: {
     flexDirection: 'row',
@@ -286,11 +265,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginTop: 12,
   },
-  streakIndicatorPressed: {
-    opacity: 0.82,
-  },
   streakText: {
-    color: '#fbbf24',
+    color: theme.primary,
     fontSize: 14,
     fontWeight: '500',
   },
@@ -317,7 +293,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: 'rgba(254,243,199,1)',
+    color: theme.textWarm,
     marginBottom: 8,
   },
   emptySubtitle: {

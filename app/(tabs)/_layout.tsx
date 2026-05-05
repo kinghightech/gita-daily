@@ -1,20 +1,22 @@
 import { HapticTab } from '@/components/haptic-tab';
-import { GitaColors } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import { Tabs } from 'expo-router';
-import { BookOpen, GraduationCap, Home, List, User } from 'lucide-react-native';
+import { BookOpen, GraduationCap, Home, User } from 'lucide-react-native';
 
 export default function TabLayout() {
+  const theme = useTheme();
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: GitaColors.gold,
-        tabBarInactiveTintColor: GitaColors.textMuted,
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.subtext,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: '#11192C',
-          borderTopColor: 'rgba(251,191,36,0.15)',
-          borderTopWidth: 1,
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          position: 'absolute',
+          elevation: 0,
         },
         tabBarLabelStyle: { fontSize: 11 },
       }}>
@@ -27,15 +29,7 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="verses"
-        options={{
-          title: 'Verses',
-          tabBarIcon: ({ color, focused }) => (
-            <List size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
-          ),
-        }}
-      />
+      <Tabs.Screen name="verses" options={{ href: null }} />
       <Tabs.Screen
         name="read"
         options={{

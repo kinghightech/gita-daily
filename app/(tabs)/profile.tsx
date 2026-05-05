@@ -1,69 +1,60 @@
-import BackgroundLayout from '@/components/BackgroundLayout';
 import QuoteCard from '@/components/gita/QuoteCard';
-import { Fonts, GitaColors } from '@/constants/theme';
-import { FAVORITES_UPDATED_EVENT, FESTIVALS_UPDATED_EVENT, fetchUserFavorites, fetchUserFestivalFavorites } from '@/lib/favorites';
-import {
-    loadPreferredLanguageForCurrentUser,
-    mapLabelToPreferredLanguage,
-    mapPreferredLanguageToLabel,
-    PREFERRED_LANGUAGE_CHANGED_EVENT,
-    savePreferredLanguageForCurrentUser,
-} from '@/lib/preferredLanguage';
-import { fetchCurrentUserAndProfile, getProfileDisplayName, STREAK_UPDATED_EVENT } from '@/lib/profile';
-import { supabase } from '@/lib/supabase';
-import { fetchAllFestivals, Festival, getFestivalSymbol } from '@/lib/festivals';
-import { BADGE_DEFINITIONS, fetchUserBadges, checkAndAwardBadges, UserStats, BADGE_ICONS } from '@/lib/badges';
-import { fetchUserNotes, NOTES_UPDATED_EVENT, type UserNote } from '@/lib/notes';
-import { fetchAllGitaVerses } from '@/lib/verses';
+import FestivalModal from '@/components/gita/FestivalModal';
 import LotusLoader from '@/components/ui/LotusLoader';
+import { Fonts } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme/colors';
+import { MOCK_VERSES, Verse } from '@/Data/mockverses';
+import { BADGE_DEFINITIONS, BADGE_ICONS, UserStats, checkAndAwardBadges, fetchUserBadges } from '@/lib/badges';
+import {
+  FAVORITES_UPDATED_EVENT,
+  FESTIVALS_UPDATED_EVENT,
+  fetchUserFavorites,
+  fetchUserFestivalFavorites,
+} from '@/lib/favorites';
+import { Festival, fetchAllFestivals, getFestivalSymbol } from '@/lib/festivals';
+import { NOTES_UPDATED_EVENT, fetchUserNotes, type UserNote } from '@/lib/notes';
+import {
+  PREFERRED_LANGUAGE_CHANGED_EVENT,
+  loadPreferredLanguageForCurrentUser,
+  mapLabelToPreferredLanguage,
+  mapPreferredLanguageToLabel,
+  savePreferredLanguageForCurrentUser,
+} from '@/lib/preferredLanguage';
+import { STREAK_UPDATED_EVENT, fetchCurrentUserAndProfile, getProfileDisplayName } from '@/lib/profile';
+import { supabase } from '@/lib/supabase';
+import { fetchAllGitaVerses } from '@/lib/verses';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
+import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import {
-    useFocusEffect,
-} from '@react-navigation/native';
-import {
-    Calendar,
-    ChevronDown,
-    Flower2,
-    Globe,
-    Heart,
-    LogOut,
-    Sparkles,
-    Star,
-    Target,
-    Trash2,
-    Trophy,
-    Flame,
-    User,
-    X,
-
-    Settings,
-    QrCode,
-    Lock,
-    Bookmark,
-    Medal,
-    Compass,
-    StickyNote,
-    ChevronRight,
+  Check,
+  ChevronRight,
+  Feather,
+  Flame,
+  Flower2,
+  Heart,
+  LogOut,
+  RotateCcw,
+  Settings,
+  Star,
+  Trash2,
+  X,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { TouchableOpacity, 
-    Alert,
-    DeviceEventEmitter,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
-    Dimensions,
- } from 'react-native';
+import {
+  Alert,
+  DeviceEventEmitter,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { MOCK_VERSES, Verse } from '@/Data/mockverses';
-import FestivalModal from '@/components/gita/FestivalModal';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// For searching/filtering favorites, we consolidate all known verses
 const PLACEHOLDER_VERSES: Verse[] = [
   { id: 'placeholder-1', chapter: 1, verse: 47, english: 'Placeholder quote alpha for scroll testing only.', hindi: 'placeholder', speaker: 'Sanjaya' },
   { id: 'placeholder-2', chapter: 1, verse: 1, english: 'Placeholder quote beta to test long scrolling behavior.', hindi: 'placeholder', speaker: 'Dhritarashtra' },
@@ -80,13 +71,10 @@ const PLACEHOLDER_VERSES: Verse[] = [
 ];
 const ALL_VERSES = [...MOCK_VERSES, ...PLACEHOLDER_VERSES];
 
-
-
 type ProfileData = {
   id: string;
   full_name: string;
   email: string;
-
   streak_count: number;
   longest_streak: number;
   last_opened_at: string | null;
@@ -101,12 +89,13 @@ const ONBOARDING_PROFILE_KEY = 'gitaDaily.onboardingProfile.v1';
 const ONBOARDING_REPLAY_EVENT = 'gitaDaily.replayOnboarding';
 
 export default function ProfileScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileData>({
     id: '',
     full_name: '',
     email: '',
-
     streak_count: 0,
     longest_streak: 0,
     last_opened_at: null,
@@ -126,13 +115,10 @@ export default function ProfileScreen() {
   const [selectedFavVerse, setSelectedFavVerse] = useState<Verse | null>(null);
   const [selectedFestival, setSelectedFestival] = useState<Festival | null>(null);
   const pageScrollRef = useRef<ScrollView>(null);
-  const favoritesSectionRef = useRef<View>(null);
   const quoteBoxYRef = useRef(0);
-  const favoritesYRef = useRef(0);
   const profileIdRef = useRef('');
 
   const refreshProfileIdentity = async () => {
-
     try {
       const { user, profile: currentProfile } = await fetchCurrentUserAndProfile();
       if (!user) return;
@@ -159,8 +145,7 @@ export default function ProfileScreen() {
       setAllFestivals(festivals);
       setUserNotes(notes);
 
-      // Map supabase gita_verses for favorites lookup
-      const mapped: Verse[] = gitaVerses.map(v => ({
+      const mapped: Verse[] = gitaVerses.map((v) => ({
         id: v.id,
         chapter: v.chapter_number,
         verse: v.verse_number,
@@ -170,7 +155,6 @@ export default function ProfileScreen() {
       }));
       setSupabaseVerses(mapped);
 
-      // Award logic
       const stats: UserStats = {
         streakCount: currentProfile?.streak_count ?? 0,
         levelCount: currentProfile?.current_lotus_level ?? 1,
@@ -185,15 +169,15 @@ export default function ProfileScreen() {
 
       profileIdRef.current = user.id;
       setProfile({
-          id: user.id,
-          full_name: resolvedName,
-          email: resolvedEmail,
-          streak_count: currentProfile?.streak_count ?? 0,
-          longest_streak: currentProfile?.longest_streak ?? 0,
-          last_opened_at: currentProfile?.last_opened_at ?? null,
-          created_at: currentProfile?.created_at ?? null,
-          preferred_language: preferredLanguage,
-          current_lotus_level: currentProfile?.current_lotus_level ?? 1,
+        id: user.id,
+        full_name: resolvedName,
+        email: resolvedEmail,
+        streak_count: currentProfile?.streak_count ?? 0,
+        longest_streak: currentProfile?.longest_streak ?? 0,
+        last_opened_at: currentProfile?.last_opened_at ?? null,
+        created_at: currentProfile?.created_at ?? null,
+        preferred_language: preferredLanguage,
+        current_lotus_level: currentProfile?.current_lotus_level ?? 1,
       });
       setSelectedLanguage(mapPreferredLanguageToLabel(preferredLanguage));
     } catch (e) {
@@ -214,7 +198,7 @@ export default function ProfileScreen() {
       DeviceEventEmitter.addListener(FESTIVALS_UPDATED_EVENT, refreshProfileIdentity),
       DeviceEventEmitter.addListener(NOTES_UPDATED_EVENT, refreshProfileIdentity),
     ];
-    return () => subs.forEach(s => s.remove());
+    return () => subs.forEach((s) => s.remove());
   }, []);
 
   useFocusEffect(
@@ -225,18 +209,25 @@ export default function ProfileScreen() {
   );
 
   const COMBINED_VERSES = useMemo(() => {
-    const supaIds = new Set(supabaseVerses.map(v => v.id));
-    const filtered = ALL_VERSES.filter(v => !supaIds.has(v.id));
+    const supaIds = new Set(supabaseVerses.map((v) => v.id));
+    const filtered = ALL_VERSES.filter((v) => !supaIds.has(v.id));
     return [...supabaseVerses, ...filtered];
   }, [supabaseVerses]);
 
-  const favoriteVerses = useMemo(() => {
-    return COMBINED_VERSES.filter(v => favoriteVerseIds.includes(v.id));
-  }, [favoriteVerseIds, COMBINED_VERSES]);
+  const favoriteVerses = useMemo(
+    () => COMBINED_VERSES.filter((v) => favoriteVerseIds.includes(v.id)),
+    [favoriteVerseIds, COMBINED_VERSES]
+  );
 
-  const favoriteFestivals = useMemo(() => {
-    return allFestivals.filter(f => favoriteFestivalIds.includes(f.id));
-  }, [allFestivals, favoriteFestivalIds]);
+  const favoriteFestivals = useMemo(
+    () => allFestivals.filter((f) => favoriteFestivalIds.includes(f.id)),
+    [allFestivals, favoriteFestivalIds]
+  );
+
+  const earnedBadges = useMemo(
+    () => BADGE_DEFINITIONS.filter((b) => earnedBadgeIds.includes(b.id)),
+    [earnedBadgeIds]
+  );
 
   const handleFavSelect = (verse: Verse) => {
     setSelectedFavVerse(verse);
@@ -246,15 +237,6 @@ export default function ProfileScreen() {
         animated: true,
       });
     }, 120);
-  };
-
-
-
-  const scrollToSaved = () => {
-    pageScrollRef.current?.scrollTo({
-      y: favoritesYRef.current - 20,
-      animated: true,
-    });
   };
 
   const replayOnboarding = async () => {
@@ -267,361 +249,419 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleBadgePress = (badge: any, isEarned: boolean) => {
-    // If tapping a specific badge in the profile view, we can just show info or navigate.
-    // However, the user wants the WHOLE box to be clickable.
-    router.push('/badges');
-  };
-
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
-       Alert.alert('Error', error.message);
-       return;
+      Alert.alert('Error', error.message);
+      return;
     }
     await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
     await AsyncStorage.removeItem(ONBOARDING_PROFILE_KEY);
     DeviceEventEmitter.emit(ONBOARDING_REPLAY_EVENT);
   };
 
-
-
   if (isProfileLoading) {
     return (
-      <BackgroundLayout>
+      <View style={styles.root}>
         <View style={styles.loadingFull}>
           <LotusLoader size={110} color="#fbbf24" strokeWidth={2.8} />
           <Text style={styles.loadingText}>Loading your journey...</Text>
         </View>
-      </BackgroundLayout>
+      </View>
     );
   }
 
   return (
-    <BackgroundLayout>
-      <ScrollView
-        ref={pageScrollRef}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.container}>
-          {/* ── New Header Redesign ── */}
-          <View style={styles.topHeader}>
-            <View style={styles.userInfoRow}>
-              <View style={styles.nameSection}>
-                <Text style={styles.userNameText}>{profile.full_name || 'Your Name'}</Text>
-                <Text style={styles.userEmailText}>{profile.email || 'guest@gita.daily'}</Text>
-              </View>
-              
-              <View style={styles.avatarContainer}>
-                <View style={styles.avatarOutline}>
-                  <View style={styles.avatarPlaceholder}>
-                    <Text style={styles.avatarInitial}>
-                      {(profile.full_name || 'U').charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                </View>
-              </View>
+    <View style={styles.root}>
+      <SafeAreaView edges={['top']} style={styles.safe}>
+        <ScrollView
+          ref={pageScrollRef}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ── Header ── */}
+          <View style={styles.header}>
+            <Text style={styles.name} numberOfLines={1}>
+              {profile.full_name || 'Your Name'}
+            </Text>
+            <Text style={styles.email} numberOfLines={1}>
+              {profile.email || 'guest@gita.daily'}
+            </Text>
+          </View>
+
+          {/* ── Stats Card ── */}
+          <View style={styles.glass}>
+            <BlurView intensity={20} tint={theme.blurTint} style={StyleSheet.absoluteFill} />
+            <View style={styles.statsRow}>
+              <StatItem
+                icon={<Flame size={18} color="#fbbf24" strokeWidth={1.8} />}
+                value={profile.streak_count}
+                label="Day Streak"
+              />
+              <View style={styles.vDivider} />
+              <StatItem
+                icon={<Flower2 size={18} color="#86efac" strokeWidth={1.8} />}
+                value={profile.current_lotus_level || 1}
+                label="Lotus Level"
+              />
+            </View>
+            <View style={styles.hDivider} />
+            <View style={styles.statsRow}>
+              <StatItem
+                icon={<Heart size={18} color="#f87171" fill="#f87171" strokeWidth={0} />}
+                value={favoriteVerseIds.length}
+                label="Saved Verses"
+              />
+              <View style={styles.vDivider} />
+              <StatItem
+                icon={<Star size={18} color="#93c5fd" fill="#93c5fd" strokeWidth={0} />}
+                value={favoriteFestivalIds.length}
+                label="Festivals"
+              />
             </View>
           </View>
 
-          {/* ── Quick Actions ── */}
-          <View style={styles.quickActions}>
-            <TouchableOpacity activeOpacity={0.7} style={styles.qaCard} onPress={scrollToSaved}>
-              <Bookmark size={20} color="#fbbf24" />
-              <Text style={styles.qaText}>Saved</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* ── Streak Bar ── */}
-          <View style={styles.streakBar}>
-            <View style={styles.streakCol}>
-              <Text style={styles.streakBigValue}>{profile.streak_count}</Text>
-              <Text style={styles.streakTinyLabel}>App Streak</Text>
-            </View>
-            <Trophy size={18} color="#fbbf24" style={{ opacity: 0.8 }} />
-          </View>
-
-          {/* ── Badges Section ── */}
-          <TouchableOpacity 
-            activeOpacity={0.8} 
-            style={styles.badgesSection}
+          {/* ── Achievements ── */}
+          <TouchableOpacity
+            activeOpacity={0.85}
             onPress={() => router.push('/badges')}
+            style={styles.glass}
           >
-            <View style={styles.badgesHeader}>
-              <View style={styles.badgesHeaderLeft}>
-                <Text style={styles.badgesTitle}>{earnedBadgeIds.length} Badges Unlocked</Text>
-                <ChevronRight size={16} color="#fbbf24" style={{ opacity: 0.6 }} />
+            <BlurView intensity={20} tint={theme.blurTint} style={StyleSheet.absoluteFill} />
+            <View style={styles.achHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.sectionTitle}>Achievements</Text>
+                <Text style={styles.achSub}>
+                  <Text style={styles.achSubStrong}>{earnedBadgeIds.length}</Text> of{' '}
+                  {BADGE_DEFINITIONS.length} unlocked
+                </Text>
               </View>
-              <Target size={18} color="#fbbf24" style={{ opacity: 0.8 }} />
+              <ChevronRight size={20} color={theme.subtext} strokeWidth={1.8} />
             </View>
-            
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.badgesList}
-              pointerEvents="none" // Pass touches through to the parent TouchableOpacity
-            >
-              {BADGE_DEFINITIONS.filter(b => earnedBadgeIds.includes(b.id)).length === 0 ? (
-                <View style={styles.noUnlocksWrap}>
-                  <Text style={styles.noUnlocksText}>Begin your journey to earn badges</Text>
-                </View>
-              ) : (
-                BADGE_DEFINITIONS.filter(b => earnedBadgeIds.includes(b.id)).map((badge) => {
-                  const BadgeIcon = BADGE_ICONS[badge.icon] || Star;
+
+            {earnedBadges.length === 0 ? (
+              <Text style={styles.achEmpty}>Begin your journey to earn badges</Text>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.achList}
+                pointerEvents="none"
+              >
+                {earnedBadges.map((badge) => {
+                  const Icon = BADGE_ICONS[badge.icon] || Star;
                   return (
-                    <View key={badge.id} style={styles.badgeWrapper}>
-                      <View style={styles.badgeCircle}>
-                        <BadgeIcon 
-                          size={28} 
-                          color="#fbbf24" 
-                          strokeWidth={1.5}
-                        />
+                    <View key={badge.id} style={styles.achPill}>
+                      <View style={styles.achIconWrap}>
+                        <Icon size={22} color="#fbbf24" strokeWidth={1.7} />
                       </View>
-                      <Text style={styles.badgeName}>
+                      <Text style={styles.achPillTitle} numberOfLines={1}>
                         {badge.title}
                       </Text>
                     </View>
                   );
-                })
-              )}
-            </ScrollView>
+                })}
+              </ScrollView>
+            )}
           </TouchableOpacity>
 
-          {/* ── Your Journey ── */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.headerIconBg}>
-                <Trophy size={18} color="#fbbf24" />
-              </View>
-              <Text style={styles.sectionTitle}>Your Journey</Text>
+          {/* ── Saved Verses ── */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Heart size={14} color="#f87171" fill="#f87171" strokeWidth={0} />
+              <Text style={styles.sectionEyebrow}>Saved Verses</Text>
+              {favoriteVerses.length > 0 && (
+                <Text style={styles.sectionCount}>{favoriteVerses.length}</Text>
+              )}
+              {favoriteVerses.length > 0 && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => router.push('/saved-verses')}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <ChevronRight size={18} color={theme.subtext} strokeWidth={1.8} />
+                </TouchableOpacity>
+              )}
             </View>
-
-            <View style={styles.statsGrid}>
-              <View style={styles.statsCard}>
-                <Sparkles size={20} color="#fbbf24" style={styles.statsIcon} />
-                <Text style={styles.statsValue}>{profile.streak_count} Day Streak</Text>
-                <Text style={styles.statsLabel}>Daily Sadhana</Text>
-              </View>
-              <View style={styles.statsCard}>
-                <Flower2 size={20} color="#4ade80" style={styles.statsIcon} />
-                <Text style={styles.statsValue}>Level {profile.current_lotus_level || 1}</Text>
-                <Text style={styles.statsLabel}>Lotus Path</Text>
-              </View>
-              <View style={styles.statsCard}>
-                <Heart size={20} color="#FE2C55" fill="#FE2C55" style={styles.statsIcon} />
-                <Text style={styles.statsValue}>{favoriteVerseIds.length} Quotes</Text>
-                <Text style={styles.statsLabel}>Treasured</Text>
-              </View>
-              <View style={styles.statsCard}>
-                <Star size={20} color="#60a5fa" style={styles.statsIcon} fill="#60a5fa" />
-                <Text style={styles.statsValue}>{favoriteFestivalIds.length} Festivals</Text>
-                <Text style={styles.statsLabel}>Saved</Text>
-              </View>
+            <View style={styles.glass}>
+              <BlurView intensity={20} tint={theme.blurTint} style={StyleSheet.absoluteFill} />
+              {favoriteVerses.length === 0 ? (
+                <View style={styles.emptyWrap}>
+                  <Heart size={28} color="rgba(248,113,113,0.25)" strokeWidth={1.6} />
+                  <Text style={styles.emptyText}>No saved verses yet</Text>
+                  <Text style={styles.emptySub}>
+                    Tap the heart on any verse to save it here.
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView
+                  nestedScrollEnabled
+                  style={styles.verseListScroll}
+                  contentContainerStyle={styles.list}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {favoriteVerses.map((verse, index) => {
+                    const isSelected = selectedFavVerse?.id === verse.id;
+                    return (
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        key={verse.id}
+                        onPress={() => handleFavSelect(verse)}
+                        style={[
+                          styles.listItem,
+                          index === 0 && styles.listItemFirst,
+                          index === favoriteVerses.length - 1 && styles.listItemLast,
+                          isSelected && styles.listItemSelected,
+                        ]}
+                      >
+                        <View style={styles.listItemHeader}>
+                          <Text style={styles.listItemRef}>
+                            {verse.chapter}.{verse.verse}
+                          </Text>
+                          <Heart size={11} color="#f87171" fill="#f87171" strokeWidth={0} />
+                        </View>
+                        <Text style={styles.listItemBody} numberOfLines={2}>
+                          {verse.english}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
             </View>
           </View>
 
-          {/* ── Favorite Quotes Section ── */}
-          <View 
-            style={styles.sectionCard}
-            onLayout={(e) => {
-              favoritesYRef.current = e.nativeEvent.layout.y;
-            }}
-          >
-            <View style={styles.sectionHeader}>
-              <View style={styles.headerIconBg}>
-                <Heart size={18} color="#FE2C55" fill="#FE2C55" />
-              </View>
-              <Text style={styles.sectionTitle}>Favorite Quotes</Text>
+          {/* ── Saved Festivals ── */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Star size={14} color="#93c5fd" fill="#93c5fd" strokeWidth={0} />
+              <Text style={styles.sectionEyebrow}>Saved Festivals</Text>
+              {favoriteFestivals.length > 0 && (
+                <Text style={styles.sectionCount}>{favoriteFestivals.length}</Text>
+              )}
             </View>
-            {favoriteVerses.length === 0 ? (
-              <View style={styles.noFavWrap}>
-                <Heart size={40} color="rgba(251,191,36,0.15)" />
-                <Text style={styles.noFavText}>No favorites yet</Text>
-              </View>
-            ) : (
-              <ScrollView
-                style={styles.favScroll}
-                contentContainerStyle={styles.favScrollContent}
-                showsVerticalScrollIndicator
-                nestedScrollEnabled
-              >
-                {favoriteVerses.map((verse) => {
-                  const isSelected = selectedFavVerse?.id === verse.id;
-                  return (
-                    <TouchableOpacity activeOpacity={0.7}
-                      key={verse.id}
-                      onPress={() => handleFavSelect(verse)}
+            <View style={styles.glass}>
+              <BlurView intensity={20} tint={theme.blurTint} style={StyleSheet.absoluteFill} />
+              {favoriteFestivals.length === 0 ? (
+                <View style={styles.emptyWrap}>
+                  <Star size={28} color="rgba(147,197,253,0.25)" strokeWidth={1.6} />
+                  <Text style={styles.emptyText}>No saved festivals yet</Text>
+                  <Text style={styles.emptySub}>
+                    Save festivals from the Learn tab to revisit them here.
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.list}>
+                  {favoriteFestivals.map((fest, index) => (
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      key={fest.id}
+                      onPress={() => setSelectedFestival(fest)}
                       style={[
-                        styles.favItem,
-                        isSelected && styles.favItemSelected,
+                        styles.listItem,
+                        index === 0 && styles.listItemFirst,
+                        index === favoriteFestivals.length - 1 && styles.listItemLast,
                       ]}
                     >
-                      <View style={styles.favItemHeader}>
-                        <Text style={styles.favRef}>Chapter {verse.chapter}, Verse {verse.verse}</Text>
-                        <Heart size={12} color="#FE2C55" fill="#FE2C55" />
-                      </View>
-                      <Text style={styles.favText} numberOfLines={2}>&quot;{verse.english}&quot;</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            )}
-          </View>
-
-          {/* ── Favorite Festivals ── */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.headerIconBg}>
-                <Star size={18} color="#60a5fa" fill="#60a5fa" />
-              </View>
-              <Text style={styles.sectionTitle}>Favorite Festivals</Text>
-            </View>
-            {favoriteFestivals.length === 0 ? (
-              <View style={styles.noFavWrap}>
-                <Star size={40} color="rgba(96,165,250,0.15)" />
-                <Text style={styles.noFavText}>No saved festivals</Text>
-              </View>
-            ) : (
-              <ScrollView
-                style={styles.favScroll}
-                contentContainerStyle={styles.favScrollContent}
-                showsVerticalScrollIndicator
-                nestedScrollEnabled
-              >
-                {favoriteFestivals.map((fest) => (
-                  <TouchableOpacity activeOpacity={0.7}
-                    key={fest.id}
-                    onPress={() => setSelectedFestival(fest)}
-                    style={styles.favItem}
-                  >
-                    <View style={styles.favItemHeader}>
-                      <Text style={[styles.favRef, { color: '#60a5fa' }]}>
-                        {getFestivalSymbol(fest.name, fest.icon_emoji)} {fest.name.toUpperCase()}
-                      </Text>
-                      <Star size={12} color="#60a5fa" fill="#60a5fa" />
-                    </View>
-                    <Text style={styles.favText} numberOfLines={1}>{fest.display_date} • {fest.deity}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-          </View>
-
-          {/* ── Notes Section ── */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.headerIconBg}>
-                <StickyNote size={18} color="#fbbf24" />
-              </View>
-              <Text style={styles.sectionTitle}>Your Notes</Text>
-            </View>
-            {userNotes.length === 0 ? (
-              <View style={styles.noFavWrap}>
-                <StickyNote size={40} color="rgba(251,191,36,0.15)" />
-                <Text style={styles.noFavText}>No notes yet</Text>
-                <Text style={styles.noFavSubtext}>Tap "Note" on any verse in the Read section to add one</Text>
-              </View>
-            ) : (
-              <ScrollView
-                style={styles.favScroll}
-                contentContainerStyle={styles.favScrollContent}
-                showsVerticalScrollIndicator
-                nestedScrollEnabled
-              >
-                {userNotes.map((note) => {
-                  const verseData = note.verse;
-                  const verseRef = verseData
-                    ? `${verseData.chapter_number}.${verseData.verse_number}`
-                    : '—';
-                  const dateStr = new Date(note.created_at).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  });
-                  return (
-                    <View key={note.id} style={styles.noteItem}>
-                      <View style={styles.noteItemHeader}>
-                        <Text style={styles.noteVerseRef}>Verse {verseRef}</Text>
-                        <Text style={styles.noteDate}>{dateStr}</Text>
-                      </View>
-                      {verseData && (
-                        <Text style={styles.noteVersePreview} numberOfLines={1}>
-                          &quot;{verseData.english}&quot;
+                      <View style={styles.listItemHeader}>
+                        <Text style={[styles.listItemRef, { color: '#93c5fd' }]}>
+                          {getFestivalSymbol(fest.name, fest.icon_emoji)} {fest.name}
                         </Text>
-                      )}
-                      <Text style={styles.noteText} numberOfLines={3}>
-                        {note.note_text}
+                        <ChevronRight size={14} color={theme.subtextMuted} strokeWidth={1.8} />
+                      </View>
+                      <Text style={styles.listItemBody} numberOfLines={1}>
+                        {fest.display_date}
+                        {fest.deity ? ` · ${fest.deity}` : ''}
                       </Text>
-                    </View>
-                  );
-                })}
-              </ScrollView>
-            )}
-          </View>
-
-          {/* ── Language ── */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.headerIconBg}>
-                <Globe size={18} color="#fbbf24" />
-              </View>
-              <Text style={styles.sectionTitle}>Language</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
-            <TouchableOpacity activeOpacity={0.7} style={styles.langTrigger} onPress={() => setIsLangOpen(!isLangOpen)}>
-              <Text style={styles.langTriggerText}>{selectedLanguage}</Text>
-              <ChevronDown size={20} color="rgba(251,191,36,0.3)" />
-            </TouchableOpacity>
-            {isLangOpen && (
-              <View style={styles.langMenu}>
-                {['English', 'Hindi'].map((lang) => (
-                  <TouchableOpacity activeOpacity={0.7} 
-                    key={lang} 
-                    style={styles.langMenuItem}
-                    onPress={() => {
-                      setSelectedLanguage(lang);
-                      setIsLangOpen(false);
-                      const code = mapLabelToPreferredLanguage(lang);
-                      if (code) {
-                        void savePreferredLanguageForCurrentUser(code);
-                        DeviceEventEmitter.emit(PREFERRED_LANGUAGE_CHANGED_EVENT, code);
-                      }
-                    }}
-                  >
-                    <Text style={styles.langMenuItemText}>{lang}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
           </View>
 
-          {/* ── Actions ── */}
-          <View style={styles.actionsRow}>
-            <TouchableOpacity activeOpacity={0.7} style={styles.actionBtn} onPress={handleSignOut}>
-              <LogOut size={16} color="rgba(251,191,36,0.5)" />
-              <Text style={styles.actionBtnText}>Sign Out</Text>
-            </TouchableOpacity>
-            <TouchableOpacity activeOpacity={0.7} style={styles.actionBtnDanger} onPress={() => Alert.alert('Delete', 'Integrating soon.')}>
-              <Trash2 size={16} color="rgba(239,68,68,0.5)" />
-              <Text style={styles.actionBtnDangerText}>Delete Account</Text>
-            </TouchableOpacity>
+          {/* ── Reflections (Notes) ── */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Feather size={14} color="rgba(251,191,36,0.85)" strokeWidth={1.8} />
+              <Text style={styles.sectionEyebrow}>Reflections</Text>
+              {userNotes.length > 0 && (
+                <Text style={styles.sectionCount}>{userNotes.length}</Text>
+              )}
+            </View>
+            <View style={styles.glass}>
+              <BlurView intensity={20} tint={theme.blurTint} style={StyleSheet.absoluteFill} />
+              {userNotes.length === 0 ? (
+                <View style={styles.emptyWrap}>
+                  <Feather size={28} color="rgba(251,191,36,0.2)" strokeWidth={1.6} />
+                  <Text style={styles.emptyText}>No reflections yet</Text>
+                  <Text style={styles.emptySub}>
+                    Add a note from the Read tab to keep your thoughts here.
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.list}>
+                  {userNotes.map((note, index) => {
+                    const verseData = note.verse;
+                    const verseRef = verseData
+                      ? `${verseData.chapter_number}:${verseData.verse_number}`
+                      : '—';
+                    const dateStr = new Date(note.created_at).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    });
+                    return (
+                      <View
+                        key={note.id}
+                        style={[
+                          styles.listItem,
+                          index === 0 && styles.listItemFirst,
+                          index === userNotes.length - 1 && styles.listItemLast,
+                        ]}
+                      >
+                        <View style={styles.listItemHeader}>
+                          <Text style={styles.listItemRef}>{verseRef}</Text>
+                          <Text style={styles.listItemMeta}>{dateStr}</Text>
+                        </View>
+                        {verseData && (
+                          <Text style={styles.notePreview} numberOfLines={1}>
+                            {verseData.english}
+                          </Text>
+                        )}
+                        <Text style={styles.noteBody} numberOfLines={3}>
+                          {note.note_text}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
           </View>
 
-          <TouchableOpacity activeOpacity={0.7} style={styles.replayBtn} onPress={replayOnboarding}>
-            <Text style={styles.replayBtnText}>Replay Onboarding</Text>
-          </TouchableOpacity>
+          {/* ── Settings ── */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Settings size={14} color={theme.subtext} strokeWidth={1.8} />
+              <Text style={styles.sectionEyebrow}>Settings</Text>
+            </View>
+            <View style={styles.glass}>
+              <BlurView intensity={20} tint={theme.blurTint} style={StyleSheet.absoluteFill} />
+              <Pressable
+                onPress={() => setIsLangOpen(!isLangOpen)}
+                style={({ pressed }) => [
+                  styles.settingRow,
+                  styles.settingRowFirst,
+                  pressed && styles.settingRowPressed,
+                ]}
+              >
+                <Text style={styles.settingLabel}>Language</Text>
+                <View style={styles.settingValueRow}>
+                  <Text style={styles.settingValue}>{selectedLanguage}</Text>
+                  <ChevronRight
+                    size={18}
+                    color={theme.subtext}
+                    strokeWidth={1.8}
+                    style={{ transform: [{ rotate: isLangOpen ? '90deg' : '0deg' }] }}
+                  />
+                </View>
+              </Pressable>
+
+              {isLangOpen && (
+                <View style={styles.langOptions}>
+                  {['English', 'Hindi'].map((lang) => {
+                    const isActive = selectedLanguage === lang;
+                    return (
+                      <Pressable
+                        key={lang}
+                        onPress={() => {
+                          setSelectedLanguage(lang);
+                          setIsLangOpen(false);
+                          const code = mapLabelToPreferredLanguage(lang);
+                          if (code) {
+                            void savePreferredLanguageForCurrentUser(code);
+                            DeviceEventEmitter.emit(PREFERRED_LANGUAGE_CHANGED_EVENT, code);
+                          }
+                        }}
+                        style={({ pressed }) => [
+                          styles.langOption,
+                          pressed && styles.settingRowPressed,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.langOptionText,
+                            isActive && styles.langOptionTextActive,
+                          ]}
+                        >
+                          {lang}
+                        </Text>
+                        {isActive && <Check size={16} color="#fbbf24" strokeWidth={2.2} />}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+
+              <View style={styles.rowDivider} />
+
+              <Pressable
+                onPress={replayOnboarding}
+                style={({ pressed }) => [
+                  styles.settingRow,
+                  styles.settingRowLast,
+                  pressed && styles.settingRowPressed,
+                ]}
+              >
+                <View style={styles.settingLeft}>
+                  <RotateCcw size={16} color={theme.subtext} strokeWidth={1.8} />
+                  <Text style={styles.settingLabel}>Replay Onboarding</Text>
+                </View>
+                <ChevronRight size={18} color={theme.subtext} strokeWidth={1.8} />
+              </Pressable>
+            </View>
+          </View>
+
+          {/* ── Account actions ── */}
+          <View style={styles.dangerRow}>
+            <Pressable
+              onPress={handleSignOut}
+              style={({ pressed }) => [styles.outlineBtn, pressed && styles.btnPressed]}
+            >
+              <LogOut size={16} color={theme.text} strokeWidth={1.8} />
+              <Text style={styles.outlineBtnText}>Sign Out</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => Alert.alert('Delete', 'Account deletion coming soon.')}
+              style={({ pressed }) => [styles.dangerBtn, pressed && styles.btnPressed]}
+            >
+              <Trash2 size={16} color="rgba(248,113,113,0.85)" strokeWidth={1.8} />
+              <Text style={styles.dangerBtnText}>Delete Account</Text>
+            </Pressable>
+          </View>
 
           {/* ── Verse Preview ── */}
           {selectedFavVerse && (
-            <View style={styles.quoteBox} onLayout={(e) => { quoteBoxYRef.current = e.nativeEvent.layout.y; }}>
+            <View
+              style={styles.quoteBox}
+              onLayout={(e) => {
+                quoteBoxYRef.current = e.nativeEvent.layout.y;
+              }}
+            >
               <View style={styles.quoteBoxHeader}>
-                <Text style={styles.previewTitle}>REVISITING WISDOM</Text>
-                <TouchableOpacity activeOpacity={0.7} onPress={() => setSelectedFavVerse(null)}><X color="#fbbf24" size={24} /></TouchableOpacity>
+                <Text style={styles.quoteBoxTitle}>Revisiting Wisdom</Text>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setSelectedFavVerse(null)}>
+                  <X color={theme.subtext} size={22} strokeWidth={1.8} />
+                </TouchableOpacity>
               </View>
-              <QuoteCard 
-                verse={selectedFavVerse} 
+              <QuoteCard
+                verse={selectedFavVerse}
                 user={{ id: profile.id, full_name: profile.full_name || '', email: profile.email || '' }}
-                preferences={{ preferred_language: profile.preferred_language || 'english', favorite_verses: favoriteVerseIds }}
+                preferences={{
+                  preferred_language: profile.preferred_language || 'english',
+                  favorite_verses: favoriteVerseIds,
+                }}
                 onFavoriteToggle={() => {}}
                 isToday={false}
               />
@@ -629,472 +669,111 @@ export default function ProfileScreen() {
           )}
 
           <FestivalModal festival={selectedFestival} onClose={() => setSelectedFestival(null)} />
-        </View>
-      </ScrollView>
-    </BackgroundLayout>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  scrollContent: {
-    paddingBottom: 120,
-  },
-  container: {
-    paddingBottom: 40,
-    paddingHorizontal: 16,
-  },
-  topHeader: {
-    marginTop: 10,
-    marginBottom: 20,
-    paddingHorizontal: 16, // Added to keep info aligned without a box
-  },
-  headerControls: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: 20,
-    marginBottom: 24,
-  },
-  controlIcon: {
-    opacity: 0.9,
-  },
-  hamburger: {
-    gap: 5,
-  },
-  hamLine: {
-    height: 2.5,
-    backgroundColor: 'white',
-    borderRadius: 2,
-  },
-  userInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  nameSection: {
-    flex: 1,
-  },
-  userNameText: {
-    color: '#fbbf24',
-    fontSize: 34,
-    fontWeight: '700',
-    fontFamily: Fonts.serif,
-  },
-  userEmailText: {
-    color: '#fbbf24',
-    fontSize: 15,
-    marginTop: 4,
-    fontFamily: Fonts.sans,
-  },
-  avatarContainer: {
-    position: 'relative',
-  },
-  avatarOutline: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.2)',
-    padding: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarImg: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 40,
-  },
-  avatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarInitial: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 32,
-    fontWeight: '600',
-  },
-  cameraBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: -4,
-    backgroundColor: '#0f172a',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(251,191,36,0.3)',
-  },
-  quickActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  qaCard: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  qaText: {
-    color: '#fbbf24',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  streakBar: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 14,
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  streakCol: {
-    gap: 2,
-  },
-  streakBigValue: {
-    color: '#fbbf24',
-    fontSize: 22,
-    fontWeight: '700',
-    fontFamily: Fonts.serif,
-  },
-  streakTinyLabel: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 12,
-  },
-  badgesSection: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 16,
-    paddingVertical: 16,
-    marginBottom: 20,
-  },
-  badgesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  badgesHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  badgesTitle: {
-    color: '#fbbf24',
-    fontSize: 16,
-    fontWeight: '800',
-    fontFamily: Fonts.serif,
-  },
-  badgesList: {
-    paddingHorizontal: 16,
-    gap: 16,
-  },
-  noUnlocksWrap: {
-    paddingVertical: 10,
-    opacity: 0.4,
-  },
-  noUnlocksText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
-    fontStyle: 'italic',
-  },
-  badgeWrapper: {
-    alignItems: 'center',
-    gap: 8,
-    width: 72,
-  },
-  badgeCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(251, 191, 36, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.2)',
-    boxShadow: '0px 4px 8px rgba(251, 191, 36, 0.1)',
-  },
-  badgeName: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 11,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  lockOverlay: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sectionCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 24,
-  },
-  headerIconBg: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(251, 191, 36, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionTitle: {
-    color: '#fbbf24',
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: Fonts.serif,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  statsCard: {
-    width: '48%',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.05)',
-  },
-  statsIcon: {
-    marginBottom: 8,
-  },
-  statsValue: {
-    color: '#fef3c7',
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: Fonts.serif,
-    textAlign: 'center',
-    marginBottom: 3,
-  },
-  statsLabel: {
-    color: 'rgba(254,243,199,0.3)',
-    fontSize: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  langTrigger: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.1)',
-  },
-  langTriggerText: {
-    color: '#fef3c7',
-    fontSize: 16,
-  },
-  langMenu: {
-    backgroundColor: '#0a101e',
-    borderRadius: 12,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.2)',
-    overflow: 'hidden',
-  },
-  langMenuItem: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(251,191,36,0.05)',
-  },
-  langMenuItemText: {
-    color: '#fef3c7',
-    fontSize: 16,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-    paddingHorizontal: 0,
-  },
-  actionBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(251,191,36,0.05)',
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.1)',
-  },
-  actionBtnText: {
-    color: 'rgba(251,191,36,0.6)',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  actionBtnDanger: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(239,68,68,0.05)',
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.1)',
-  },
-  actionBtnDangerText: {
-    color: 'rgba(239,68,68,0.6)',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  replayBtn: {
-    alignItems: 'center',
-    padding: 12,
-  },
-  replayBtnText: {
-    color: 'rgba(255,255,255,0.2)',
-    fontSize: 12,
-    textDecorationLine: 'underline',
-  },
-  noFavWrap: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    gap: 10,
-  },
-  noFavText: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 14,
-  },
-  favScroll: {
-    maxHeight: 250,
-  },
-  favScrollContent: {
-    gap: 10,
-  },
-  favItem: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.05)',
-  },
-  favItemSelected: {
-    borderColor: 'rgba(251,191,36,0.2)',
-  },
-  favItemPressed: {
-    opacity: 0.7,
-  },
-  favItemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  favRef: {
-    color: '#fbbf24',
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: Fonts.serif,
-  },
-  favText: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 14,
-    lineHeight: 20,
-    fontStyle: 'italic',
-  },
-  quoteBox: {
-    marginTop: 20,
-  },
-  quoteBoxHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  previewTitle: {
-    color: '#fbbf24',
-    fontSize: 10,
-    opacity: 0.5,
-    letterSpacing: 1,
-  },
-  loadingFull: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-    minHeight: 400,
-  },
-  loadingText: {
-    color: 'rgba(251,191,36,0.6)',
-    fontFamily: Fonts.serif,
-    fontSize: 16,
-  },
-  noFavSubtext: {
-    color: 'rgba(255,255,255,0.25)',
-    fontSize: 12,
-    textAlign: 'center',
-    maxWidth: 240,
-    lineHeight: 18,
-  },
-  noteItem: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.05)',
-    gap: 6,
-  },
-  noteItemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  noteVerseRef: {
-    color: '#fbbf24',
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: Fonts.serif,
-  },
-  noteDate: {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: 11,
-  },
-  noteVersePreview: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 12,
-    fontStyle: 'italic',
-    fontFamily: Fonts.serif,
-  },
-  noteText: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 14,
-    lineHeight: 20,
-  },
+function StatItem({
+  icon,
+  value,
+  label,
+}: {
+  icon: React.ReactNode;
+  value: number | string;
+  label: string;
+}) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  return (
+    <View style={styles.statItem}>
+      <View style={styles.statIconRow}>{icon}</View>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+const createStyles = (theme: Theme) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: theme.background },
+  safe: { flex: 1 },
+  scrollContent: { paddingBottom: 140, paddingHorizontal: 20 },
+
+  header: { paddingTop: 16, paddingBottom: 28 },
+  eyebrow: { color: theme.subtext, fontSize: 11, fontWeight: '600', letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 10 },
+  name: { color: theme.text, fontSize: 32, fontWeight: '700', letterSpacing: -0.5, lineHeight: 38 },
+  email: { color: theme.subtext, fontSize: 14, fontWeight: '400', marginTop: 4 },
+
+  glass: { borderRadius: 20, overflow: 'hidden', backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border, marginBottom: 20 },
+
+  statsRow: { flexDirection: 'row', alignItems: 'stretch' },
+  statItem: { flex: 1, paddingVertical: 18, paddingHorizontal: 18, gap: 6 },
+  statIconRow: { height: 22, flexDirection: 'row', alignItems: 'center' },
+  statValue: { color: theme.text, fontSize: 28, fontWeight: '700', fontFamily: Fonts.serif, lineHeight: 32, letterSpacing: -0.5 },
+  statLabel: { color: theme.subtext, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' },
+  vDivider: { width: 1, backgroundColor: theme.border, marginVertical: 14 },
+  hDivider: { height: 1, backgroundColor: theme.border },
+
+  achHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 18, paddingBottom: 14 },
+  sectionTitle: { color: theme.text, fontSize: 16, fontWeight: '600', letterSpacing: -0.2 },
+  achSub: { color: theme.subtext, fontSize: 12, fontWeight: '500', marginTop: 3 },
+  achSubStrong: { color: '#fbbf24', fontWeight: '700' },
+  achEmpty: { color: theme.subtextMuted, fontSize: 13, paddingHorizontal: 18, paddingBottom: 18, fontStyle: 'italic' },
+  achList: { paddingHorizontal: 18, paddingBottom: 18, gap: 14 },
+  achPill: { alignItems: 'center', width: 68, gap: 8 },
+  achIconWrap: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(251,191,36,0.08)', borderWidth: 1, borderColor: 'rgba(251,191,36,0.18)', alignItems: 'center', justifyContent: 'center' },
+  achPillTitle: { color: theme.subtext, fontSize: 11, fontWeight: '600', textAlign: 'center', letterSpacing: 0.1 },
+
+  section: { marginBottom: 6 },
+  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4, marginBottom: 12 },
+  sectionEyebrow: { color: theme.subtext, fontSize: 12, fontWeight: '600', letterSpacing: 1.4, textTransform: 'uppercase', flex: 1 },
+  sectionCount: { color: theme.subtextMuted, fontSize: 12, fontWeight: '600', fontVariant: ['tabular-nums'] },
+
+  verseListScroll: { maxHeight: 296 },
+
+  list: { paddingHorizontal: 4, paddingVertical: 4 },
+  listItem: { paddingHorizontal: 14, paddingVertical: 14 },
+  listItemFirst: { paddingTop: 14 },
+  listItemLast: { paddingBottom: 14 },
+  listItemSelected: { backgroundColor: 'rgba(251,191,36,0.06)' },
+  listItemHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  listItemRef: { color: '#fbbf24', fontSize: 12, fontWeight: '700', letterSpacing: 0.4 },
+  listItemMeta: { color: theme.subtextMuted, fontSize: 11, fontWeight: '500', fontVariant: ['tabular-nums'] },
+  listItemBody: { color: theme.text, fontSize: 14, lineHeight: 20, fontWeight: '400' },
+
+  notePreview: { color: theme.subtextMuted, fontSize: 12, fontStyle: 'italic', marginBottom: 6 },
+  noteBody: { color: theme.text, fontSize: 14, lineHeight: 20 },
+
+  emptyWrap: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 24, gap: 8 },
+  emptyText: { color: theme.subtext, fontSize: 14, fontWeight: '500' },
+  emptySub: { color: theme.subtextMuted, fontSize: 12, textAlign: 'center', lineHeight: 18, maxWidth: 240 },
+
+  settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 16 },
+  settingRowFirst: { paddingTop: 18 },
+  settingRowLast: { paddingBottom: 18 },
+  settingRowPressed: { backgroundColor: theme.surface },
+  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  settingLabel: { color: theme.text, fontSize: 15, fontWeight: '500' },
+  settingValueRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  settingValue: { color: theme.subtext, fontSize: 14, fontWeight: '500' },
+  langOptions: { paddingHorizontal: 8, paddingBottom: 6 },
+  langOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 10, paddingVertical: 12, borderRadius: 10 },
+  langOptionText: { color: theme.subtext, fontSize: 14, fontWeight: '500' },
+  langOptionTextActive: { color: '#fbbf24', fontWeight: '600' },
+  rowDivider: { height: 1, backgroundColor: theme.border, marginHorizontal: 18 },
+
+  dangerRow: { flexDirection: 'row', gap: 12, marginTop: 8, marginBottom: 12 },
+  outlineBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 14, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border },
+  outlineBtnText: { color: theme.text, fontSize: 14, fontWeight: '600' },
+  dangerBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 14, backgroundColor: 'rgba(248,113,113,0.06)', borderWidth: 1, borderColor: 'rgba(248,113,113,0.15)' },
+  dangerBtnText: { color: 'rgba(248,113,113,0.95)', fontSize: 14, fontWeight: '600' },
+  btnPressed: { opacity: 0.65 },
+
+  quoteBox: { marginTop: 24 },
+  quoteBoxHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingHorizontal: 4 },
+  quoteBoxTitle: { color: theme.subtext, fontSize: 11, fontWeight: '600', letterSpacing: 1.6, textTransform: 'uppercase' },
+
+  loadingFull: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16, minHeight: 400 },
+  loadingText: { color: theme.subtext, fontSize: 14, fontWeight: '500', letterSpacing: 0.4 },
 });

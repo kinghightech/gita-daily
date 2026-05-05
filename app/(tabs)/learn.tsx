@@ -1,6 +1,8 @@
 import LearnBackground from '@/components/LearnBackground';
 import LotusLevel from '@/components/learning/LotusLevel';
 import { Fonts, GitaColors } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme/colors';
 import { fetchLotusLevels, updateCurrentLotusLevel, type LotusLevelData, type LotusQuestion } from '@/lib/lotus';
 import { fetchAllFestivals, type Festival, getFestivalSymbol } from '@/lib/festivals';
 import FestivalModal from '@/components/gita/FestivalModal';
@@ -53,6 +55,8 @@ const PATH_STRING = buildPathString();
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 export default function LearnScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [tab, setTab] = useState<LearnTab>('lotus');
   const [selectedFestival, setSelectedFestival] = useState<Festival | null>(null);
   const tabRef = useRef<LearnTab>('lotus');
@@ -100,11 +104,11 @@ export default function LearnScreen() {
             ]}
           />
           <TouchableOpacity activeOpacity={0.7} style={styles.topTab} onPress={() => switchTab('lotus')}>
-            <Flower2 size={15} color={tab === 'lotus' ? 'white' : 'rgba(255,255,255,0.5)'} />
+            <Flower2 size={15} color={tab === 'lotus' ? theme.text : theme.subtext} />
             <Text style={[styles.topTabText, tab === 'lotus' && styles.topTabTextActive]}>Lotus Path</Text>
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.7} style={styles.topTab} onPress={() => switchTab('festivals')}>
-            <Calendar size={15} color={tab === 'festivals' ? 'white' : 'rgba(255,255,255,0.5)'} />
+            <Calendar size={15} color={tab === 'festivals' ? theme.text : theme.subtext} />
             <Text style={[styles.topTabText, tab === 'festivals' && styles.topTabTextActive]}>Festivals</Text>
           </TouchableOpacity>
         </View>
@@ -118,6 +122,8 @@ export default function LearnScreen() {
 }
 
 function LotusPathView() {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [currentLevel, setCurrentLevel] = useState(1);
   const [allLevels, setAllLevels] = useState<LotusLevelData[]>([]);
   const [selectedLevelId, setSelectedLevelId] = useState<number | null>(null);
@@ -319,7 +325,7 @@ function LotusPathView() {
                 <View style={styles.levelBadge}><Text style={styles.levelBadgeText}>LEVEL {selectedLevelId}</Text></View>
                 <Text style={styles.modalTitle}>{selectedLevelData?.title}</Text>
               </View>
-              <TouchableOpacity activeOpacity={0.7} onPress={() => setIsModalVisible(false)}><X color="rgba(255,255,255,0.4)" size={22} /></TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setIsModalVisible(false)}><X color={theme.subtext} size={22} /></TouchableOpacity>
             </View>
 
             {lessonState === 'reading' && (
@@ -428,7 +434,7 @@ function LotusPathView() {
                 <Text style={styles.resultSubheading}>{quizScore >= Math.ceil(totalQuestions*2/3) ? `Level ${selectedLevelId} Mastered!` : "Read again and try once more."}</Text>
                 <View style={styles.scoreBoard}>
                   <Text style={styles.scoreLabel}>YOUR SCORE</Text>
-                  <Text style={[styles.scoreValue, quizScore >= Math.ceil(totalQuestions*2/3) ? styles.scorePass : { color: 'white' }]}>{quizScore} / {totalQuestions}</Text>
+                  <Text style={[styles.scoreValue, quizScore >= Math.ceil(totalQuestions*2/3) ? styles.scorePass : { color: theme.text }]}>{quizScore} / {totalQuestions}</Text>
                 </View>
                 <TouchableOpacity activeOpacity={0.7} style={[styles.primaryButton, { width: '100%', marginTop: 24 }]} onPress={finishLesson}>
                   <Text style={styles.primaryButtonText}>{quizScore >= Math.ceil(totalQuestions*2/3) ? 'Continue' : 'Try Again'}</Text>
@@ -458,6 +464,8 @@ const getOrdinalDay = (day: number) => {
 };
 
 function FestivalsView({ onSelectFestival }: { onSelectFestival: (f: Festival) => void }) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [currentMonthIdx, setCurrentMonthIdx] = useState(new Date().getMonth());
   const [allFestivals, setAllFestivals] = useState<Festival[]>([]);
   const [loading, setLoading] = useState(true);
@@ -570,13 +578,13 @@ function FestivalsView({ onSelectFestival }: { onSelectFestival: (f: Festival) =
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   topTabsWrap: { alignItems: 'center', marginTop: 12, marginBottom: 20 },
   topTabs: { flexDirection: 'row', backgroundColor: 'rgba(15,25,50,0.65)', borderRadius: 9999, padding: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', position: 'relative' },
   slidingPill: { position: 'absolute', top: 4, bottom: 4, left: 4, width: 128, borderRadius: 9999, backgroundColor: GitaColors.orange },
   topTab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, width: 128 },
-  topTabText: { color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: '600' },
-  topTabTextActive: { color: 'white' },
+  topTabText: { color: theme.subtext, fontSize: 13, fontWeight: '600' },
+  topTabTextActive: { color: theme.text },
   tabContentWrap: { flex: 1 },
   lockedBanner: { marginHorizontal: 16, marginBottom: 8, backgroundColor: 'rgba(248,113,113,0.2)', borderWidth: 1, borderColor: '#ef4444', borderRadius: 12, padding: 10, alignItems: 'center' },
   lockedBannerText: { color: '#fca5a5', fontSize: 13, fontWeight: '700' },
@@ -584,68 +592,51 @@ const styles = StyleSheet.create({
   lotusContent: { alignItems: 'center', paddingBottom: 120 },
   header: { paddingVertical: 16, alignItems: 'center' },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  title: { fontSize: 24, color: 'white', fontFamily: Fonts.serif, fontWeight: '700' },
+  title: { fontSize: 24, color: theme.text, fontFamily: Fonts.serif, fontWeight: '700' },
   subtitle: { color: 'rgba(207,250,254,0.8)', fontSize: 14, fontWeight: '500' },
   progressContainer: { width: '100%', alignItems: 'center', marginTop: 8 },
   progress: { color: 'rgba(165,243,252,0.6)', fontSize: 12, marginBottom: 6 },
-  progressBarBg: { width: 160, height: 4, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2 },
+  progressBarBg: { width: 160, height: 4, backgroundColor: theme.surface, borderRadius: 2 },
   progressBarFill: { height: '100%', backgroundColor: GitaColors.gold, borderRadius: 2 },
   pathContainer: { position: 'relative', alignSelf: 'center' },
   pathSvg: { position: 'absolute', top: 0, left: 0 },
   nodeWrapper: { position: 'absolute', zIndex: 10 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(9,15,28,0.9)', justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#0f172a', borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, borderColor: 'rgba(212,163,115,0.2)', height: '85%', padding: 24 },
+  modalCard: { backgroundColor: theme.popup, borderTopLeftRadius: 32, borderTopRightRadius: 32, borderWidth: 1, borderColor: 'rgba(212,163,115,0.2)', height: '85%', padding: 24 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   headerLeft: { flex: 1, gap: 4 },
   levelBadge: { backgroundColor: 'rgba(212,163,115,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start' },
   levelBadgeText: { color: GitaColors.gold, fontSize: 10, fontWeight: '800' },
-  modalTitle: { color: 'white', fontSize: 24, fontWeight: '800', fontFamily: Fonts.serif, lineHeight: 28 },
+  modalTitle: { color: theme.text, fontSize: 24, fontWeight: '800', fontFamily: Fonts.serif, lineHeight: 28 },
   readingLabel: { color: GitaColors.gold, fontSize: 12, fontWeight: '700', marginBottom: 10 },
-  modalBody: { color: 'rgba(255,255,255,0.9)', fontSize: 18, lineHeight: 26 },
+  modalBody: { color: theme.text, fontSize: 18, lineHeight: 26 },
   richTextContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 24 },
   boldKeyword: { fontWeight: '900', color: GitaColors.gold },
   primaryButton: { backgroundColor: 'rgba(251,191,36,0.85)', borderRadius: 14, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   primaryButtonText: { color: 'white', fontSize: 16, fontWeight: '800' },
   quizProgressHeader: { marginBottom: 20 },
-  quizProgressText: { color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 6 },
-  quizProgressBarBg: { height: 6, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 3 },
+  quizProgressText: { color: theme.subtext, fontSize: 13, marginBottom: 6 },
+  quizProgressBarBg: { height: 6, backgroundColor: theme.surface, borderRadius: 3 },
   quizProgressBarFill: { height: '100%', backgroundColor: GitaColors.gold },
-  questionText: { color: 'white', fontSize: 20, fontWeight: '700', lineHeight: 26, marginBottom: 24, flexShrink: 1 },
+  questionText: { color: theme.text, fontSize: 20, fontWeight: '700', lineHeight: 26, marginBottom: 24, flexShrink: 1 },
   optionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 14, borderWidth: 2, minHeight: 60 },
   optionRow: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12, marginRight: 8 },
-  optionLetter: { width: 30, height: 30, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  optionLetter: { width: 30, height: 30, borderRadius: 8, backgroundColor: theme.surface, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   optionLetterCorrect: { backgroundColor: '#22c55e' },
   optionLetterWrong: { backgroundColor: '#ef4444' },
-  optionLetterText: { color: 'white', fontSize: 14, fontWeight: '800' },
-  optionText: { color: 'white', fontSize: 15, fontWeight: '600', flex: 1, flexWrap: 'wrap' },
-  confettiContainer: { 
-    width: 60, 
-    height: 60, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    position: 'relative' 
-  },
-  celebrationWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 200,
-    width: '100%',
-    position: 'relative',
-  },
-  confettiParticle: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
+  optionLetterText: { color: theme.text, fontSize: 14, fontWeight: '800' },
+  optionText: { color: theme.text, fontSize: 15, fontWeight: '600', flex: 1, flexWrap: 'wrap' },
+  confettiContainer: { width: 60, height: 60, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  celebrationWrap: { alignItems: 'center', justifyContent: 'center', height: 200, width: '100%', position: 'relative' },
+  confettiParticle: { position: 'absolute', width: 8, height: 8, borderRadius: 4 },
   resultWrapper: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   resultIconCircle: { width: 90, height: 90, borderRadius: 45, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   resultCirclePass: { backgroundColor: 'rgba(34,197,94,0.1)', borderWidth: 2, borderColor: '#22c55e' },
-  resultCircleFail: { backgroundColor: 'rgba(255,255,255,0.05)' },
-  resultHeading: { color: 'white', fontSize: 26, fontWeight: '800', marginBottom: 8 },
-  resultSubheading: { color: 'rgba(255,255,255,0.6)', fontSize: 15, textAlign: 'center', marginBottom: 30 },
-  scoreBoard: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', width: '100%', padding: 20, borderRadius: 16 },
-  scoreLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: '800', letterSpacing: 1, marginBottom: 4 },
+  resultCircleFail: { backgroundColor: theme.surface },
+  resultHeading: { color: theme.text, fontSize: 26, fontWeight: '800', marginBottom: 8 },
+  resultSubheading: { color: theme.subtext, fontSize: 15, textAlign: 'center', marginBottom: 30 },
+  scoreBoard: { alignItems: 'center', backgroundColor: theme.surface, width: '100%', padding: 20, borderRadius: 16 },
+  scoreLabel: { color: theme.subtextMuted, fontSize: 11, fontWeight: '800', letterSpacing: 1, marginBottom: 4 },
   scoreValue: { fontSize: 40, fontWeight: '900' },
   scorePass: { color: '#22c55e' },
   festScroll: { flex: 1 },
@@ -654,18 +645,18 @@ const styles = StyleSheet.create({
   festHeader: { alignItems: 'center', paddingVertical: 18 },
   festTitle: { color: GitaColors.gold, fontSize: 30, fontWeight: '800', fontFamily: Fonts.serif, textAlign: 'center', lineHeight: 36 },
   festYear: { color: 'rgba(251,191,36,0.6)', fontSize: 16, marginTop: 4, fontWeight: '700', letterSpacing: 4, textAlign: 'center' },
-  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, marginBottom: 20, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 20, paddingHorizontal: 24, paddingVertical: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, marginBottom: 20, backgroundColor: theme.surface, borderRadius: 20, paddingHorizontal: 24, paddingVertical: 16, borderWidth: 1, borderColor: theme.border },
   monthText: { color: 'white', fontSize: 20, fontWeight: '800', letterSpacing: 0.5 },
   monthArrow: { color: GitaColors.gold, fontSize: 36, fontWeight: '300', lineHeight: 36, paddingHorizontal: 10 },
   loaderArea: { paddingVertical: 60, alignItems: 'center' },
   emptyArea: { paddingVertical: 60, alignItems: 'center' },
-  emptyText: { color: 'rgba(255,255,255,0.4)', fontSize: 16, textAlign: 'center' },
+  emptyText: { color: theme.subtextMuted, fontSize: 16, textAlign: 'center' },
   festivalList: { marginTop: 4 },
-  festivalItemCard: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'space-between', 
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  festivalItemCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.surface,
     borderRadius: 22,
     padding: 20,
     marginBottom: 16,
@@ -675,38 +666,13 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   festItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 20, flex: 1 },
-  symbolBadge: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: 'rgba(251, 191, 36, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.2)',
-  },
+  symbolBadge: { width: 56, height: 56, borderRadius: 16, backgroundColor: 'rgba(251, 191, 36, 0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(251, 191, 36, 0.2)' },
   festItemIcon: { fontSize: 28 },
   festItemMeta: { flex: 1 },
   festItemName: { color: 'white', fontSize: 20, fontWeight: '800', fontFamily: Fonts.serif, lineHeight: 24 },
   festItemDeity: { color: 'rgba(251, 191, 36, 0.7)', fontSize: 14, marginTop: 2, fontWeight: '600' },
   festItemDateText: { color: 'rgba(251, 191, 36, 0.5)', fontSize: 13, marginTop: 6, fontWeight: '700', letterSpacing: 0.5 },
-  loaderCenterContainer: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    gap: 16 
-  },
-  loadingTextMain: {
-    color: 'white',
-    fontSize: 16,
-    fontFamily: Fonts.serif,
-    opacity: 0.8,
-  },
-  loadingText: {
-    color: 'white',
-    marginTop: 16,
-    fontSize: 16,
-    fontFamily: Fonts.serif,
-    opacity: 0.8,
-  },
+  loaderCenterContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16 },
+  loadingTextMain: { color: theme.text, fontSize: 16, fontFamily: Fonts.serif, opacity: 0.8 },
+  loadingText: { color: theme.text, marginTop: 16, fontSize: 16, fontFamily: Fonts.serif, opacity: 0.8 },
 });

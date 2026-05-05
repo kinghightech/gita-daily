@@ -1,4 +1,6 @@
 import { Fonts } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme/colors';
 import { Verse } from '@/Data/mockverses';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,8 +15,8 @@ import {
     Sun,
     Zap,
 } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
-import { TouchableOpacity, 
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { TouchableOpacity,
     Pressable,
     StyleSheet,
     Text,
@@ -94,6 +96,8 @@ export default function MoodSearch({
   onVerseSelect,
   disableInteractions = false,
 }: MoodSearchProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const lastShownRef = useRef<Record<string, number>>({});
@@ -197,77 +201,26 @@ export default function MoodSearch({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     borderRadius: 16,
     padding: 18,
     marginVertical: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: theme.border,
     boxShadow: '0px 6px 12px rgba(0, 0, 0, 0.3)',
     elevation: 8,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  title: {
-    fontSize: 18,
-    color: '#fef3c7',
-    fontFamily: Fonts.serif,
-  },
-  description: {
-    marginTop: 12,
-    fontSize: 14,
-    lineHeight: 22,
-    color: 'rgba(251,191,36,0.6)',
-    marginBottom: 14,
-  },
-  moodGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  moodBtnWrap: {
-    width: '24%',
-    marginBottom: 10,
-  },
-  moodBtn: {
-    height: 92,
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  moodBtnSelected: {
-    boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.35)',
-    elevation: 6,
-  },
-  moodLabel: {
-    fontSize: 11,
-    lineHeight: 14,
-    color: 'rgba(251, 191, 36, 0.7)',
-    textAlign: 'center',
-    maxWidth: 76,
-  },
-  moodLabelSelected: {
-    color: '#ffffff',
-  },
-  loadingContainer: {
-    paddingVertical: 18,
-    alignItems: 'center',
-    gap: 8,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: 'rgba(251, 191, 36, 0.7)',
-  },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  title: { fontSize: 18, color: theme.textWarm, fontFamily: Fonts.serif },
+  description: { marginTop: 12, fontSize: 14, lineHeight: 22, color: 'rgba(251,191,36,0.6)', marginBottom: 14 },
+  moodGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 14 },
+  moodBtnWrap: { width: '24%', marginBottom: 10 },
+  moodBtn: { height: 92, paddingVertical: 12, paddingHorizontal: 4, borderRadius: 8, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', gap: 6 },
+  moodBtnSelected: { boxShadow: '0px 4px 10px rgba(0, 0, 0, 0.35)', elevation: 6 },
+  moodLabel: { fontSize: 11, lineHeight: 14, color: 'rgba(251, 191, 36, 0.7)', textAlign: 'center', maxWidth: 76 },
+  moodLabelSelected: { color: '#ffffff' },
+  loadingContainer: { paddingVertical: 18, alignItems: 'center', gap: 8 },
+  loadingText: { fontSize: 14, color: 'rgba(251, 191, 36, 0.7)' },
 });

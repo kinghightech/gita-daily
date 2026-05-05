@@ -1,6 +1,8 @@
-import BackgroundLayout from '@/components/BackgroundLayout';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
+import type { Theme } from '@/theme/colors';
 import * as Clipboard from 'expo-clipboard';
 import { fetchChapter, fetchVersesByChapter, stripHindiVerseRef, type GitaChapter, type GitaVerse } from '@/lib/verses';
 import { saveNote } from '@/lib/notes';
@@ -64,6 +66,9 @@ export default function ReadScreen() {
   const [isReadingChapter, setIsReadingChapter] = useState(false);
   const isReadingChapterRef = useRef(false);
   const [currentReadingIndex, setCurrentReadingIndex] = useState(-1);
+
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [userBookmark, setUserBookmark] = useState<{ chapter: number; verse: number } | null>(null);
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -520,7 +525,8 @@ export default function ReadScreen() {
   const isVerseSaved = selectedVerse ? favoriteVerseIds.includes(selectedVerse.id) : false;
 
   return (
-    <BackgroundLayout>
+    <View style={[styles.root, { backgroundColor: theme.background }]}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <View style={styles.chapterHeader}>
         <View style={styles.chapterHeaderInner}>
           <Pressable
@@ -685,9 +691,9 @@ export default function ReadScreen() {
                   onPress={handleSave}
                 >
                   <View style={styles.popupActionIconCircle}>
-                    <Heart 
-                      size={24} 
-                      color={isVerseSaved ? '#ef4444' : 'rgba(255,255,255,0.7)'} 
+                    <Heart
+                      size={24}
+                      color={isVerseSaved ? '#ef4444' : theme.subtext}
                       fill={isVerseSaved ? '#ef4444' : 'transparent'}
                     />
                   </View>
@@ -701,9 +707,9 @@ export default function ReadScreen() {
                   onPress={isBookmarked ? handleRemoveBookmark : handleBookmark}
                 >
                   <View style={[styles.popupActionIconCircle, isBookmarked && { borderColor: GitaColors.gold }]}>
-                    <Bookmark 
-                      size={24} 
-                      color={isBookmarked ? GitaColors.gold : 'rgba(255,255,255,0.7)'} 
+                    <Bookmark
+                      size={24}
+                      color={isBookmarked ? GitaColors.gold : theme.subtext}
                       fill={isBookmarked ? GitaColors.gold : 'transparent'}
                     />
                   </View>
@@ -824,11 +830,16 @@ export default function ReadScreen() {
           )}
         </Animated.View>
       )}
-    </BackgroundLayout>
+      </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: theme.background,
+  },
   /* ── Chapter Header ── */
   chapterHeader: {
     paddingTop: 8,
@@ -846,9 +857,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: theme.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -865,7 +876,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   chapterName: {
-    color: '#fef3c7',
+    color: theme.textWarm,
     fontSize: 23,
     fontWeight: '700',
     fontFamily: Fonts.serif,
@@ -927,9 +938,9 @@ const styles = StyleSheet.create({
     paddingTop: 24,
   },
   scriptCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: theme.border,
     borderRadius: 24,
     paddingHorizontal: 20,
     paddingVertical: 24,
@@ -941,7 +952,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   speakerName: {
-    color: '#fbbf24',
+    color: theme.primary,
     fontSize: 24,
     fontWeight: '700',
     fontFamily: Fonts.serif,
@@ -951,7 +962,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   verseText: {
-    color: '#fef3c7',
+    color: theme.textWarm,
     fontSize: 26,
     lineHeight: 42,
     fontFamily: Fonts.serif,
@@ -1002,13 +1013,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   contextLabel: {
-    color: '#fbbf24',
+    color: theme.primary,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.2,
   },
   contextText: {
-    color: 'rgba(254,243,199,0.7)',
+    color: theme.subtext,
     fontSize: 18,
     lineHeight: 28,
     fontFamily: Fonts.serif,
@@ -1021,7 +1032,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(15,23,42,0.97)',
+    backgroundColor: theme.popup,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
@@ -1042,7 +1053,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: theme.border,
   },
   popupHeaderRow: {
     flexDirection: 'row',
@@ -1051,7 +1062,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   popupVerseRef: {
-    color: '#fbbf24',
+    color: theme.primary,
     fontSize: 15,
     fontWeight: '600',
     fontFamily: Fonts.serif,
@@ -1077,7 +1088,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: theme.surface,
     borderWidth: 1,
     borderColor: 'rgba(251,191,36,0.12)',
     alignItems: 'center',
@@ -1089,7 +1100,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   popupActionLabel: {
-    color: 'rgba(255,255,255,0.5)',
+    color: theme.subtext,
     fontSize: 12,
     fontWeight: '500',
     textAlign: 'center',
@@ -1109,7 +1120,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   backBtnText: {
-    color: GitaColors.gold,
+    color: theme.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -1119,13 +1130,13 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   insightTitle: {
-    color: '#fef3c7',
+    color: theme.textWarm,
     fontSize: 18,
     fontWeight: '600',
     fontFamily: Fonts.serif,
   },
   insightPlaceholder: {
-    color: 'rgba(255,255,255,0.4)',
+    color: theme.subtextMuted,
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 22,
@@ -1139,7 +1150,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   noteModalCard: {
-    backgroundColor: 'rgba(15,23,42,0.98)',
+    backgroundColor: theme.popup,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     borderTopWidth: 1,
@@ -1159,19 +1170,19 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   noteTitle: {
-    color: '#fef3c7',
+    color: theme.textWarm,
     fontSize: 16,
     fontWeight: '600',
     fontFamily: Fonts.serif,
     marginBottom: 12,
   },
   noteInput: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: theme.surface,
     borderWidth: 1,
     borderColor: 'rgba(251,191,36,0.15)',
     borderRadius: 14,
     padding: 16,
-    color: '#fef3c7',
+    color: theme.textWarm,
     fontSize: 15,
     lineHeight: 22,
     minHeight: 100,
@@ -1191,7 +1202,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   noteSaveBtnText: {
-    color: '#fbbf24',
+    color: theme.primary,
     fontSize: 15,
     fontWeight: '700',
   },

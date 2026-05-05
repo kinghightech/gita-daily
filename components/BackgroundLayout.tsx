@@ -1,3 +1,4 @@
+import { useTheme } from '@/hooks/useTheme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,9 +8,16 @@ interface BackgroundLayoutProps {
 }
 
 export default function BackgroundLayout({ children }: BackgroundLayoutProps) {
+  const theme = useTheme();
+  const isDark = theme.blurTint === 'dark';
+
+  const bgColors = isDark
+    ? (['#0f172a', '#172554', '#0f172a'] as const)
+    : (['#FFFBF0', '#FEF3C7', '#FFFBF0'] as const);
+
   return (
     <LinearGradient
-      colors={['#0f172a', '#172554', '#0f172a']}
+      colors={bgColors}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={{ flex: 1 }}
@@ -17,14 +25,12 @@ export default function BackgroundLayout({ children }: BackgroundLayoutProps) {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* Decorative Ambient Glows */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          {/* Top-right amber glow */}
           <LinearGradient
             colors={['rgba(245, 158, 11, 0.08)', 'rgba(245, 158, 11, 0.03)', 'transparent']}
             start={{ x: 1, y: 0 }}
             end={{ x: 0, y: 1 }}
             style={styles.glowTopRight}
           />
-          {/* Top-left blue glow */}
           <LinearGradient
             colors={['rgba(147, 197, 253, 0.05)', 'transparent']}
             start={{ x: 0, y: 0 }}
@@ -40,23 +46,7 @@ export default function BackgroundLayout({ children }: BackgroundLayoutProps) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  glowTopRight: {
-    position: 'absolute',
-    top: -200,
-    right: -200,
-    width: 600,
-    height: 600,
-    borderRadius: 300,
-  },
-  glowTopLeft: {
-    position: 'absolute',
-    top: -150,
-    left: -150,
-    width: 500,
-    height: 500,
-    borderRadius: 250,
-  },
+  safeArea: { flex: 1 },
+  glowTopRight: { position: 'absolute', top: -200, right: -200, width: 600, height: 600, borderRadius: 300 },
+  glowTopLeft: { position: 'absolute', top: -150, left: -150, width: 500, height: 500, borderRadius: 250 },
 });
