@@ -1,21 +1,21 @@
 import BackgroundLayout from '@/components/BackgroundLayout';
-import { Fonts } from '@/constants/theme';
 import { HapticButton } from '@/components/ui/HapticButton';
-import { Image } from 'expo-image';
+import { Fonts } from '@/constants/theme';
+import { useVideoPlayer } from 'expo-video';
 import {
-  Bell,
-  BookOpen,
-  ChevronLeft,
-  ChevronRight,
-  Flower2,
-  Globe,
-  ListChecks,
-  Shield,
-  Sparkles,
+    Bell,
+    BookOpen,
+    ChevronLeft,
+    ChevronRight,
+    Flower2,
+    Globe,
+    ListChecks,
+    Shield,
+    Sparkles,
 } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View  } from 'react-native';
-import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useEffect, useMemo, useState } from 'react';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
 type AuthChoice = 'email';
 type AuthMode = 'signup' | 'login';
@@ -39,6 +39,98 @@ interface OnboardingFlowProps {
 
 type ReminderChoice = 'yes' | 'no' | null;
 const TOTAL_STEPS = 6;
+const INTRO_HEADLINE = "Did you know connecting back to your roots doesn't have to feel...";
+const INTRO_WORDS = ['hard?', 'stressful?', 'complicated?'] as const;
+
+function OnboardingIntroHero() {
+  const [headlineLength, setHeadlineLength] = useState(0);
+  const [wordIndex, setWordIndex] = useState(0);
+  const [wordLength, setWordLength] = useState(0);
+  const [wordPhase, setWordPhase] = useState<'typing' | 'holding' | 'deleting'>('typing');
+  const cursorOpacity = useSharedValue(1);
+
+  useEffect(() => {
+    cursorOpacity.value = withRepeat(withTiming(0.18, { duration: 520 }), -1, true);
+  }, [cursorOpacity]);
+
+  useEffect(() => {
+    if (headlineLength >= INTRO_HEADLINE.length) return;
+
+    const timeout = setTimeout(() => {
+      setHeadlineLength((current) => current + 1);
+    }, headlineLength === 0 ? 220 : 34);
+
+    return () => clearTimeout(timeout);
+  }, [headlineLength]);
+
+  useEffect(() => {
+    if (headlineLength < INTRO_HEADLINE.length) return;
+
+    const currentWord = INTRO_WORDS[wordIndex];
+
+    if (wordPhase === 'typing') {
+      if (wordLength >= currentWord.length) {
+        const holdTimeout = setTimeout(() => setWordPhase('holding'), 850);
+        return () => clearTimeout(holdTimeout);
+      }
+
+      const typeTimeout = setTimeout(() => {
+        setWordLength((current) => current + 1);
+      }, 70);
+
+      return () => clearTimeout(typeTimeout);
+    }
+
+    if (wordPhase === 'holding') {
+      const holdTimeout = setTimeout(() => setWordPhase('deleting'), 950);
+      return () => clearTimeout(holdTimeout);
+    }
+
+    if (wordLength === 0) {
+      const nextWordTimeout = setTimeout(() => {
+        setWordIndex((current) => (current + 1) % INTRO_WORDS.length);
+        setWordPhase('typing');
+      }, 150);
+
+      return () => clearTimeout(nextWordTimeout);
+    }
+
+    const deleteTimeout = setTimeout(() => {
+      setWordLength((current) => current - 1);
+    }, 38);
+
+    return () => clearTimeout(deleteTimeout);
+  }, [headlineLength, wordIndex, wordLength, wordPhase]);
+
+  const cursorStyle = useAnimatedStyle(() => ({
+    opacity: cursorOpacity.value,
+  }));
+
+  const displayedHeadline = INTRO_HEADLINE.slice(0, headlineLength);
+  const displayedWord = INTRO_WORDS[wordIndex].slice(0, wordLength);
+  const isHeadlineTyping = headlineLength < INTRO_HEADLINE.length;
+
+  return (
+    <View style={styles.heroBlock}>
+      <View style={styles.heroTitleWrap}>
+        <Text style={styles.heroTitleIntro}>Welcome to</Text>
+        <Text numberOfLines={1} style={styles.heroTitleMain}>
+          Dharma Daily
+        </Text>
+      </View>
+
+      <Text style={styles.heroHeadline}>
+        {displayedHeadline}
+        {isHeadlineTyping ? <Animated.Text style={[styles.heroBodyCursor, cursorStyle]}>|</Animated.Text> : null}
+      </Text>
+
+      <View style={styles.heroWordRow}>
+        <Text style={styles.heroWord}>{displayedWord || ' '}</Text>
+        {!isHeadlineTyping ? <Animated.Text style={[styles.heroCursor, cursorStyle]}>|</Animated.Text> : null}
+      </View>
+    </View>
+  );
+}
 
 export default function OnboardingFlow({ onComplete, onReminderPreferenceChange }: OnboardingFlowProps) {
   const [step, setStep] = useState(0);
@@ -50,6 +142,13 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
   const [password, setPassword] = useState('');
   const pageTransition = useSharedValue(1);
   const direction = useSharedValue(1); // 1 for forward, -1 for backward
+  // Local bundled asset for the full-screen onboarding background.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const backgroundVideoPlayer = useVideoPlayer(require('@/assets/images/onboarding.MOV'), (player) => {
+    player.loop = true;
+    player.muted = true;
+    player.play();
+  });
 
   const pageAnimatedStyle = useAnimatedStyle(() => {
     const opacity = pageTransition.value;
@@ -72,7 +171,8 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
   }, [step]);
 
   const canContinue = useMemo(() => {
-    if (step === 0) return fullName.trim().length > 0;
+    if (step === 0) return true;
+    if (step === 1) return fullName.trim().length > 0;
     if (step === 3) return reminderChoice !== null;
     if (step === 4) return preferredLanguage !== null;
 
@@ -164,15 +264,22 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     if (step === 0) {
       return (
         <>
-          <View style={styles.logoWrap}>
-            <Image
-              source={require('@/assets/images/onboarding-logo.png')}
-              style={styles.logoImage}
-              contentFit="contain"
+          <OnboardingIntroHero />
+
+          <View style={[styles.firstStepForm, styles.hiddenHeroForm]}>
+            <Text style={styles.label}>What is your full name?</Text>
+            <TextInput
+              value={fullName}
+              onChangeText={setFullName}
+              placeholder="Enter your full name"
+              placeholderTextColor="rgba(251,191,36,0.35)"
+              style={styles.input}
             />
+
+            <Text style={styles.helper}>Your name helps personalize your experience.</Text>
           </View>
-          <Text style={styles.title}>Welcome to Gita Daily</Text>
-          <Text style={styles.subtitle}>Begin your daily journey with wisdom from the Bhagavad Gita.</Text>
+
+          <View style={styles.hiddenLegacyBlock}>
 
           <Text style={styles.label}>What’s your full name?</Text>
           <TextInput
@@ -184,6 +291,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
           />
 
           <Text style={styles.helper}>Your name helps personalize your experience.</Text>
+          </View>
         </>
       );
     }
@@ -191,6 +299,22 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     if (step === 1) {
       return (
         <>
+          <Text style={styles.title}>Let&apos;s make this personal</Text>
+          <Text style={styles.subtitle}>Tell us your name first, and we&apos;ll shape the journey around you.</Text>
+
+          <View style={styles.firstStepForm}>
+            <Text style={styles.label}>What is your full name?</Text>
+            <TextInput
+              value={fullName}
+              onChangeText={setFullName}
+              placeholder="Enter your full name"
+              placeholderTextColor="rgba(251,191,36,0.35)"
+              style={styles.input}
+            />
+
+            <Text style={styles.helper}>Your name helps personalize your experience.</Text>
+          </View>
+
           <Text style={styles.title}>Daily wisdom, made simple</Text>
           <Text style={styles.subtitle}>
             We give daily quotes from the Bhagavad Gita that you can read anytime. You can like a quote by double
@@ -384,7 +508,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
   };
 
   return (
-    <BackgroundLayout>
+    <BackgroundLayout backgroundPlayer={backgroundVideoPlayer}>
       <KeyboardAvoidingView
         style={styles.keyboardAvoiding}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -419,12 +543,28 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
           <HapticButton
             onPress={continueFlow}
             disabled={!canContinue}
-            style={[styles.continueBtn, !canContinue && styles.continueBtnDisabled]}
+            style={[
+              styles.continueBtn,
+              step === 0 && styles.introContinueBtn,
+              !canContinue && styles.continueBtnDisabled,
+            ]}
           >
-            <Text style={[styles.continueText, !canContinue && styles.continueTextDisabled]}>
-              {step === TOTAL_STEPS - 1 ? (authMode === 'signup' ? 'Finish' : 'Log In') : 'Continue'}
+            <Text
+              style={[
+                styles.continueText,
+                step === 0 && styles.introContinueBtnText,
+                !canContinue && styles.continueTextDisabled,
+              ]}
+            >
+              {step === 0
+                ? 'Start My Journey'
+                : step === TOTAL_STEPS - 1
+                  ? (authMode === 'signup' ? 'Finish' : 'Log In')
+                  : 'Continue'}
             </Text>
-            {step < TOTAL_STEPS - 1 && <ChevronRight size={16} color={!canContinue ? 'rgba(15,23,42,0.45)' : '#0f172a'} />}
+            {step > 0 && step < TOTAL_STEPS - 1 && (
+              <ChevronRight size={16} color={!canContinue ? 'rgba(15,23,42,0.45)' : '#0f172a'} />
+            )}
           </HapticButton>
         </View>
       </KeyboardAvoidingView>
@@ -480,14 +620,119 @@ const styles = StyleSheet.create({
   },
   stepBlock: {
     paddingTop: 8,
+    flexGrow: 1,
   },
-  logoWrap: {
+  heroBlock: {
+    flex: 1,
     alignItems: 'center',
-    marginBottom: 18,
+    justifyContent: 'center',
+    paddingTop: 0,
+    paddingBottom: 120,
+    paddingHorizontal: 16,
   },
-  logoImage: {
-    width: 200,
-    height: 200,
+  heroTitle: {
+    color: '#FFF4CF',
+    fontSize: 58,
+    lineHeight: 60,
+    fontWeight: '700',
+    fontFamily: Fonts.serif,
+    textAlign: 'center',
+    letterSpacing: -1.1,
+    marginBottom: 20,
+    textShadowColor: 'rgba(0,0,0,0.16)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 12,
+  },
+  heroTitleWrap: {
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 20,
+  },
+  heroTitleIntro: {
+    color: '#FFF4CF',
+    fontSize: 44,
+    lineHeight: 48,
+    fontWeight: '700',
+    fontFamily: Fonts.serif,
+    textAlign: 'center',
+    letterSpacing: -0.8,
+    textShadowColor: 'rgba(0,0,0,0.16)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 12,
+  },
+  heroTitleMain: {
+    color: '#FFF4CF',
+    fontSize: 42,
+    lineHeight: 46,
+    fontWeight: '700',
+    fontFamily: Fonts.serif,
+    textAlign: 'center',
+    letterSpacing: -0.8,
+    width: '100%',
+    maxWidth: 360,
+    textShadowColor: 'rgba(0,0,0,0.16)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 12,
+  },
+  heroHeadline: {
+    color: '#fef3c7',
+    fontSize: 42,
+    lineHeight: 48,
+    fontWeight: '600',
+    fontFamily: Fonts.serif,
+    textAlign: 'center',
+    letterSpacing: -0.65,
+    minHeight: 192,
+    maxWidth: 340,
+    textShadowColor: 'rgba(0,0,0,0.18)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 14,
+  },
+  heroBodyCursor: {
+    color: '#FCD34D',
+    fontSize: 42,
+    lineHeight: 48,
+  },
+  heroWordRow: {
+    minHeight: 72,
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'nowrap',
+    minWidth: 220,
+  },
+  heroWord: {
+    color: '#fcd34d',
+    fontSize: 42,
+    lineHeight: 48,
+    fontFamily: Fonts.serif,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.22)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
+  },
+  heroCursor: {
+    color: '#fcd34d',
+    fontSize: 30,
+    lineHeight: 48,
+    marginLeft: 2,
+  },
+  firstStepForm: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.18)',
+    backgroundColor: 'rgba(15,23,42,0.42)',
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+  },
+  hiddenHeroForm: {
+    display: 'none',
+  },
+  hiddenLegacyBlock: {
+    display: 'none',
   },
   title: {
     color: '#fef3c7',
@@ -674,6 +919,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 4,
   },
+  introContinueBtn: {
+    marginTop: 2,
+    marginBottom: 8,
+    backgroundColor: 'rgba(251, 191, 36, 0.24)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.38)',
+    paddingHorizontal: 22,
+    shadowColor: '#000000',
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+  },
   continueBtnDisabled: {
     backgroundColor: 'rgba(251,191,36,0.35)',
   },
@@ -681,6 +938,10 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     fontSize: 16,
     fontWeight: '800',
+  },
+  introContinueBtnText: {
+    color: '#FFF7DB',
+    letterSpacing: 0.2,
   },
   continueTextDisabled: {
     color: 'rgba(15,23,42,0.45)',
