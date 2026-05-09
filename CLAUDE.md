@@ -68,7 +68,7 @@ Key RPCs:
 
 ## Key Patterns
 
-**Verse of the Day**: `Math.floor(daysSinceJan1_2024) % 716` — deterministic, no DB query needed.
+**Verse of the Day**: Random verse seeded by the local calendar date (`seededRandomForDate` in `lib/verses.ts`). Same verse all day, unpredictable across days, pulled from `gita_verses` by index.
 
 **Cross-component events** (DeviceEventEmitter):
 - `FAVORITES_UPDATED_EVENT`

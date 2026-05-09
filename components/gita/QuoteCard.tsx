@@ -1,4 +1,4 @@
-import { Fonts } from '@/constants/theme';
+﻿import { Fonts } from '@/constants/theme';
 import { FAVORITES_UPDATED_EVENT, toggleFavoriteVerse } from '@/lib/favorites';
 import { incrementSharesCount } from '@/lib/profile';
 import { stripHindiVerseRef } from '@/lib/verses';
@@ -125,11 +125,14 @@ export default function QuoteCard({
   }, [verse?.id]);
 
   const getQuoteText = () => {
-    const text =
+    const raw =
       activeLanguage === 'hindi'
         ? (stripHindiVerseRef(verse?.hindi) || verse?.english)
         : (verse?.english ?? verse?.hindi);
-    return text ?? '';
+    if (!raw) return '';
+    // Strip all apostrophes / quote-like chars so only the outer wrapping
+    // pair is visible — exactly 2 marks total.
+    return raw.replace(/['"‘’“”«»`]/g, '');
   };
 
   const handleFavorite = useCallback(async () => {
@@ -311,37 +314,41 @@ export default function QuoteCard({
         style={isFullscreen ? styles.fullscreenContent : styles.content}
         onPress={isFullscreen ? handleDoubleTap : handleCardPress}
       >
-        {/* Top label */}
-        <View style={isFullscreen ? styles.fullscreenTopSection : styles.topSection}>
-          {isFullscreen && (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.closeBtn}
-              onPress={handleCollapse}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <X color="#fff" size={24} strokeWidth={2} />
-            </TouchableOpacity>
-          )}
-          {isToday && (
-            <Text style={styles.vodLabel}>Verse of the Day</Text>
-          )}
-          <Text style={isFullscreen ? styles.fullscreenReference : styles.reference}>
-            Chapter {verse.chapter}, Verse {verse.verse}
-          </Text>
-          {verse.speaker && (
-            <Text style={styles.speaker}>Spoken by {verse.speaker}</Text>
-          )}
-        </View>
+        {/* Close button — fullscreen only, sits at the very top */}
+        {isFullscreen && (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.closeBtn}
+            onPress={handleCollapse}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <X color="#fff" size={24} strokeWidth={2} />
+          </TouchableOpacity>
+        )}
 
-        {/* Verse text */}
-        <View style={styles.quoteSection}>
-          <Text style={[
-            isFullscreen ? styles.fullscreenQuoteText : styles.quoteText,
-            activeLanguage === 'hindi' && styles.quoteHindi,
-          ]}>
-            {getQuoteText()}
-          </Text>
+        {/* Header + verse grouped so they stay together and center as one unit */}
+        <View style={isFullscreen ? styles.fullscreenBodyGroup : styles.bodyGroup}>
+          <View style={isFullscreen ? styles.fullscreenTopSection : styles.topSection}>
+            {isToday && (
+              <Text style={styles.vodLabel}>Verse of the Day</Text>
+            )}
+            <Text style={isFullscreen ? styles.fullscreenReference : styles.reference}>
+              Chapter {verse.chapter}, Verse {verse.verse}
+            </Text>
+            {verse.speaker && (
+              <Text style={styles.speaker}>Spoken by {verse.speaker}</Text>
+            )}
+          </View>
+
+          {/* Verse text */}
+          <View style={isFullscreen ? styles.fullscreenQuoteSection : styles.quoteSection}>
+            <Text style={[
+              isFullscreen ? styles.fullscreenQuoteText : styles.quoteText,
+              activeLanguage === 'hindi' && styles.quoteHindi,
+            ]}>
+              {`“${getQuoteText()}”`}
+            </Text>
+          </View>
         </View>
 
         {/* Double-tap heart animation */}
@@ -505,6 +512,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  // Non-fullscreen: fills space so quoteSection (flex:1) can push to center
+  bodyGroup: {
+    flex: 1,
+  },
+
+  // Fullscreen: centers header + verse together vertically as one unit
+  fullscreenBodyGroup: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 20,
+  },
+
   topSection: {
     gap: 2,
   },
@@ -548,6 +567,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: 10,
     paddingBottom: 28,
+  },
+
+  fullscreenQuoteSection: {
+    paddingTop: 4,
   },
 
   quoteText: {

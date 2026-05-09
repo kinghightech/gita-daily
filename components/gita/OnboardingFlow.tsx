@@ -4,18 +4,23 @@ import { Fonts } from '@/constants/theme';
 import { useVideoPlayer } from 'expo-video';
 import {
     Bell,
+    Book,
     BookOpen,
     ChevronLeft,
     ChevronRight,
-    Flower2,
+    Flame,
     Globe,
-    ListChecks,
-    Shield,
-    Sparkles,
+    Heart,
+    Maximize2,
+    Medal,
+    Mic,
+    PlayCircle,
+    Share,
+    Shield
 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 
 type AuthChoice = 'email';
 type AuthMode = 'signup' | 'login';
@@ -41,6 +46,8 @@ type ReminderChoice = 'yes' | 'no' | null;
 const TOTAL_STEPS = 6;
 const INTRO_HEADLINE = "Did you know connecting back to your roots doesn't have to feel...";
 const INTRO_WORDS = ['hard?', 'stressful?', 'complicated?'] as const;
+const STEP_ONE_PROMPT_TOP = "Let’s personalize your journey";
+const STEP_ONE_PROMPT_BOTTOM = "What’s your full name?";
 
 function OnboardingIntroHero() {
   const [headlineLength, setHeadlineLength] = useState(0);
@@ -132,16 +139,81 @@ function OnboardingIntroHero() {
   );
 }
 
+const FEATURES_LIST = [
+  { id: 'verses', title: 'Daily verses', desc: 'When you first open the app you will be met with the verse of the day', Icon: BookOpen },
+  { id: 'streaks', title: 'Streaks', desc: 'Open the app once a day to view your verse to upgrade your streak', Icon: Flame },
+  { id: 'likes', title: 'Likes', desc: 'Each day you can like a verse by clicking the heart button or simply double tapping.', Icon: Heart },
+  { id: 'listening', title: 'Listening', desc: 'Click the microphone button to hear the verse.', Icon: Mic },
+  { id: 'expand', title: 'Expand', desc: 'Click the quote card box to expand and have it take up your whole screen', Icon: Maximize2 },
+  { id: 'share', title: 'Share', desc: 'Tap the share button to share the verses with anyone!', Icon: Share },
+  { id: 'read', title: 'Read', desc: 'Click the read section to read the whole Gita, you can even tap on a verse to like it, share, note, bookmark, copy.', Icon: Book },
+  { id: 'listenBook', title: 'Listen to the book', desc: 'Tap the play button on the read section to listen to it', Icon: PlayCircle },
+  { id: 'badges', title: 'Unlock badges', desc: 'The more you use the app the more badges you unlock and rewards that are commign soon!', Icon: Medal },
+];
+
+function AnimatedFeatureCard({ feature, index, progress, totalCards }: { feature: any, index: number, progress: any, totalCards: number }) {
+  const cardAnimStyle = useAnimatedStyle(() => {
+    const chunk = 1 / totalCards;
+    const val = Math.max(0, Math.min(1, (progress.value - index * chunk * 0.5) * 4));
+    return {
+      opacity: val,
+      transform: [
+        { translateY: (1 - val) * 15 },
+        { scale: 0.98 + val * 0.02 }
+      ],
+    };
+  });
+
+  return (
+    <Animated.View style={[styles.infoCard, cardAnimStyle]}>
+      <feature.Icon size={20} color="#fbbf24" style={{ marginTop: 2 }} />
+      <View style={styles.infoCopy}>
+        <Text style={styles.infoTitle}>{feature.title}</Text>
+        <Text style={styles.infoDesc}>{feature.desc}</Text>
+      </View>
+    </Animated.View>
+  );
+}
+
+function StepTwoDescription({ descOpacity }: { descOpacity: any }) {
+  const descAnimStyle = useAnimatedStyle(() => ({
+    opacity: descOpacity.value,
+    transform: [{ translateY: (1 - descOpacity.value) * 10 }],
+  }));
+
+  return (
+    <Animated.View style={descAnimStyle}>
+      <Text style={[styles.subtitle, { marginTop: 12, marginBottom: 24 }]}>
+        Dharma Daily gives daily quotes of the Bhagavad Gita that you can read anytime. Here's a breakdown of the many features:
+      </Text>
+    </Animated.View>
+  );
+}
+
 export default function OnboardingFlow({ onComplete, onReminderPreferenceChange }: OnboardingFlowProps) {
   const [step, setStep] = useState(0);
+  const [previousStep, setPreviousStep] = useState<number | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [fullName, setFullName] = useState('');
   const [reminderChoice, setReminderChoice] = useState<ReminderChoice>(null);
   const [preferredLanguage, setPreferredLanguage] = useState<PreferredLanguage | null>(null);
   const [authMode, setAuthMode] = useState<AuthMode>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [stepOnePromptTopLength, setStepOnePromptTopLength] = useState(0);
+  const [stepOnePromptBottomLength, setStepOnePromptBottomLength] = useState(0);
+  const [stepOnePromptPhase, setStepOnePromptPhase] = useState<'typingTop' | 'typingBottom' | 'done'>('typingTop');
+
+  // Step 2 (Features) states
+  const [stepTwoPromptLength, setStepTwoPromptLength] = useState(0);
+  const [stepTwoPhase, setStepTwoPhase] = useState<'typing' | 'done'>('typing');
+  const stepTwoDescOpacity = useSharedValue(0);
+  const stepTwoCardsProgress = useSharedValue(0);
+
   const pageTransition = useSharedValue(1);
   const direction = useSharedValue(1); // 1 for forward, -1 for backward
+  const stepOneFormProgress = useSharedValue(0);
+  const stepOneCursorOpacity = useSharedValue(1);
   // Local bundled asset for the full-screen onboarding background.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const backgroundVideoPlayer = useVideoPlayer(require('@/assets/images/onboarding.MOV'), (player) => {
@@ -156,7 +228,9 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     // When fading out (target 0), we want to slide OUT.
     // When fading in (target 1), we want to slide IN.
     // Actually, a simpler way is to just use direction to flip the start/end points.
-    const translateX = (1 - pageTransition.value) * 50 * direction.value;
+    // Use (value - 1) so outgoing (1->0) moves in the direction sign-negated
+    // and incoming (0->1) moves from the opposite side into place.
+    const translateX = (pageTransition.value - 1) * 50 * direction.value;
 
     return {
       opacity,
@@ -164,11 +238,117 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     };
   });
 
+  const outgoingPageAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: 1 - pageTransition.value,
+    transform: [{ translateX: -direction.value * pageTransition.value * 52 }],
+  }));
+
+  const incomingPageAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: pageTransition.value,
+    transform: [{ translateX: direction.value * (1 - pageTransition.value) * 52 }],
+  }));
+
+  const stepOneFormAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: stepOneFormProgress.value,
+    transform: [
+      { translateY: (1 - stepOneFormProgress.value) * 14 },
+      { scale: 0.94 + stepOneFormProgress.value * 0.06 },
+    ],
+  }));
+
+  const stepOneCursorStyle = useAnimatedStyle(() => ({
+    opacity: stepOneCursorOpacity.value,
+  }));
+
+  useEffect(() => {
+    stepOneCursorOpacity.value = withRepeat(withTiming(0.18, { duration: 520 }), -1, true);
+  }, [stepOneCursorOpacity]);
+
   useEffect(() => {
     if (step < 0 || step > TOTAL_STEPS - 1) {
       setStep(0);
     }
   }, [step]);
+
+  useEffect(() => {
+    if (step !== 1) {
+      setStepOnePromptTopLength(0);
+      setStepOnePromptBottomLength(0);
+      setStepOnePromptPhase('typingTop');
+      stepOneFormProgress.value = 0;
+      return;
+    }
+
+    if (stepOnePromptPhase === 'typingTop') {
+      if (stepOnePromptTopLength >= STEP_ONE_PROMPT_TOP.length) {
+        const nextPhaseTimeout = setTimeout(() => setStepOnePromptPhase('typingBottom'), 220);
+        return () => clearTimeout(nextPhaseTimeout);
+      }
+
+      const timeout = setTimeout(() => {
+        setStepOnePromptTopLength((current) => current + 1);
+      }, stepOnePromptTopLength === 0 ? 220 : 34);
+
+      return () => clearTimeout(timeout);
+    }
+
+    if (stepOnePromptPhase === 'typingBottom') {
+      if (stepOnePromptBottomLength >= STEP_ONE_PROMPT_BOTTOM.length) {
+        const revealTimeout = setTimeout(() => {
+          setStepOnePromptPhase('done');
+          stepOneFormProgress.value = withSpring(1, {
+            damping: 14,
+            stiffness: 180,
+            mass: 0.9,
+          });
+        }, 180);
+
+        return () => clearTimeout(revealTimeout);
+      }
+
+      const timeout = setTimeout(() => {
+        setStepOnePromptBottomLength((current) => current + 1);
+      }, stepOnePromptBottomLength === 0 ? 200 : 34);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [
+    step,
+    stepOnePromptTopLength,
+    stepOnePromptBottomLength,
+    stepOnePromptPhase,
+    stepOneFormProgress,
+  ]);
+
+  useEffect(() => {
+    if (step !== 2) {
+      setStepTwoPromptLength(0);
+      setStepTwoPhase('typing');
+      stepTwoDescOpacity.value = 0;
+      stepTwoCardsProgress.value = 0;
+      return;
+    }
+
+    const promptText = `Welcome ${fullName}, Meet the app.`;
+
+    if (stepTwoPhase === 'typing') {
+      if (stepTwoPromptLength >= promptText.length) {
+        const revealTimeout = setTimeout(() => {
+          setStepTwoPhase('done');
+          stepTwoDescOpacity.value = withTiming(1, { duration: 600 });
+          stepTwoCardsProgress.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.cubic) });
+        }, 180);
+
+        return () => clearTimeout(revealTimeout);
+      }
+
+      const timeout = setTimeout(() => {
+        setStepTwoPromptLength((current) => current + 1);
+      }, stepTwoPromptLength === 0 ? 200 : 34);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [step, stepTwoPromptLength, stepTwoPhase, fullName, stepTwoDescOpacity, stepTwoCardsProgress]);
 
   const canContinue = useMemo(() => {
     if (step === 0) return true;
@@ -187,34 +367,23 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     return true;
   }, [authMode, email, fullName, password, preferredLanguage, reminderChoice, step]);
 
-  const setStepFromAnimation = (nextStep: number, isForward: boolean) => {
+  const animateToStep = (nextStep: number) => {
+    const isForward = nextStep > step;
+    setPreviousStep(step);
+    setIsTransitioning(true);
     setStep(nextStep);
-    // On the way in, flip direction to come from the opposite side
-    direction.value = isForward ? -1 : 1;
-    
+    // Incoming slide starts from the side associated with the navigation direction.
+    direction.value = isForward ? 1 : -1;
+
     pageTransition.value = 0;
     pageTransition.value = withTiming(1, {
       duration: 350,
       easing: Easing.bezier(0.33, 1, 0.68, 1),
+    }, (finished) => {
+      if (!finished) return;
+      runOnJS(setIsTransitioning)(false);
+      runOnJS(setPreviousStep)(null);
     });
-  };
-
-  const animateToStep = (nextStep: number) => {
-    const isForward = nextStep > step;
-    // On the way out, slide in the primary direction
-    direction.value = isForward ? 1 : -1;
-
-    pageTransition.value = withTiming(
-      0,
-      {
-        duration: 200,
-        easing: Easing.bezier(0.33, 1, 0.68, 1),
-      },
-      (finished) => {
-        if (!finished) return;
-        runOnJS(setStepFromAnimation)(nextStep, isForward);
-      }
-    );
   };
 
   const requestNotificationsIfNeeded = async () => {
@@ -260,8 +429,8 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     animateToStep(step - 1);
   };
 
-  const renderStepContent = () => {
-    if (step === 0) {
+  const renderStepContent = (currentStep = step) => {
+    if (currentStep === 0) {
       return (
         <>
           <OnboardingIntroHero />
@@ -296,14 +465,27 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
       );
     }
 
-    if (step === 1) {
-      return (
-        <>
-          <Text style={styles.title}>Let&apos;s make this personal</Text>
-          <Text style={styles.subtitle}>Tell us your name first, and we&apos;ll shape the journey around you.</Text>
+    if (currentStep === 1) {
+      const displayedStepOnePromptTop = STEP_ONE_PROMPT_TOP.slice(0, stepOnePromptTopLength);
+      const displayedStepOnePromptBottom = STEP_ONE_PROMPT_BOTTOM.slice(0, stepOnePromptBottomLength);
+      const isTypingTop = stepOnePromptPhase === 'typingTop' && stepOnePromptTopLength < STEP_ONE_PROMPT_TOP.length;
+      const isTypingBottom = stepOnePromptPhase === 'typingBottom' && stepOnePromptBottomLength < STEP_ONE_PROMPT_BOTTOM.length;
 
-          <View style={styles.firstStepForm}>
-            <Text style={styles.label}>What is your full name?</Text>
+      return (
+        <View style={styles.stepOneContent}>
+          <Text style={styles.stepOnePromptLine}>
+            {displayedStepOnePromptTop}
+            {isTypingTop ? <Animated.Text style={[styles.heroBodyCursor, stepOneCursorStyle]}>|</Animated.Text> : null}
+          </Text>
+
+          {stepOnePromptPhase !== 'typingTop' ? (
+            <Text style={styles.stepOnePromptLineBottom}>
+              {displayedStepOnePromptBottom}
+              {isTypingBottom ? <Animated.Text style={[styles.heroBodyCursor, stepOneCursorStyle]}>|</Animated.Text> : null}
+            </Text>
+          ) : null}
+
+          <Animated.View style={[styles.firstStepForm, stepOneFormAnimatedStyle]}>
             <TextInput
               value={fullName}
               onChangeText={setFullName}
@@ -311,69 +493,41 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
               placeholderTextColor="rgba(251,191,36,0.35)"
               style={styles.input}
             />
-
-            <Text style={styles.helper}>Your name helps personalize your experience.</Text>
-          </View>
-
-          <Text style={styles.title}>Daily wisdom, made simple</Text>
-          <Text style={styles.subtitle}>
-            We give daily quotes from the Bhagavad Gita that you can read anytime. You can like a quote by double
-            tapping to save it, share it with others, listen to it, and explore more features as you grow in your
-            journey.
-          </Text>
-
-          <View style={styles.featureList}>
-            {[
-              { icon: BookOpen, text: 'Read daily quotes' },
-              { icon: Sparkles, text: 'Double tap to save' },
-              { icon: Globe, text: 'Share with others' },
-              { icon: Bell, text: 'Listen anytime' },
-              { icon: Flower2, text: 'Explore more daily' },
-            ].map(({ icon: Icon, text }) => (
-              <View key={text} style={styles.featureRow}>
-                <View style={styles.featureIcon}>
-                  <Icon size={14} color="#fbbf24" />
-                </View>
-                <Text style={styles.featureText}>{text}</Text>
-              </View>
-            ))}
-          </View>
-        </>
+          </Animated.View>
+        </View>
       );
     }
 
-    if (step === 2) {
+    if (currentStep === 2) {
+      const stepTwoPromptText = `Welcome ${fullName}, Meet the app.`;
+      const displayedStepTwoPrompt = stepTwoPromptText.slice(0, stepTwoPromptLength);
+      const isTypingTwo = stepTwoPhase === 'typing' && stepTwoPromptLength < stepTwoPromptText.length;
+
       return (
-        <>
-          <Text style={styles.title}>Go deeper with Lotus Path and Festivals</Text>
-          <Text style={styles.subtitle}>
-            Lotus Path helps you connect back with your roots through bite-sized lessons that are simple, meaningful,
-            and easy to finish. You can also explore the Festivals section, where you can learn about Hindu festivals
-            and their meaning in an easy way.
+        <ScrollView style={styles.stepTwoScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+          <Text style={styles.stepOnePromptLine}>
+            {displayedStepTwoPrompt}
+            {isTypingTwo ? <Animated.Text style={[styles.heroBodyCursor, stepOneCursorStyle]}>|</Animated.Text> : null}
           </Text>
+
+          <StepTwoDescription descOpacity={stepTwoDescOpacity} />
 
           <View style={styles.cardList}>
-            <View style={styles.infoCard}>
-              <Flower2 size={18} color="#fbbf24" />
-              <View style={styles.infoCopy}>
-                <Text style={styles.infoTitle}>Lotus Path</Text>
-                <Text style={styles.infoDesc}>Short lessons that help you learn Hindu teachings step by step.</Text>
-              </View>
-            </View>
-
-            <View style={styles.infoCard}>
-              <ListChecks size={18} color="#fbbf24" />
-              <View style={styles.infoCopy}>
-                <Text style={styles.infoTitle}>Festivals</Text>
-                <Text style={styles.infoDesc}>Learn about Hindu festivals, what they mean, and why they are celebrated.</Text>
-              </View>
-            </View>
+            {FEATURES_LIST.map((feature, index) => (
+              <AnimatedFeatureCard 
+                key={feature.id} 
+                feature={feature} 
+                index={index} 
+                progress={stepTwoCardsProgress} 
+                totalCards={FEATURES_LIST.length} 
+              />
+            ))}
           </View>
-        </>
+        </ScrollView>
       );
     }
 
-    if (step === 3) {
+    if (currentStep === 3) {
       return (
         <>
           <Text style={styles.title}>Would you want daily reminders?</Text>
@@ -404,7 +558,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
       );
     }
 
-    if (step === 4) {
+    if (currentStep === 4) {
       return (
         <>
           <Text style={styles.title}>Choose your preferred language</Text>
@@ -537,7 +691,17 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           >
-            <Animated.View style={[styles.stepBlock, pageAnimatedStyle]}>{renderStepContent()}</Animated.View>
+            <View style={styles.stepStage}>
+              {isTransitioning && previousStep !== null ? (
+                <Animated.View style={[styles.stepLayerAbsolute, outgoingPageAnimatedStyle]}>
+                  <View style={styles.stepBlock}>{renderStepContent(previousStep)}</View>
+                </Animated.View>
+              ) : null}
+
+              <Animated.View style={[styles.stepLayerRelative, incomingPageAnimatedStyle]}>
+                <View style={styles.stepBlock}>{renderStepContent(step)}</View>
+              </Animated.View>
+            </View>
           </ScrollView>
 
           <HapticButton
@@ -545,14 +709,12 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
             disabled={!canContinue}
             style={[
               styles.continueBtn,
-              step === 0 && styles.introContinueBtn,
               !canContinue && styles.continueBtnDisabled,
             ]}
           >
             <Text
               style={[
                 styles.continueText,
-                step === 0 && styles.introContinueBtnText,
                 !canContinue && styles.continueTextDisabled,
               ]}
             >
@@ -563,7 +725,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
                   : 'Continue'}
             </Text>
             {step > 0 && step < TOTAL_STEPS - 1 && (
-              <ChevronRight size={16} color={!canContinue ? 'rgba(15,23,42,0.45)' : '#0f172a'} />
+              <ChevronRight size={16} color={!canContinue ? 'rgba(255, 249, 230, 0.45)' : '#fff9e6'} />
             )}
           </HapticButton>
         </View>
@@ -616,11 +778,30 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 20,
+    paddingBottom: 80,
   },
   stepBlock: {
     paddingTop: 8,
     flexGrow: 1,
+  },
+  stepStage: {
+    flex: 1,
+    position: 'relative',
+  },
+  stepLayerAbsolute: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
+  },
+  stepLayerRelative: {
+    flex: 1,
+    zIndex: 2,
+  },
+  stepOneContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 10,
+    paddingBottom: 80,
   },
   heroBlock: {
     flex: 1,
@@ -719,14 +900,48 @@ const styles = StyleSheet.create({
     lineHeight: 48,
     marginLeft: 2,
   },
+  stepOnePromptLine: {
+    color: '#fef3c7',
+    fontSize: 42,
+    lineHeight: 48,
+    fontWeight: '600',
+    fontFamily: Fonts.serif,
+    textAlign: 'center',
+    letterSpacing: -0.65,
+    width: '100%',
+    maxWidth: 360,
+    textShadowColor: 'rgba(0,0,0,0.18)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 14,
+  },
+  stepOnePromptLineBottom: {
+    color: '#fef3c7',
+    fontSize: 42,
+    lineHeight: 48,
+    fontWeight: '600',
+    fontFamily: Fonts.serif,
+    textAlign: 'center',
+    letterSpacing: -0.65,
+    width: '100%',
+    maxWidth: 360,
+    marginTop: 20,
+    textShadowColor: 'rgba(0,0,0,0.18)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 14,
+  },
+  stepTwoScroll: {
+    flex: 1,
+    width: '100%',
+    paddingTop: 30, // Increased top padding
+  },
   firstStepForm: {
     marginTop: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.18)',
-    backgroundColor: 'rgba(15,23,42,0.42)',
+    width: '85%',
+    backgroundColor: 'transparent',
     borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    marginBottom: 80,
   },
   hiddenHeroForm: {
     display: 'none',
@@ -756,15 +971,16 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   input: {
-    backgroundColor: 'rgba(30,41,59,0.65)',
-    borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.28)',
+    backgroundColor: 'rgba(30,41,59,0.72)',
     color: '#fef3c7',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    fontSize: 16,
-    marginBottom: 10,
+    borderRadius: 18,
+    paddingHorizontal: 28,
+    paddingVertical: 20,
+    minHeight: 62,
+    fontSize: 18,
+    marginBottom: 12,
+    fontWeight: '500',
+    width: '100%',
   },
   helper: {
     color: 'rgba(251,191,36,0.5)',
@@ -910,40 +1126,34 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   continueBtn: {
-    marginTop: 10,
+    marginTop: 12,
+    marginBottom: 0,
     borderRadius: 16,
-    backgroundColor: '#fbbf24',
-    paddingVertical: 14,
+    backgroundColor: 'rgba(251, 191, 36, 0.45)', // Brighter yellow transparent
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.65)',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    shadowColor: '#000000',
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: 4,
   },
-  introContinueBtn: {
-    marginTop: 2,
-    marginBottom: 8,
-    backgroundColor: 'rgba(251, 191, 36, 0.24)',
-    borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.38)',
-    paddingHorizontal: 22,
-    shadowColor: '#000000',
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-  },
   continueBtnDisabled: {
-    backgroundColor: 'rgba(251,191,36,0.35)',
+    backgroundColor: 'rgba(251, 191, 36, 0.20)',
+    borderColor: 'rgba(251, 191, 36, 0.30)',
   },
   continueText: {
-    color: '#0f172a',
-    fontSize: 16,
+    color: '#fff9e6',
+    letterSpacing: 0.25,
+    fontSize: 17,
     fontWeight: '800',
   },
-  introContinueBtnText: {
-    color: '#FFF7DB',
-    letterSpacing: 0.2,
-  },
   continueTextDisabled: {
-    color: 'rgba(15,23,42,0.45)',
+    color: 'rgba(255, 249, 230, 0.45)',
   },
 });

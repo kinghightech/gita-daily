@@ -16,7 +16,9 @@ export default function BackgroundLayout({ children, backgroundPlayer = null }: 
   const isDark = theme.blurTint === 'dark';
   const [videoViewKey, setVideoViewKey] = useState(0);
 
-  const bgColors = isDark
+  const bgColors = backgroundPlayer
+    ? (isDark ? (['#000000', '#000000', '#000000'] as const) : (['#ffffff', '#ffffff', '#ffffff'] as const))
+    : isDark
     ? (['#0f172a', '#172554', '#0f172a'] as const)
     : (['#FFFBF0', '#FEF3C7', '#FFFBF0'] as const);
 

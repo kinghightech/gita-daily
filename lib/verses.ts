@@ -109,12 +109,19 @@ export const fetchAllGitaVerses = async (): Promise<GitaVerse[]> => {
 };
 
 const TOTAL_VERSES = 716;
-const EPOCH = new Date(2024, 0, 1); // Jan 1 2024 — fixed anchor so index never shifts
+
+// Deterministic [0, 1) PRNG seeded by the local calendar date.
+// Same day → same verse; consecutive days → unrelated verses (not sequential).
+const seededRandomForDate = (date: Date): number => {
+  const seed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+};
 
 export const fetchVerseOfTheDay = async (): Promise<GitaVerse | null> => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const dayIndex = Math.floor((today.getTime() - EPOCH.getTime()) / 86400000) % TOTAL_VERSES;
+  const dayIndex = Math.floor(seededRandomForDate(today) * TOTAL_VERSES);
 
   const { data, error } = await supabase
     .from('gita_verses')

@@ -437,10 +437,10 @@ export default function ProfileScreen() {
                           <Heart size={11} color="#f87171" fill="#f87171" strokeWidth={0} />
                         </View>
                         <Text style={styles.listItemBody} numberOfLines={2}>
-                          {getVerseDisplayText(
+                          &quot;{getVerseDisplayText(
                             { english: verse.english, hindi: verse.hindi },
                             profile.preferred_language === 'hindi' ? 'hindi' : 'english'
-                          )}
+                          )}&quot;
                         </Text>
                       </TouchableOpacity>
                     );
@@ -545,10 +545,10 @@ export default function ProfileScreen() {
                         </View>
                         {verseData && (
                           <Text style={styles.notePreview} numberOfLines={1}>
-                            {getVerseDisplayText(
+                            &quot;{getVerseDisplayText(
                               { english: verseData.english, hindi: verseData.hindi },
                               profile.preferred_language === 'hindi' ? 'hindi' : 'english'
-                            )}
+                            )}&quot;
                           </Text>
                         )}
                         <Text style={styles.noteBody} numberOfLines={3}>

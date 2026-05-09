@@ -150,7 +150,7 @@ export default function SavedVersesScreen() {
                       )}
                     </View>
                     <Text style={styles.verseText} numberOfLines={3}>
-                      {getVerseDisplayText({ english: verse.english, hindi: verse.hindi }, preferredLanguage)}
+                      &quot;{getVerseDisplayText({ english: verse.english, hindi: verse.hindi }, preferredLanguage)}&quot;
                     </Text>
                   </View>
                 </TouchableOpacity>
