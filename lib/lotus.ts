@@ -28,6 +28,21 @@ export const fetchLotusLevels = async (): Promise<LotusLevelData[]> => {
   return data || [];
 };
 
+export const fetchLotusLevel = async (id: number): Promise<LotusLevelData | null> => {
+  const { data, error } = await supabase
+    .from('lotus_levels')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    console.error('Error fetching lotus level:', error);
+    return null;
+  }
+
+  return data || null;
+};
+
 export const updateCurrentLotusLevel = async (levelId: number) => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'No user session' };

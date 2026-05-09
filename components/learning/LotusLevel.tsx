@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { Lock } from 'lucide-react-native';
 import { memo, useEffect, useRef } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -85,7 +86,10 @@ function LotusLevel({
       onPress={
         isLocked && !allowPressWhenLocked
           ? undefined
-          : () => onPress(level)
+          : () => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onPress(level);
+            }
       }
       style={({ pressed }) => [
         styles.container,
