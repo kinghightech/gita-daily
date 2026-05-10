@@ -1,7 +1,7 @@
 import { HapticTab } from '@/components/haptic-tab';
 import { useTheme } from '@/hooks/useTheme';
 import { Tabs } from 'expo-router';
-import { BookOpen, GraduationCap, Home, User } from 'lucide-react-native';
+import { BookOpen, Flame, GraduationCap, Home, User } from 'lucide-react-native';
 
 export default function TabLayout() {
   const theme = useTheme();
@@ -45,6 +45,15 @@ export default function TabLayout() {
           title: 'Learn',
           tabBarIcon: ({ color, focused }) => (
             <GraduationCap size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="prayer"
+        options={{
+          title: 'Prayer',
+          tabBarIcon: ({ color, focused }) => (
+            <Flame size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),
         }}
       />

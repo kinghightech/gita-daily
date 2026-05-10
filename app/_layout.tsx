@@ -14,6 +14,7 @@ import { Toaster } from 'sonner';
 import '../global.css';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { darkTheme, lightTheme } from '@/theme/colors';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -317,7 +318,7 @@ export default function RootLayout() {
   };
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background }}>
       {isBooting ? null : showOnboarding ? (
         <OnboardingFlow onComplete={completeOnboarding} onReminderPreferenceChange={persistReminderPreference} />
       ) : (
@@ -326,6 +327,9 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="level/[id]" options={{ headerShown: false, animation: 'slide_from_right' }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+            <Stack.Screen name="prayer-list" options={{ headerShown: false, animation: 'slide_from_right', cardStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
+            <Stack.Screen name="prayer-detail" options={{ headerShown: false, animation: 'slide_from_right', cardStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
+            <Stack.Screen name="festival-detail" options={{ headerShown: false, animation: 'slide_from_right', cardStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
           </Stack>
           {Platform.OS === 'web' && <Toaster richColors position="top-center" />}
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />

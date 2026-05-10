@@ -1,10 +1,9 @@
-import FestivalModal from '@/components/gita/FestivalModal';
 import LearnBackground from '@/components/LearnBackground';
 import LotusLevel from '@/components/learning/LotusLevel';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
-import { fetchAllFestivals, getFestivalSymbol, type Festival } from '@/lib/festivals';
+import { fetchAllFestivals, getFestivalSymbol } from '@/lib/festivals';
 import { fetchLotusLevels, type LotusLevelData } from '@/lib/lotus';
 import { fetchCurrentUserAndProfile, STREAK_UPDATED_EVENT } from '@/lib/profile';
 import type { Theme } from '@/theme/colors';
@@ -54,7 +53,6 @@ export default function LearnScreen() {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [tab, setTab] = useState<LearnTab>('lotus');
-  const [selectedFestival, setSelectedFestival] = useState<Festival | null>(null);
   const tabRef = useRef<LearnTab>('lotus');
 
   const pillAnim = useRef(new Animated.Value(0)).current;
@@ -110,9 +108,8 @@ export default function LearnScreen() {
         </View>
       </View>
       <View style={styles.tabContentWrap}>
-        {tab === 'lotus' ? <LotusPathView /> : <FestivalsView onSelectFestival={setSelectedFestival} />}
+        {tab === 'lotus' ? <LotusPathView /> : <FestivalsView />}
       </View>
-      <FestivalModal festival={selectedFestival} onClose={() => setSelectedFestival(null)} />
     </LearnBackground>
   );
 }
@@ -276,11 +273,11 @@ const getOrdinalDay = (day: number) => {
   }
 };
 
-function FestivalsView({ onSelectFestival }: { onSelectFestival: (f: Festival) => void }) {
+function FestivalsView() {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [currentMonthIdx, setCurrentMonthIdx] = useState(new Date().getMonth());
-  const [allFestivals, setAllFestivals] = useState<Festival[]>([]);
+  const [allFestivals, setAllFestivals] = useState<Awaited<ReturnType<typeof fetchAllFestivals>>>([]);
   const [loading, setLoading] = useState(true);
   
   // Animation values
@@ -370,7 +367,7 @@ function FestivalsView({ onSelectFestival }: { onSelectFestival: (f: Festival) =
                 <TouchableOpacity activeOpacity={0.7} 
                   key={fest.id} 
                   style={styles.festivalItemCard}
-                  onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onSelectFestival(fest); }}
+                  onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/festival-detail?id=${fest.id}`); }}
                 >
                   <View style={styles.festItemLeft}>
                     <View style={styles.symbolBadge}>

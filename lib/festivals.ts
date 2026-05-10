@@ -33,6 +33,24 @@ export function getFestivalSymbol(name: string, iconEmoji: string) {
 }
 
 /**
+ * Fetch a single festival by its UUID.
+ */
+export async function fetchFestivalById(id: string): Promise<Festival | null> {
+  const { data, error } = await supabase
+    .from('festivals')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    console.error('Error fetching festival:', error);
+    return null;
+  }
+
+  return data;
+}
+
+/**
  * Fetch all festivals for the year 2026, sorted by date.
  */
 export async function fetchAllFestivals(): Promise<Festival[]> {
