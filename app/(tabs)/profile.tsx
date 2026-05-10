@@ -47,6 +47,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
     DeviceEventEmitter,
+    Linking,
     Modal,
     Pressable,
     ScrollView,
@@ -698,6 +699,14 @@ export default function ProfileScreen() {
             <Text style={styles.videoButtonText}>Watch Onboarding Video</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => Linking.openURL('https://dharmadailyprivacypolicy.notion.site')}
+            style={styles.privacyButton}
+          >
+            <Text style={styles.privacyButtonText}>Privacy Policy</Text>
+          </TouchableOpacity>
+
           <FestivalModal festival={selectedFestival} onClose={() => setSelectedFestival(null)} />
         </ScrollView>
       </SafeAreaView>
@@ -837,6 +846,9 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.12)',
   },
   videoButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase' },
+
+  privacyButton: { marginTop: 12, marginBottom: 4, alignSelf: 'center', paddingHorizontal: 12, paddingVertical: 6 },
+  privacyButtonText: { color: theme.subtextMuted, fontSize: 12, fontWeight: '500', textDecorationLine: 'underline' },
 
   videoModal: { flex: 1, backgroundColor: '#000' },
   video: { flex: 1, width: '100%', height: '100%' },

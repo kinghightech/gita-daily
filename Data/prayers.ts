@@ -8,7 +8,14 @@ import {
   ENGLISH_LYRICS as GAYATRI_ENGLISH,
 } from './gayatriMantraLyrics';
 
+import { supabase } from '@/lib/supabase';
+import { ImageSourcePropType } from 'react-native';
+
 export type { LyricBlock };
+
+const getAudioUrl = (filename: string) => {
+  return supabase.storage.from('Prayers').getPublicUrl(filename).data.publicUrl;
+};
 
 export type Prayer = {
   id: string;
@@ -16,8 +23,8 @@ export type Prayer = {
   nameHindi: string;
   duration: string;
   deity: string;
-  thumbnail: ReturnType<typeof require>;
-  audioFile: ReturnType<typeof require>;
+  thumbnail: ImageSourcePropType;
+  audioFile: string;
   hindiLyrics: LyricBlock[];
   englishLyrics: LyricBlock[];
   shortDescription: string;
@@ -39,7 +46,7 @@ export const PRAYERS: Prayer[] = [
     duration: '4:42',
     deity: 'Lord Hanuman',
     thumbnail: require('@/assets/images/backgroundprayer.jpg'),
-    audioFile: require('@/assets/images/Hanuman Chalisa.mp3'),
+    audioFile: getAudioUrl('Hanuman Chalisa.mp3'),
     hindiLyrics: HANUMAN_HINDI,
     englishLyrics: HANUMAN_ENGLISH,
     shortDescription: 'A 40-verse devotional hymn to Lord Hanuman by Tulsidas',
@@ -75,7 +82,7 @@ export const PRAYERS: Prayer[] = [
     duration: '5:00',
     deity: 'Goddess Gayatri / Surya',
     thumbnail: require('@/assets/images/gayatrimantra.png'),
-    audioFile: require('@/assets/images/Gayatri Mantra.mp3'),
+    audioFile: getAudioUrl('Gayatri Mantra.mp3'),
     hindiLyrics: GAYATRI_HINDI,
     englishLyrics: GAYATRI_ENGLISH,
     shortDescription: 'The most sacred Vedic mantra, a prayer for divine light and wisdom',

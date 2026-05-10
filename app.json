@@ -8,9 +8,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aahishabbani.dharmadaily"
     },
     "android": {
+      "package": "com.aahishabbani.dharmadaily",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE"
       },

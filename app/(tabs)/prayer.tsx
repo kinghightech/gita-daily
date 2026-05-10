@@ -15,6 +15,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Menu, Pause, Play, RotateCcw } from 'lucide-react-native';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { PRAYERS } from '@/Data/prayers';
+import LotusLoader from '@/components/ui/LotusLoader';
 import {
   loadPreferredLanguageForCurrentUser,
   PREFERRED_LANGUAGE_CHANGED_EVENT,
@@ -50,7 +51,7 @@ export default function PrayerScreen() {
   const loadedPrayerIdRef = useRef<string>(prayer.id);
 
   // expo-audio hooks — lifecycle managed automatically
-  const player = useAudioPlayer(prayer.audioFile, 250);
+  const player = useAudioPlayer(prayer.audioFile);
   const status = useAudioPlayerStatus(player);
 
   const positionMs = (status.currentTime ?? 0) * 1000;
@@ -170,15 +171,15 @@ export default function PrayerScreen() {
         {/* Player controls */}
         <View style={styles.player}>
           <View style={styles.timeRow}>
-            <Text style={styles.timeText}>{formatTime(positionMs)}</Text>
-            <Text style={styles.timeText}>{formatTime(durationMs)}</Text>
+            <Text style={styles.timeText}>{isLoaded ? formatTime(positionMs) : '–:––'}</Text>
+            <Text style={styles.timeText}>{isLoaded ? formatTime(durationMs) : 'Loading…'}</Text>
           </View>
 
           {/* Progress bar — tap to seek */}
           <View
             style={styles.progressTrack}
             onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
-            onStartShouldSetResponder={() => true}
+            onStartShouldSetResponder={() => isLoaded}
             onResponderGrant={(e) => onProgressPress(e.nativeEvent.locationX)}
           >
             <View
@@ -190,22 +191,32 @@ export default function PrayerScreen() {
           </View>
 
           <View style={styles.controls}>
-            <TouchableOpacity onPress={restart} activeOpacity={0.7} style={styles.sideBtn}>
+            <TouchableOpacity
+              onPress={restart}
+              activeOpacity={0.7}
+              style={[styles.sideBtn, !isLoaded && { opacity: 0.3 }]}
+              disabled={!isLoaded}
+            >
               <RotateCcw size={22} color="rgba(255,255,255,0.6)" />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={togglePlay}
-              activeOpacity={0.85}
-              style={[styles.playBtn, !isLoaded && styles.playBtnDisabled]}
-              disabled={!isLoaded}
-            >
-              {isPlaying ? (
-                <Pause size={28} color="#0F172A" fill="#0F172A" />
-              ) : (
-                <Play size={28} color="#0F172A" fill="#0F172A" />
-              )}
-            </TouchableOpacity>
+            {isLoaded ? (
+              <TouchableOpacity
+                onPress={togglePlay}
+                activeOpacity={0.85}
+                style={styles.playBtn}
+              >
+                {isPlaying ? (
+                  <Pause size={28} color="#0F172A" fill="#0F172A" />
+                ) : (
+                  <Play size={28} color="#0F172A" fill="#0F172A" />
+                )}
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.loaderBtn}>
+                <LotusLoader size={48} color={GitaColors.gold} strokeWidth={2.5} duration={1400} />
+              </View>
+            )}
 
             {/* Spacer mirrors restart btn for centering */}
             <View style={styles.sideBtn} />
@@ -341,7 +352,10 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  playBtnDisabled: {
-    opacity: 0.5,
+  loaderBtn: {
+    width: 64,
+    height: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -3,7 +3,9 @@ import { useTheme } from '@/hooks/useTheme';
 import { GitaColors } from '@/constants/theme';
 import { router } from 'expo-router';
 import { X } from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   Image,
   ScrollView,
   StyleSheet,
@@ -12,6 +14,39 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+function ThumbnailWithLoader({ source, style }: { source: Prayer['thumbnail']; style: object }) {
+  const [loaded, setLoaded] = useState(false);
+  const pulse = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    if (loaded) return;
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 0.9, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [loaded, pulse]);
+
+  return (
+    <View>
+      <Image
+        source={source}
+        style={style}
+        resizeMode="cover"
+        onLoad={() => setLoaded(true)}
+      />
+      {!loaded && (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, styles.thumbSkeleton, { opacity: pulse }]}
+        />
+      )}
+    </View>
+  );
+}
 
 export default function PrayerListScreen() {
   const theme = useTheme();
@@ -41,7 +76,7 @@ export default function PrayerListScreen() {
             activeOpacity={0.65}
             onPress={() => onSelectPrayer(prayer)}
           >
-            <Image source={prayer.thumbnail} style={styles.thumbnail} resizeMode="cover" />
+            <ThumbnailWithLoader source={prayer.thumbnail} style={styles.thumbnail} />
             <View style={styles.meta}>
               <Text style={[styles.prayerName, { color: theme.text }]} numberOfLines={1}>
                 {prayer.name}
@@ -99,6 +134,10 @@ const styles = StyleSheet.create({
   thumbnail: {
     width: 60,
     height: 60,
+    borderRadius: 10,
+  },
+  thumbSkeleton: {
+    backgroundColor: GitaColors.gold,
     borderRadius: 10,
   },
   meta: {
