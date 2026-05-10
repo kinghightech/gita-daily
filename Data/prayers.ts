@@ -1,12 +1,12 @@
+import {
+    ENGLISH_LYRICS as GAYATRI_ENGLISH,
+    HINDI_LYRICS as GAYATRI_HINDI,
+} from './gayatriMantraLyrics';
 import type { LyricBlock } from './hanumanChalisaLyrics';
 import {
-  HINDI_LYRICS as HANUMAN_HINDI,
-  ENGLISH_LYRICS as HANUMAN_ENGLISH,
+    ENGLISH_LYRICS as HANUMAN_ENGLISH,
+    HINDI_LYRICS as HANUMAN_HINDI,
 } from './hanumanChalisaLyrics';
-import {
-  HINDI_LYRICS as GAYATRI_HINDI,
-  ENGLISH_LYRICS as GAYATRI_ENGLISH,
-} from './gayatriMantraLyrics';
 
 import { supabase } from '@/lib/supabase';
 import { ImageSourcePropType } from 'react-native';

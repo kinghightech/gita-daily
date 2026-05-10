@@ -1,26 +1,26 @@
-import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  DeviceEventEmitter,
-  ImageBackground,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { Menu, Pause, Play, RotateCcw } from 'lucide-react-native';
+import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { PRAYERS } from '@/Data/prayers';
-import LotusLoader from '@/components/ui/LotusLoader';
 import {
-  loadPreferredLanguageForCurrentUser,
-  PREFERRED_LANGUAGE_CHANGED_EVENT,
-  type PreferredLanguage,
+    loadPreferredLanguageForCurrentUser,
+    PREFERRED_LANGUAGE_CHANGED_EVENT,
+    type PreferredLanguage,
 } from '@/lib/preferredLanguage';
+import { useFocusEffect } from '@react-navigation/native';
+import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Menu, Pause, Play, RotateCcw } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    DeviceEventEmitter,
+    ImageBackground,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 
 // Set before any player is created so audio plays through the ringer/silent switch
 void setAudioModeAsync({ playsInSilentMode: true });
