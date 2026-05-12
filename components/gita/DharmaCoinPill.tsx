@@ -7,7 +7,8 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { DeviceEventEmitter, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image } from 'expo-image';
+import { DeviceEventEmitter, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -65,17 +66,14 @@ export default function DharmaCoinPill({ compact = false }: Props) {
         style={[
           styles.pill,
           compact && styles.pillCompact,
-          {
-            backgroundColor: 'rgba(251,191,36,0.12)',
-            borderColor: 'rgba(251,191,36,0.45)',
-          },
         ]}
       >
         <View style={[styles.coinWrap, compact && styles.coinWrapCompact]}>
           <Image
             source={require('@/assets/images/coin.png')}
             style={[styles.coin, compact && styles.coinCompact]}
-            resizeMode="contain"
+            contentFit="contain"
+            transition={0}
           />
         </View>
         {isLoading ? (
@@ -97,33 +95,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
   },
   pillCompact: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
     gap: 6,
   },
   coinWrap: {
-    width: 30,
-    height: 30,
+    width: 34,
+    height: 34,
     alignItems: 'center',
     justifyContent: 'center',
   },
   coinWrapCompact: {
-    width: 22,
-    height: 22,
+    width: 24,
+    height: 24,
   },
   coin: {
-    width: 30,
-    height: 30,
+    width: 34,
+    height: 34,
   },
   coinCompact: {
-    width: 22,
-    height: 22,
+    width: 24,
+    height: 24,
   },
   value: {
     fontSize: 15,

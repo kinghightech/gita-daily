@@ -225,7 +225,7 @@ export default function Home() {
 const createStyles = (theme: Theme) => StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
-    paddingVertical: 21,
+    paddingVertical: 8,
     alignItems: 'center',
   },
   container: {

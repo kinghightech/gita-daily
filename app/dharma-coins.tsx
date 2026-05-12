@@ -14,17 +14,17 @@ import { fetchCurrentUserAndProfile } from '@/lib/profile';
 import type { Theme } from '@/theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
 import { router, Stack } from 'expo-router';
-import { ArrowLeft, Flame, Sparkles } from 'lucide-react-native';
+import { ArrowLeft, Flame, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   DeviceEventEmitter,
   FlatList,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -102,7 +102,8 @@ export default function DharmaCoinsScreen() {
           <Image
             source={require('@/assets/images/coin.png')}
             style={styles.heroCoin}
-            resizeMode="contain"
+            contentFit="contain"
+            transition={0}
           />
           <View style={styles.heroLabels}>
             <Text style={styles.heroLabel}>TOTAL DHARMA COINS</Text>
@@ -120,7 +121,7 @@ export default function DharmaCoinsScreen() {
       <Animated.View entering={FadeInDown.delay(80)} style={styles.statsRow}>
         <View style={styles.statCard}>
           <View style={styles.statHeader}>
-            <Sparkles size={14} color={GitaColors.gold} />
+            <X size={14} color={GitaColors.gold} />
             <Text style={styles.statLabel}>MULTIPLIER</Text>
           </View>
           <Text style={styles.statValue}>{currentMultiplier.toFixed(2)}×</Text>
@@ -131,7 +132,7 @@ export default function DharmaCoinsScreen() {
             <Flame size={14} color={GitaColors.gold} />
             <Text style={styles.statLabel}>STREAK</Text>
           </View>
-          <Text style={styles.statValue}>{streak}</Text>
+          <Text style={styles.statValue}>{streak} days</Text>
           <Text style={styles.statSub}>
             {nextTier
               ? `${daysToNextTier} day${daysToNextTier === 1 ? '' : 's'} to ${nextTier.multiplier}×`
@@ -207,11 +208,6 @@ export default function DharmaCoinsScreen() {
           renderItem={({ item }) => (
             <View style={styles.txRow}>
               <View style={styles.txLeft}>
-                <Image
-                  source={require('@/assets/images/coin.png')}
-                  style={styles.txCoin}
-                  resizeMode="contain"
-                />
                 <View>
                   <Text style={styles.txSource}>{sourceDisplayName(item.source)}</Text>
                   <Text style={styles.txMeta}>
@@ -220,15 +216,23 @@ export default function DharmaCoinsScreen() {
                   </Text>
                 </View>
               </View>
-              <Text
-                style={[
-                  styles.txAmount,
-                  item.amount < 0 && styles.txAmountNegative,
-                ]}
-              >
-                {item.amount > 0 ? '+' : ''}
-                {item.amount}
-              </Text>
+              <View style={styles.txRight}>
+                <Text
+                  style={[
+                    styles.txAmount,
+                    item.amount < 0 && styles.txAmountNegative,
+                  ]}
+                >
+                  {item.amount > 0 ? '+' : ''}
+                  {item.amount}
+                </Text>
+                <Image
+                  source={require('@/assets/images/coin.png')}
+                  style={styles.txCoinRight}
+                  contentFit="contain"
+                  transition={0}
+                />
+              </View>
             </View>
           )}
           ListEmptyComponent={
@@ -290,8 +294,11 @@ const createStyles = (theme: Theme) =>
       gap: 16,
     },
     heroCoin: {
-      width: 56,
-      height: 56,
+      width: 60,
+      height: 60,
+      transform: [{ scale: 1.6 }],
+      marginLeft: 10,
+      marginRight: 6,
     },
     heroLabels: {
       flex: 1,
@@ -432,9 +439,14 @@ const createStyles = (theme: Theme) =>
       gap: 12,
       flex: 1,
     },
-    txCoin: {
-      width: 28,
-      height: 28,
+    txRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    txCoinRight: {
+      width: 24,
+      height: 24,
     },
     txSource: {
       color: theme.text,
