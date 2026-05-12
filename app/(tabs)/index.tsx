@@ -1,3 +1,4 @@
+import DharmaCoinPill from '@/components/gita/DharmaCoinPill';
 import QuoteCard from '@/components/gita/QuoteCard';
 import StreakModal from '@/components/gita/StreakModal';
 import LotusLoader from '@/components/ui/LotusLoader';
@@ -152,16 +153,19 @@ export default function Home() {
                 <Text style={styles.greeting}>{greeting.toUpperCase()}</Text>
                 <Text style={styles.userName}>{isIdentityLoading ? 'Loading...' : displayName || 'Your Name'}</Text>
               </View>
-              <TouchableOpacity activeOpacity={0.7}
-                style={styles.streakIndicator}
-                onPress={() => setIsStreakModalOpen(true)}
-              >
-                <Flame size={20} color={theme.primary} />
-                <Text style={styles.streakText}>
-                  <Text style={styles.streakNumber}>{currentStreak}</Text>
-                  <Text style={styles.streakLabel}> days</Text>
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.headerRightStack}>
+                <DharmaCoinPill />
+                <TouchableOpacity activeOpacity={0.7}
+                  style={styles.streakIndicator}
+                  onPress={() => setIsStreakModalOpen(true)}
+                >
+                  <Flame size={20} color={theme.primary} />
+                  <Text style={styles.streakText}>
+                    <Text style={styles.streakNumber}>{currentStreak}</Text>
+                    <Text style={styles.streakLabel}> days</Text>
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </Animated.View>
 
             {isLoading ? (
@@ -231,7 +235,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   headerSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'flex-end',
     marginBottom: 20,
     paddingHorizontal: 4,
   },
@@ -254,6 +258,12 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     lineHeight: 32,
     marginBottom: 2,
   },
+  headerRightStack: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 8,
+    flexShrink: 0,
+  },
   streakIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -263,7 +273,6 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    marginTop: 12,
   },
   streakText: {
     color: theme.primary,

@@ -1,3 +1,4 @@
+import { awardDharmaCoins } from '@/lib/dharmaCoins';
 import { PREFERRED_LANGUAGE_CHANGED_EVENT } from '@/lib/preferredLanguage';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
@@ -304,6 +305,7 @@ export const completeOnboardingProfile = async (params: {
   preferredLanguage: 'english' | 'hindi';
   remindersEnabled: boolean;
   notificationTime?: string;
+  emailUpdatesAccepted?: boolean;
 }) => {
   const trimmedName = params.fullName.trim();
   const existingProfile = await fetchProfileByUserId(params.userId);
@@ -318,6 +320,7 @@ export const completeOnboardingProfile = async (params: {
       daily_notification_enabled: params.remindersEnabled,
       notification_time: normalizedNotificationTime,
       onboarding_complete: true,
+      email_updates_accepted: params.emailUpdatesAccepted ?? false,
     };
 
     const { error } = await supabase.from('profiles').insert(insertPayload);
@@ -334,6 +337,7 @@ export const completeOnboardingProfile = async (params: {
       daily_notification_enabled: params.remindersEnabled,
       notification_time: normalizedNotificationTime,
       Onboarding_complete: true,
+      email_updates_accepted: params.emailUpdatesAccepted ?? false,
     });
 
     if (legacyInsertError) {
@@ -350,11 +354,13 @@ export const completeOnboardingProfile = async (params: {
     daily_notification_enabled: boolean;
     notification_time: string;
     onboarding_complete: boolean;
+    email_updates_accepted: boolean;
   } = {
     preferred_language: params.preferredLanguage,
     daily_notification_enabled: params.remindersEnabled,
     notification_time: normalizedNotificationTime,
     onboarding_complete: true,
+    email_updates_accepted: params.emailUpdatesAccepted ?? false,
   };
 
   if ((isBlank(existingProfile.full_name) || isGenericName(existingProfile.full_name)) && trimmedName.length > 0) {
@@ -381,11 +387,13 @@ export const completeOnboardingProfile = async (params: {
     daily_notification_enabled: boolean;
     notification_time: string;
     Onboarding_complete: boolean;
+    email_updates_accepted: boolean;
   } = {
     preferred_language: params.preferredLanguage,
     daily_notification_enabled: params.remindersEnabled,
     notification_time: normalizedNotificationTime,
     Onboarding_complete: true,
+    email_updates_accepted: params.emailUpdatesAccepted ?? false,
   };
 
   if ((isBlank(existingProfile.full_name) || isGenericName(existingProfile.full_name)) && trimmedName.length > 0) {
@@ -434,6 +442,13 @@ export const updateUserStreak = async (): Promise<number> => {
 
   const streak = typeof data === 'number' ? data : 0;
   DeviceEventEmitter.emit(STREAK_UPDATED_EVENT, streak);
+
+  // Award daily-streak Dharma Coin. The RPC enforces "once per day" so this is
+  // safe to call on every streak update (app open, foreground, onboarding).
+  void awardDharmaCoins('streak').catch((error) => {
+    console.warn('Streak coin award failed', error);
+  });
+
   return streak;
 };
 

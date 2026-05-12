@@ -1,3 +1,4 @@
+import DharmaCoinPill from '@/components/gita/DharmaCoinPill';
 import FestivalModal from '@/components/gita/FestivalModal';
 import QuoteCard from '@/components/gita/QuoteCard';
 import LotusLoader from '@/components/ui/LotusLoader';
@@ -298,12 +299,15 @@ export default function ProfileScreen() {
         >
           {/* ── Header ── */}
           <View style={styles.header}>
-            <Text style={styles.name} numberOfLines={1}>
-              {profile.full_name || 'Your Name'}
-            </Text>
-            <Text style={styles.email} numberOfLines={1}>
-              {profile.email || 'guest@gita.daily'}
-            </Text>
+            <View style={styles.headerTextWrap}>
+              <Text style={styles.name} numberOfLines={1}>
+                {profile.full_name || 'Your Name'}
+              </Text>
+              <Text style={styles.email} numberOfLines={1}>
+                {profile.email || 'guest@gita.daily'}
+              </Text>
+            </View>
+            <DharmaCoinPill />
           </View>
 
           {/* ── Stats Card ── */}
@@ -764,7 +768,8 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   safe: { flex: 1 },
   scrollContent: { paddingBottom: 140, paddingHorizontal: 20 },
 
-  header: { paddingTop: 16, paddingBottom: 28 },
+  header: { paddingTop: 16, paddingBottom: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  headerTextWrap: { flex: 1, minWidth: 0 },
   eyebrow: { color: theme.subtext, fontSize: 11, fontWeight: '600', letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 10 },
   name: { color: theme.text, fontSize: 32, fontWeight: '700', letterSpacing: -0.5, lineHeight: 38 },
   email: { color: theme.subtext, fontSize: 14, fontWeight: '400', marginTop: 4 },

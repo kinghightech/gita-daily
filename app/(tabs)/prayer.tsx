@@ -1,6 +1,7 @@
 import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { PRAYERS } from '@/Data/prayers';
+import { awardDharmaCoins } from '@/lib/dharmaCoins';
 import {
     loadPreferredLanguageForCurrentUser,
     PREFERRED_LANGUAGE_CHANGED_EVENT,
@@ -49,6 +50,7 @@ export default function PrayerScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const itemYs = useRef<number[]>([]);
   const loadedPrayerIdRef = useRef<string>(prayer.id);
+  const awardedThisSessionRef = useRef<string | null>(null);
 
   // expo-audio hooks — lifecycle managed automatically
   const player = useAudioPlayer(prayer.audioFile);
@@ -68,9 +70,26 @@ export default function PrayerScreen() {
     if (loadedPrayerIdRef.current !== prayer.id) {
       loadedPrayerIdRef.current = prayer.id;
       itemYs.current = [];
+      awardedThisSessionRef.current = null;
       try { player.replace(prayer.audioFile); } catch {}
     }
   }, [prayer.id, prayer.audioFile, player]);
+
+  // Award Dharma Coins when the prayer audio reaches the end.
+  // The RPC enforces once-per-day; awardedThisSessionRef just avoids a redundant
+  // network call per play within the same prayer session.
+  useEffect(() => {
+    if (!isLoaded || durationMs <= 0) return;
+    const finished =
+      (status as { didJustFinish?: boolean }).didJustFinish === true ||
+      (positionMs > 0 && positionMs >= durationMs - 250 && !isPlaying);
+    if (!finished) return;
+    if (awardedThisSessionRef.current === prayer.id) return;
+    awardedThisSessionRef.current = prayer.id;
+    void awardDharmaCoins('prayer', prayer.id).catch((error) => {
+      console.warn('Prayer coin award failed', error);
+    });
+  }, [isLoaded, durationMs, positionMs, isPlaying, status, prayer.id]);
 
   // Language preference
   useEffect(() => {

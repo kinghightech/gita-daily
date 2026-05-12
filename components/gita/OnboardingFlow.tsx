@@ -6,6 +6,7 @@ import {
     Bell,
     Book,
     BookOpen,
+    Check,
     ChevronLeft,
     ChevronRight,
     Flame,
@@ -19,7 +20,7 @@ import {
     Shield
 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 
 type AuthChoice = 'email';
@@ -35,6 +36,7 @@ type OnboardingData = {
   email: string | null;
   password: string | null;
   authMode: AuthMode;
+  emailUpdatesOptIn: boolean;
 };
 
 interface OnboardingFlowProps {
@@ -200,6 +202,8 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
   const [authMode, setAuthMode] = useState<AuthMode>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [emailUpdatesOptIn, setEmailUpdatesOptIn] = useState(false);
   const [stepOnePromptTopLength, setStepOnePromptTopLength] = useState(0);
   const [stepOnePromptBottomLength, setStepOnePromptBottomLength] = useState(0);
   const [stepOnePromptPhase, setStepOnePromptPhase] = useState<'typingTop' | 'typingBottom' | 'done'>('typingTop');
@@ -412,6 +416,15 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
       return;
     }
 
+    if (authMode === 'signup' && !termsAccepted) {
+      Alert.alert(
+        'Terms Required',
+        'To use Dharma Daily you must accept the Terms and Conditions.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     onComplete({
       fullName: fullName.trim(),
       goals: [],
@@ -421,6 +434,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
       email: email.trim(),
       password,
       authMode,
+      emailUpdatesOptIn,
     });
   };
 
@@ -655,6 +669,49 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
               : 'Use the email and password from your existing account.'}
           </Text>
         </View>
+
+        {authMode === 'signup' && (
+          <View style={styles.checkboxSection}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setTermsAccepted(!termsAccepted)}
+              style={styles.checkboxRow}
+            >
+              <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
+                {termsAccepted && <Check size={12} color="#0f172a" strokeWidth={3} />}
+              </View>
+              <Text style={styles.checkboxText}>
+                {'I am 13 or older and agree to the '}
+                <Text
+                  style={styles.checkboxLink}
+                  onPress={() => void Linking.openURL('https://dharmadailytermsofuse.notion.site/')}
+                >
+                  Terms of Use
+                </Text>
+                {' and '}
+                <Text
+                  style={styles.checkboxLink}
+                  onPress={() => void Linking.openURL('https://dharmadailyprivacypolicy.notion.site')}
+                >
+                  Privacy Policy
+                </Text>
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setEmailUpdatesOptIn(!emailUpdatesOptIn)}
+              style={styles.checkboxRow}
+            >
+              <View style={[styles.checkbox, emailUpdatesOptIn && styles.checkboxChecked]}>
+                {emailUpdatesOptIn && <Check size={12} color="#0f172a" strokeWidth={3} />}
+              </View>
+              <Text style={styles.checkboxText}>
+                Send me occasional emails with tips, verses, and updates
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <Text style={styles.helper}>Your progress, saved in one place.</Text>
       </>
@@ -1124,6 +1181,42 @@ const styles = StyleSheet.create({
   },
   emailFieldsWrap: {
     marginTop: 10,
+  },
+  checkboxSection: {
+    marginTop: 16,
+    gap: 12,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(251,191,36,0.5)',
+    backgroundColor: 'rgba(30,41,59,0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  checkboxChecked: {
+    backgroundColor: '#fbbf24',
+    borderColor: '#fcd34d',
+  },
+  checkboxText: {
+    color: 'rgba(254,243,199,0.85)',
+    fontSize: 13,
+    lineHeight: 20,
+    flex: 1,
+  },
+  checkboxLink: {
+    color: '#fbbf24',
+    textDecorationLine: 'underline',
+    fontWeight: '600',
   },
   continueBtn: {
     marginTop: 12,

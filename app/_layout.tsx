@@ -1,3 +1,4 @@
+import DharmaCoinEarnedOverlay from '@/components/gita/DharmaCoinEarnedOverlay';
 import OnboardingFlow from '@/components/gita/OnboardingFlow';
 import { PREFERRED_LANGUAGE_CHANGED_EVENT } from '@/lib/preferredLanguage';
 import { completeOnboardingProfile, getCurrentAuthUserWithRetry, syncProfileFromAuthUser, updateUserStreak } from '@/lib/profile';
@@ -33,6 +34,7 @@ type OnboardingPayload = {
   email: string | null;
   password: string | null;
   authMode: 'signup' | 'login';
+  emailUpdatesOptIn: boolean;
 };
 
 export default function RootLayout() {
@@ -150,6 +152,7 @@ export default function RootLayout() {
           daily_notification_enabled: payload.remindersEnabled,
           notification_time: '08:00',
           onboarding_complete: true,
+          email_updates_accepted: payload.emailUpdatesOptIn,
         },
       });
 
@@ -166,6 +169,7 @@ export default function RootLayout() {
         preferredLanguage: payload.preferredLanguage,
         remindersEnabled: payload.remindersEnabled,
         notificationTime: '08:00',
+        emailUpdatesAccepted: payload.emailUpdatesOptIn,
       });
       profileSaved = true;
     } catch {
@@ -178,6 +182,7 @@ export default function RootLayout() {
           daily_notification_enabled: payload.remindersEnabled,
           notification_time: '08:00',
           onboarding_complete: true,
+          email_updates_accepted: payload.emailUpdatesOptIn,
         },
         { onConflict: 'id' }
       );
@@ -192,6 +197,7 @@ export default function RootLayout() {
             daily_notification_enabled: payload.remindersEnabled,
             notification_time: '08:00',
             Onboarding_complete: true,
+            email_updates_accepted: payload.emailUpdatesOptIn,
           },
           { onConflict: 'id' }
         );
@@ -330,7 +336,9 @@ export default function RootLayout() {
             <Stack.Screen name="prayer-list" options={{ headerShown: false, animation: 'slide_from_right', cardStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
             <Stack.Screen name="prayer-detail" options={{ headerShown: false, animation: 'slide_from_right', cardStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
             <Stack.Screen name="festival-detail" options={{ headerShown: false, animation: 'slide_from_right', cardStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
+            <Stack.Screen name="dharma-coins" options={{ headerShown: false, animation: 'slide_from_right', cardStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
           </Stack>
+          <DharmaCoinEarnedOverlay />
           {Platform.OS === 'web' && <Toaster richColors position="top-center" />}
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         </ThemeProvider>
