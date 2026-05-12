@@ -1,8 +1,8 @@
 import { HapticTab } from '@/components/haptic-tab';
 import { useTheme } from '@/hooks/useTheme';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { BookOpen, GraduationCap, Home, User } from 'lucide-react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
 
 export default function TabLayout() {
   const theme = useTheme();
