@@ -2,29 +2,29 @@ import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import {
-  DHARMA_COINS_UPDATED_EVENT,
-  DharmaCoinTransaction,
-  fetchDharmaCoinBalance,
-  fetchDharmaCoinTransactions,
-  sourceDisplayName,
-  streakMultiplier,
-  streakTierLabel,
+    DHARMA_COINS_UPDATED_EVENT,
+    DharmaCoinTransaction,
+    fetchDharmaCoinBalance,
+    fetchDharmaCoinTransactions,
+    sourceDisplayName,
+    streakMultiplier,
+    streakTierLabel,
 } from '@/lib/dharmaCoins';
 import { fetchCurrentUserAndProfile } from '@/lib/profile';
 import type { Theme } from '@/theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
+import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { ArrowLeft, Flame, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  DeviceEventEmitter,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    DeviceEventEmitter,
+    FlatList,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { Image } from 'expo-image';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 

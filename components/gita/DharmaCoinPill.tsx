@@ -1,19 +1,19 @@
 import LotusLoader from '@/components/ui/LotusLoader';
 import { useTheme } from '@/hooks/useTheme';
 import {
-  DHARMA_COINS_UPDATED_EVENT,
-  fetchDharmaCoinBalance,
+    DHARMA_COINS_UPDATED_EVENT,
+    fetchDharmaCoinBalance,
 } from '@/lib/dharmaCoins';
 import { useFocusEffect } from '@react-navigation/native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Image } from 'expo-image';
 import { DeviceEventEmitter, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withTiming,
+    useAnimatedStyle,
+    useSharedValue,
+    withSequence,
+    withTiming,
 } from 'react-native-reanimated';
 
 type Props = {

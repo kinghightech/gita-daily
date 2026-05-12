@@ -2,6 +2,7 @@ import DharmaCoinPill from '@/components/gita/DharmaCoinPill';
 import QuoteCard from '@/components/gita/QuoteCard';
 import StreakModal from '@/components/gita/StreakModal';
 import LotusLoader from '@/components/ui/LotusLoader';
+import { useTheme } from '@/hooks/useTheme';
 import { FAVORITES_UPDATED_EVENT, fetchUserFavorites } from '@/lib/favorites';
 import {
     loadPreferredLanguageForCurrentUser,
@@ -10,12 +11,11 @@ import {
 } from '@/lib/preferredLanguage';
 import { fetchCurrentUserAndProfile, getProfileDisplayName, STREAK_UPDATED_EVENT } from '@/lib/profile';
 import { fetchVerseOfTheDay, type GitaVerse } from '@/lib/verses';
-import { useTheme } from '@/hooks/useTheme';
 import type { Theme } from '@/theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
 import { Flame } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { TouchableOpacity, DeviceEventEmitter, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { DeviceEventEmitter, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
