@@ -1,3 +1,4 @@
+import { showAppToast } from '@/lib/appToast';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { PRAYERS } from '@/Data/prayers';
@@ -40,6 +41,8 @@ const getActiveIndex = (lyrics: { timeMs: number; text: string }[], posMs: numbe
   return idx;
 };
 
+const FORWARD_SEEK_TOLERANCE_MS = 1200;
+
 export default function PrayerScreen() {
   const { id: prayerId = 'hanuman-chalisa' } = useLocalSearchParams<{ id: string }>();
   const prayer = PRAYERS.find((p) => p.id === prayerId) ?? PRAYERS[0];
@@ -50,7 +53,9 @@ export default function PrayerScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const itemYs = useRef<number[]>([]);
   const loadedPrayerIdRef = useRef<string>(prayer.id);
-  const awardedThisSessionRef = useRef<string | null>(null);
+  const completionHandledThisSessionRef = useRef<string | null>(null);
+  const skippedAheadThisSessionRef = useRef(false);
+  const skipAlertShownThisSessionRef = useRef(false);
 
   // expo-audio hooks — lifecycle managed automatically
   const player = useAudioPlayer(prayer.audioFile);
@@ -70,22 +75,29 @@ export default function PrayerScreen() {
     if (loadedPrayerIdRef.current !== prayer.id) {
       loadedPrayerIdRef.current = prayer.id;
       itemYs.current = [];
-      awardedThisSessionRef.current = null;
+      completionHandledThisSessionRef.current = null;
+      skippedAheadThisSessionRef.current = false;
+      skipAlertShownThisSessionRef.current = false;
       try { player.replace(prayer.audioFile); } catch {}
     }
   }, [prayer.id, prayer.audioFile, player]);
 
   // Award Dharma Coins when the prayer audio reaches the end.
-  // The RPC enforces once-per-day; awardedThisSessionRef just avoids a redundant
-  // network call per play within the same prayer session.
+  // The RPC enforces once-per-day; local refs prevent redundant network calls and
+  // block rewards if the user manually skips ahead during this run.
   useEffect(() => {
     if (!isLoaded || durationMs <= 0) return;
     const finished =
       (status as { didJustFinish?: boolean }).didJustFinish === true ||
       (positionMs > 0 && positionMs >= durationMs - 250 && !isPlaying);
     if (!finished) return;
-    if (awardedThisSessionRef.current === prayer.id) return;
-    awardedThisSessionRef.current = prayer.id;
+    if (completionHandledThisSessionRef.current === prayer.id) return;
+    completionHandledThisSessionRef.current = prayer.id;
+
+    if (skippedAheadThisSessionRef.current) {
+      return;
+    }
+
     void awardDharmaCoins('prayer', prayer.id).catch((error) => {
       console.warn('Prayer coin award failed', error);
     });
@@ -124,16 +136,44 @@ export default function PrayerScreen() {
   }, [isPlaying, player]);
 
   const restart = useCallback(() => {
+    completionHandledThisSessionRef.current = null;
+    skippedAheadThisSessionRef.current = false;
+    skipAlertShownThisSessionRef.current = false;
     player.seekTo(0);
     player.play();
   }, [player]);
 
+  const markSkippedAhead = useCallback(() => {
+    if (skippedAheadThisSessionRef.current) return;
+
+    skippedAheadThisSessionRef.current = true;
+    completionHandledThisSessionRef.current = null;
+
+    if (!skipAlertShownThisSessionRef.current) {
+      skipAlertShownThisSessionRef.current = true;
+      showAppToast({
+        title: "Can't grant coins because you skipped ahead.",
+        message: 'Start from the beginning and listen through to earn coins.',
+      });
+    }
+  }, []);
+
+  const seekToPosition = useCallback((targetMs: number) => {
+    if (targetMs > positionMs + FORWARD_SEEK_TOLERANCE_MS) {
+      markSkippedAhead();
+    }
+
+    try {
+      player.seekTo(targetMs / 1000);
+    } catch {}
+  }, [markSkippedAhead, player, positionMs]);
+
   const onProgressPress = useCallback(
     (locationX: number) => {
       const ratio = Math.max(0, Math.min(1, locationX / trackWidth));
-      player.seekTo(ratio * (durationMs / 1000));
+      seekToPosition(ratio * durationMs);
     },
-    [trackWidth, durationMs, player],
+    [trackWidth, durationMs, seekToPosition],
   );
 
   return (
@@ -170,7 +210,7 @@ export default function PrayerScreen() {
                 onLayout={(e) => {
                   itemYs.current[index] = e.nativeEvent.layout.y;
                 }}
-                onPress={() => { try { player.seekTo(block.timeMs / 1000); } catch {} }}
+                onPress={() => seekToPosition(block.timeMs)}
                 style={styles.lyricBlock}
               >
                 <Text

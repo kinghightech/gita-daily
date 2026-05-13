@@ -1,13 +1,17 @@
 import LotusLoader from '@/components/ui/LotusLoader';
 import { useTheme } from '@/hooks/useTheme';
 import {
+    getCachedDharmaCoinBalance,
+    updateCachedDharmaCoinBalance,
+} from '@/lib/dharmaCoinOverview';
+import {
     DHARMA_COINS_UPDATED_EVENT,
     fetchDharmaCoinBalance,
 } from '@/lib/dharmaCoins';
 import { useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DeviceEventEmitter, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
     useAnimatedStyle,
@@ -22,22 +26,34 @@ type Props = {
 
 export default function DharmaCoinPill({ compact = false }: Props) {
   const theme = useTheme();
-  const [balance, setBalance] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const initialBalance = useRef(getCachedDharmaCoinBalance()).current;
+  const skipNextFocusRefresh = useRef(true);
+  const [balance, setBalance] = useState<number>(initialBalance ?? 0);
+  const [isLoading, setIsLoading] = useState(initialBalance == null);
   const scale = useSharedValue(1);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { showLoader?: boolean }) => {
+    if (options?.showLoader) {
+      setIsLoading(true);
+    }
+
     const value = await fetchDharmaCoinBalance();
+    updateCachedDharmaCoinBalance(value);
     setBalance(value);
     setIsLoading(false);
   }, []);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    void refresh({ showLoader: initialBalance == null });
+  }, [initialBalance, refresh]);
 
   useFocusEffect(
     useCallback(() => {
+      if (skipNextFocusRefresh.current) {
+        skipNextFocusRefresh.current = false;
+        return () => {};
+      }
+
       void refresh();
       return () => {};
     }, [refresh])
@@ -45,6 +61,7 @@ export default function DharmaCoinPill({ compact = false }: Props) {
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener(DHARMA_COINS_UPDATED_EVENT, (total: number) => {
+      updateCachedDharmaCoinBalance(total);
       setBalance(total);
       scale.value = withSequence(
         withTiming(1.18, { duration: 180 }),

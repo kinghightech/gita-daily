@@ -4,6 +4,7 @@ import Animated, {
     Easing,
     Extrapolation,
     interpolate,
+    SharedValue,
     useAnimatedProps,
     useSharedValue,
     withRepeat,
@@ -73,7 +74,7 @@ type LotusStrokeProps = {
   length: number;
   color: string;
   strokeWidth: number;
-  progress: Animated.SharedValue<number>;
+  progress: SharedValue<number>;
   step: number;
   span: number;
 };
@@ -144,13 +145,15 @@ function LotusLoader({
 
   useEffect(() => {
     const handle = requestAnimationFrame(() => {
-      const measured = LOTUS_PETALS.map((_, index) => {
+      const measured: number[] = LOTUS_PETALS.map((_, index): number => {
         const path = measureRefs.current[index];
         if (!path || typeof path.getTotalLength !== 'function') return LENGTH_FALLBACK;
 
         try {
           const value = path.getTotalLength();
-          return Number.isFinite(value) && value > 0 ? value : LENGTH_FALLBACK;
+          return typeof value === 'number' && Number.isFinite(value) && value > 0
+            ? value
+            : LENGTH_FALLBACK;
         } catch {
           return LENGTH_FALLBACK;
         }

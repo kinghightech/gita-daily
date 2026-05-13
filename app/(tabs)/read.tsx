@@ -148,6 +148,58 @@ export default function ReadScreen() {
     loadChapter(currentChapter);
   }, [currentChapter, loadChapter, isProfileLoaded]);
 
+  const stopSpeech = useCallback((resetIndex = true) => {
+    Speech.stop();
+    setIsSpeaking(false);
+    setIsReadingChapter(false);
+    isReadingChapterRef.current = false;
+    if (resetIndex) {
+      setCurrentReadingIndex(-1);
+    }
+  }, []);
+
+  const playVerseAtIndex = useCallback((index: number) => {
+    if (!isReadingChapterRef.current || index >= verses.length) {
+      stopSpeech();
+      return;
+    }
+
+    const verse = verses[index];
+    const text = preferredLanguage === 'hindi'
+      ? (stripHindiVerseRef(verse.hindi) || verse.english)
+      : verse.english;
+
+    if (!text) {
+      playVerseAtIndex(index + 1);
+      return;
+    }
+
+    setCurrentReadingIndex(index);
+    const language = preferredLanguage === 'hindi' ? 'hi-IN' : 'en-US';
+
+    Speech.speak(text, {
+      language,
+      rate: 1.0,
+      pitch: 0.6,
+      onDone: () => {
+        if (isReadingChapterRef.current) {
+          playVerseAtIndex(index + 1);
+        }
+      },
+      onStopped: () => {
+        // Only reset isSpeaking if we are truly stopping
+        if (!isReadingChapterRef.current) {
+          setIsSpeaking(false);
+        }
+      },
+      onError: () => {
+        if (!isReadingChapterRef.current) {
+          stopSpeech();
+        }
+      },
+    });
+  }, [verses, preferredLanguage, stopSpeech]);
+
   // On tab focus: navigate to bookmark if we haven't already in this focus session
   useFocusEffect(
     useCallback(() => {
@@ -358,16 +410,6 @@ export default function ReadScreen() {
     }
   }, [user]);
 
-  const stopSpeech = useCallback((resetIndex = true) => {
-    Speech.stop();
-    setIsSpeaking(false);
-    setIsReadingChapter(false);
-    isReadingChapterRef.current = false;
-    if (resetIndex) {
-      setCurrentReadingIndex(-1);
-    }
-  }, []);
-
   const handleSpeak = useCallback(() => {
     if (isSpeaking || isReadingChapter) {
       stopSpeech();
@@ -389,48 +431,6 @@ export default function ReadScreen() {
       onError: () => setIsSpeaking(false),
     });
   }, [isSpeaking, isReadingChapter, selectedVerse, preferredLanguage, stopSpeech]);
-
-  const playVerseAtIndex = useCallback((index: number) => {
-    if (!isReadingChapterRef.current || index >= verses.length) {
-      stopSpeech();
-      return;
-    }
-
-    const verse = verses[index];
-    const text = preferredLanguage === 'hindi'
-      ? (stripHindiVerseRef(verse.hindi) || verse.english)
-      : verse.english;
-    
-    if (!text) {
-      playVerseAtIndex(index + 1);
-      return;
-    }
-
-    setCurrentReadingIndex(index);
-    const language = preferredLanguage === 'hindi' ? 'hi-IN' : 'en-US';
-    
-    Speech.speak(text, {
-      language,
-      rate: 1.0,
-      pitch: 0.6,
-      onDone: () => {
-        if (isReadingChapterRef.current) {
-          playVerseAtIndex(index + 1);
-        }
-      },
-      onStopped: () => {
-        // Only reset isSpeaking if we are truly stopping
-        if (!isReadingChapterRef.current) {
-          setIsSpeaking(false);
-        }
-      },
-      onError: () => {
-        if (!isReadingChapterRef.current) {
-          stopSpeech();
-        }
-      },
-    });
-  }, [verses, preferredLanguage, stopSpeech]);
 
   const handleReadChapter = useCallback(() => {
     if (isReadingChapterRef.current) {
@@ -962,6 +962,9 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   },
   dialogueBlock: {
     gap: 16,
+  },
+  verseWithContext: {
+    gap: 10,
   },
   verseText: {
     color: theme.textWarm,

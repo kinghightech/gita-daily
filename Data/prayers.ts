@@ -7,6 +7,10 @@ import {
     ENGLISH_LYRICS as HANUMAN_ENGLISH,
     HINDI_LYRICS as HANUMAN_HINDI,
 } from './hanumanChalisaLyrics';
+import {
+    ENGLISH_LYRICS as SHIVA_ENGLISH,
+    HINDI_LYRICS as SHIVA_HINDI,
+} from './shivaTandavaStotramLyrics';
 
 import { supabase } from '@/lib/supabase';
 import { ImageSourcePropType } from 'react-native';
@@ -110,6 +114,42 @@ export const PRAYERS: Prayer[] = [
     language: 'Vedic Sanskrit',
     verses: 1,
     era: 'Vedic (~1500 BCE)',
+  },
+  {
+    id: 'shiva-tandava-stotram',
+    name: 'Shiva Tandava Stotram',
+    nameHindi: 'शिव ताण्डव स्तोत्रम्',
+    duration: '6:30',
+    deity: 'Lord Shiva',
+    thumbnail: require('@/assets/images/backgroundshiva.jpg'),
+    audioFile: getAudioUrl('Shiva_Tandava_Stotram.mp3'),
+    hindiLyrics: SHIVA_HINDI,
+    englishLyrics: SHIVA_ENGLISH,
+    shortDescription: 'A 14-verse hymn of Lord Shiva\'s cosmic dance, composed by Ravana',
+    about:
+      'The Shiva Tandava Stotram is a powerful Sanskrit hymn composed by the demon king Ravana in praise of Lord Shiva. It describes Shiva\'s cosmic dance — the Tandava — with vivid imagery of his matted locks, the Ganga flowing from his hair, the serpents adorning his neck, and the thundering beat of his damaru drum. It is one of the most celebrated hymns in Shaivism, revered for its rhythmic power and poetic grandeur.',
+    whenToChant: [
+      'On Mondays — the most sacred day for Lord Shiva',
+      'During Maha Shivaratri — the great night of Shiva',
+      'During Shravan month — Shiva\'s most auspicious month',
+      'At Pradosh time (dusk on the 13th lunar day)',
+      'Before entering a Shiva temple or beginning puja',
+      'When seeking strength, courage, or divine protection',
+    ],
+    significance:
+      'This stotram is unique because it was composed not by a saint or sage but by Ravana — a great scholar and devotee of Shiva. Despite being an adversary in the Ramayana, Ravana\'s devotion to Shiva was absolute. The stotram captures Shiva\'s Tandava — the dance of creation and destruction — and is said to fill the chanter with Shiva\'s fierce, liberating energy.',
+    benefits: [
+      'Invokes the protective and liberating energy of Lord Shiva',
+      'Builds inner strength and fearlessness',
+      'Destroys negative karma and obstacles',
+      'Bestows eloquence, knowledge, and clarity of mind',
+      'Deepens devotion and connection to the divine',
+      'Said to grant moksha when chanted with sincere surrender',
+    ],
+    composer: 'Ravana',
+    language: 'Sanskrit',
+    verses: 14,
+    era: 'Treta Yuga (ancient)',
   },
 ];
 

@@ -2,21 +2,23 @@ import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import {
+    fetchDharmaCoinOverview,
+    getCachedDharmaCoinOverview,
+    updateCachedDharmaCoinBalance,
+} from '@/lib/dharmaCoinOverview';
+import {
     DHARMA_COINS_UPDATED_EVENT,
     DharmaCoinTransaction,
-    fetchDharmaCoinBalance,
-    fetchDharmaCoinTransactions,
     sourceDisplayName,
     streakMultiplier,
     streakTierLabel,
 } from '@/lib/dharmaCoins';
-import { fetchCurrentUserAndProfile } from '@/lib/profile';
 import type { Theme } from '@/theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { ArrowLeft, Flame, X } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     DeviceEventEmitter,
     FlatList,
@@ -53,37 +55,59 @@ const formatRelative = (iso: string): string => {
 export default function DharmaCoinsScreen() {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const initialSnapshot = useRef(getCachedDharmaCoinOverview()).current;
+  const hasInitialOverview = initialSnapshot?.hasFullOverview === true;
+  const skipNextFocusRefresh = useRef(true);
 
-  const [balance, setBalance] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [transactions, setTransactions] = useState<DharmaCoinTransaction[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [balance, setBalance] = useState(initialSnapshot?.balance ?? 0);
+  const [streak, setStreak] = useState(hasInitialOverview ? initialSnapshot.streak : 0);
+  const [transactions, setTransactions] = useState<DharmaCoinTransaction[]>(
+    hasInitialOverview ? initialSnapshot.transactions : []
+  );
+  const [isLoading, setIsLoading] = useState(!hasInitialOverview);
 
-  const refresh = useCallback(async () => {
-    const [bal, txns, profileResult] = await Promise.all([
-      fetchDharmaCoinBalance(),
-      fetchDharmaCoinTransactions(undefined, 100),
-      fetchCurrentUserAndProfile(),
-    ]);
-    setBalance(bal);
-    setTransactions(txns);
-    setStreak(profileResult.profile?.streak_count ?? 0);
-    setIsLoading(false);
+  const applySnapshot = useCallback((snapshot: {
+    balance: number;
+    streak: number;
+    transactions: DharmaCoinTransaction[];
+  }) => {
+    setBalance(snapshot.balance);
+    setStreak(snapshot.streak);
+    setTransactions(snapshot.transactions);
   }, []);
 
+  const refresh = useCallback(async (options?: { showLoader?: boolean }) => {
+    if (options?.showLoader) {
+      setIsLoading(true);
+    }
+
+    const snapshot = await fetchDharmaCoinOverview(100);
+    applySnapshot(snapshot);
+    setIsLoading(false);
+  }, [applySnapshot]);
+
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    void refresh({ showLoader: !hasInitialOverview });
+  }, [hasInitialOverview, refresh]);
 
   useFocusEffect(
     useCallback(() => {
+      if (skipNextFocusRefresh.current) {
+        skipNextFocusRefresh.current = false;
+        return () => {};
+      }
+
       void refresh();
       return () => {};
     }, [refresh])
   );
 
   useEffect(() => {
-    const sub = DeviceEventEmitter.addListener(DHARMA_COINS_UPDATED_EVENT, () => {
+    const sub = DeviceEventEmitter.addListener(DHARMA_COINS_UPDATED_EVENT, (total?: number) => {
+      if (typeof total === 'number') {
+        updateCachedDharmaCoinBalance(total);
+        setBalance(total);
+      }
       void refresh();
     });
     return () => sub.remove();

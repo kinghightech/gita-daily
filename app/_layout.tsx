@@ -333,10 +333,10 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="level/[id]" options={{ headerShown: false, animation: 'slide_from_right' }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-            <Stack.Screen name="prayer-list" options={{ headerShown: false, animation: 'slide_from_right', cardStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
-            <Stack.Screen name="prayer-detail" options={{ headerShown: false, animation: 'slide_from_right', cardStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
-            <Stack.Screen name="festival-detail" options={{ headerShown: false, animation: 'slide_from_right', cardStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
-            <Stack.Screen name="dharma-coins" options={{ headerShown: false, animation: 'slide_from_right', cardStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
+            <Stack.Screen name="prayer-list" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
+            <Stack.Screen name="prayer-detail" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
+            <Stack.Screen name="festival-detail" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
+            <Stack.Screen name="dharma-coins" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
           </Stack>
           <DharmaCoinEarnedOverlay />
           {Platform.OS === 'web' && <Toaster richColors position="top-center" />}
