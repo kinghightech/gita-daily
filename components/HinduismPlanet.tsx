@@ -1,295 +1,438 @@
-import React, { useMemo, useRef } from 'react';
-import { PanResponder, StyleSheet, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Image, PanResponder, StyleSheet, View } from 'react-native';
 import { Canvas, useFrame } from '@react-three/fiber/native';
+import { Asset } from 'expo-asset';
 import * as THREE from 'three';
 
-(function suppressLibraryWarnings() {
-  const orig = console.warn.bind(console);
+type Rotation = { x: number; y: number };
+type RotationRef = React.MutableRefObject<Rotation>;
+type DragRef = React.MutableRefObject<boolean>;
+
+const warningPatchKey = '__dharmaThreeWarningPatch';
+const globalWithPatch = globalThis as typeof globalThis & Record<string, boolean>;
+
+if (!globalWithPatch[warningPatchKey]) {
+  globalWithPatch[warningPatchKey] = true;
+  const originalWarn = console.warn.bind(console);
+  const originalLog = console.log.bind(console);
+
   console.warn = (...args: unknown[]) => {
-    const msg = String(args[0]);
+    const message = String(args[0]);
+
     if (
-      msg.includes('THREE.Clock') ||
-      msg.includes('EXT_color_buffer_float') ||
-      msg.includes('not read by fragment shader')
-    ) return;
-    orig(...args);
+      message.includes('THREE.Clock') ||
+      message.includes('EXT_color_buffer_float') ||
+      message.includes('not read by fragment shader')
+    ) {
+      return;
+    }
+
+    originalWarn(...args);
   };
-})();
 
-const RADIUS = 0.7;
+  console.log = (...args: unknown[]) => {
+    const message = String(args[0]);
 
-const VERT = /* glsl */ `
-  varying vec3 vLocalPos;
+    if (message.includes("EXGL: gl.pixelStorei() doesn't support this parameter yet")) {
+      return;
+    }
+
+    originalLog(...args);
+  };
+}
+
+const RADIUS = 0.72;
+const LINE_RADIUS = RADIUS + 0.014;
+const INITIAL_ROTATION: Rotation = { x: -0.14, y: 0.52 };
+const DRAG_SENSITIVITY = 0.0075;
+const MAX_TILT = 1.12;
+const PLANET_TEXTURE = require('../assets/images/hinduism-planet-map.png');
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const ATMOSPHERE_VERTEX = /* glsl */ `
   varying vec3 vWorldPos;
   varying vec3 vWorldNormal;
 
   void main() {
-    vLocalPos = position;
-    vec4 wp = modelMatrix * vec4(position, 1.0);
-    vWorldPos = wp.xyz;
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vWorldPos = worldPos.xyz;
     vWorldNormal = normalize(mat3(modelMatrix) * normal);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
 
-// ---------------------------------------------------------------------------
-// Planet fragment shader — 7-octave FBM, double domain warp, specular sheen,
-// polar ice caps, Fresnel atmosphere, night-side glow.
-// ---------------------------------------------------------------------------
-const PLANET_FRAG = /* glsl */ `
+const ATMOSPHERE_FRAGMENT = /* glsl */ `
   precision highp float;
 
-  varying vec3 vLocalPos;
   varying vec3 vWorldPos;
   varying vec3 vWorldNormal;
-  uniform vec3 uSunDir;
-
-  float hash(vec2 p) {
-    p = fract(p * vec2(127.1, 311.7));
-    p += dot(p, p + 45.32);
-    return fract(p.x * p.y);
-  }
-
-  float vnoise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(
-      mix(hash(i),                hash(i + vec2(1.0, 0.0)), f.x),
-      mix(hash(i + vec2(0.0,1.0)), hash(i + vec2(1.0, 1.0)), f.x),
-      f.y
-    );
-  }
-
-  float fbm(vec2 p) {
-    float v = 0.0, amp = 0.5;
-    mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
-    for (int i = 0; i < 7; i++) {
-      v   += amp * vnoise(p);
-      p    = rot * p * 2.07 + vec2(7.1, 3.7);
-      amp *= 0.46;
-    }
-    return v;
-  }
 
   void main() {
-    vec3  p   = normalize(vLocalPos);
-    float lon = atan(p.z, p.x);
-    float lat = asin(clamp(p.y, -1.0, 1.0));
-    vec2  uv  = vec2(lon * 0.15915 + 0.5, lat * 0.31831 + 0.5);
+    vec3 N = normalize(vWorldNormal);
+    vec3 V = normalize(cameraPosition - vWorldPos);
+    float rim = pow(1.0 - max(dot(N, V), 0.0), 2.8);
+    float alpha = smoothstep(0.10, 0.92, rim) * 0.46;
 
-    vec2 q = vec2(fbm(uv * 4.5), fbm(uv * 4.5 + vec2(5.2, 1.3)));
-    vec2 r = vec2(
-      fbm(uv * 3.0 + 4.5 * q + vec2(1.7, 9.2)),
-      fbm(uv * 3.0 + 4.5 * q + vec2(8.3, 2.8))
-    );
-    float f = fbm(uv * 2.5 + 4.5 * r);
-
-    float t = clamp(f * 2.3 - 0.42, 0.0, 1.0);
-    t = t * t * (3.0 - 2.0 * t);
-
-    vec3 abyss  = vec3(0.00, 0.01, 0.14);
-    vec3 deep   = vec3(0.00, 0.08, 0.45);
-    vec3 royal  = vec3(0.02, 0.26, 0.88);
-    vec3 bright = vec3(0.08, 0.55, 1.00);
-    vec3 ice    = vec3(0.60, 0.92, 1.00);
-
-    vec3 col;
-    if      (t < 0.25) col = mix(abyss,  deep,   t * 4.0);
-    else if (t < 0.50) col = mix(deep,   royal,  (t - 0.25) * 4.0);
-    else if (t < 0.75) col = mix(royal,  bright, (t - 0.50) * 4.0);
-    else               col = mix(bright, ice,    (t - 0.75) * 4.0);
-
-    float iceMask = smoothstep(0.72, 0.92, abs(p.y));
-    col = mix(col, vec3(0.82, 0.94, 1.00), iceMask * 0.88);
-
-    vec3  N    = normalize(vWorldNormal);
-    vec3  L    = normalize(uSunDir);
-    vec3  V    = normalize(cameraPosition - vWorldPos);
-    float diff = max(0.0, dot(N, L));
-
-    col *= 0.07 + 0.93 * diff;
-
-    vec3  H    = normalize(L + V);
-    float spec = pow(max(0.0, dot(N, H)), 96.0);
-    col += spec * smoothstep(0.25, 0.65, t) * vec3(0.25, 0.55, 1.00) * diff * 1.2;
-
-    float fresnel = pow(1.0 - max(0.0, dot(N, V)), 3.5);
-    col += fresnel * vec3(0.04, 0.38, 1.00) * 3.5;
-
-    float night = 1.0 - smoothstep(0.0, 0.25, diff);
-    col += night * vec3(0.00, 0.04, 0.18) * 0.6;
-
-    gl_FragColor = vec4(col, 1.0);
+    gl_FragColor = vec4(0.02, 0.34, 1.00, alpha);
   }
 `;
 
-// ---------------------------------------------------------------------------
-// Section lines
-// ---------------------------------------------------------------------------
-const GC_NORMALS: [number, number, number][] = [
-  [0, 1, 0],
-  [1, 0, 0],
-  [0, 0, 1],
-  [0.5774, 0.5774, 0.5774],
-  [-0.5774, 0.5774, 0.5774],
-  [0.5774, 0.5774, -0.5774],
+const SECTION_NODES: [number, number][] = [
+  [64, -42],
+  [48, 34],
+  [36, 112],
+  [8, -120],
+  [10, -32],
+  [12, 58],
+  [-8, 132],
+  [-34, -80],
+  [-32, 10],
+  [-42, 86],
+  [54, -142],
+  [-4, -174],
+  [34, -78],
+  [-58, -12],
+  [-12, -18],
+  [26, 164],
 ];
 
-function buildPositions(nx: number, ny: number, nz: number, radius: number): Float32Array {
-  const n = new THREE.Vector3(nx, ny, nz).normalize();
-  let tmp = new THREE.Vector3(0, 1, 0);
-  if (Math.abs(n.dot(tmp)) > 0.95) tmp.set(1, 0, 0);
-  const u = new THREE.Vector3().crossVectors(tmp, n).normalize();
-  const v = new THREE.Vector3().crossVectors(n, u).normalize();
+const SECTION_EDGES: [number, number][] = [
+  [10, 0],
+  [10, 3],
+  [0, 12],
+  [0, 1],
+  [12, 4],
+  [3, 4],
+  [3, 11],
+  [11, 7],
+  [7, 8],
+  [7, 13],
+  [4, 14],
+  [14, 8],
+  [14, 5],
+  [1, 4],
+  [1, 5],
+  [5, 2],
+  [5, 6],
+  [2, 15],
+  [15, 6],
+  [6, 9],
+  [8, 9],
+  [8, 13],
+  [9, 13],
+];
 
-  const SEGS = 128;
-  const arr = new Float32Array((SEGS + 1) * 3);
-  for (let i = 0; i <= SEGS; i++) {
-    const t = (i / SEGS) * Math.PI * 2;
-    const c = Math.cos(t) * radius;
-    const s = Math.sin(t) * radius;
-    arr[i * 3]     = c * u.x + s * v.x;
-    arr[i * 3 + 1] = c * u.y + s * v.y;
-    arr[i * 3 + 2] = c * u.z + s * v.z;
-  }
-  return arr;
+function pointOnSphere(latDeg: number, lonDeg: number) {
+  const lat = (latDeg * Math.PI) / 180;
+  const lon = (lonDeg * Math.PI) / 180;
+  const cosLat = Math.cos(lat);
+
+  return new THREE.Vector3(
+    Math.cos(lon) * cosLat,
+    Math.sin(lat),
+    Math.sin(lon) * cosLat,
+  ).normalize();
 }
 
-function GreatCircleLine({
-  nx, ny, nz, radius,
+function slerpOnSphere(start: THREE.Vector3, end: THREE.Vector3, t: number) {
+  const dot = clamp(start.dot(end), -0.999, 0.999);
+  const omega = Math.acos(dot);
+  const sinOmega = Math.sin(omega);
+  const startScale = Math.sin((1 - t) * omega) / sinOmega;
+  const endScale = Math.sin(t * omega) / sinOmega;
+
+  return new THREE.Vector3()
+    .addScaledVector(start, startScale)
+    .addScaledVector(end, endScale)
+    .normalize();
+}
+
+function pathPoint(start: THREE.Vector3, end: THREE.Vector3, t: number, edgeIndex: number) {
+  const base = slerpOnSphere(start, end, t);
+  const lateral = new THREE.Vector3().crossVectors(start, end).normalize();
+  const wobble =
+    Math.sin(t * Math.PI * 2 + edgeIndex * 1.37) * 0.010 +
+    Math.sin(t * Math.PI * 5 + edgeIndex * 0.61) * 0.004;
+
+  return base.addScaledVector(lateral, wobble).normalize();
+}
+
+function createDashedPathMesh({
+  dashRadius,
+  opacity,
+  color,
+  scaleBoost,
+  renderOrder,
 }: {
-  nx: number; ny: number; nz: number; radius: number;
+  dashRadius: number;
+  opacity: number;
+  color: number;
+  scaleBoost: number;
+  renderOrder: number;
 }) {
-  const lineRef = useRef<THREE.Line>(null);
-  const computed = useRef(false);
+  const nodeVectors = SECTION_NODES.map(([lat, lon]) => pointOnSphere(lat, lon));
+  const dashSegments = SECTION_EDGES.flatMap(([startIndex, endIndex], edgeIndex) => {
+    const start = nodeVectors[startIndex];
+    const end = nodeVectors[endIndex];
+    const arc = Math.acos(clamp(start.dot(end), -0.999, 0.999));
+    const dashStep = 0.118;
+    const dashSize = 0.065;
+    const dashCount = Math.max(3, Math.floor(arc / dashStep));
 
-  const positions = useMemo(
-    () => buildPositions(nx, ny, nz, radius),
-    [nx, ny, nz, radius],
-  );
+    return Array.from({ length: dashCount }, (_, dashIndex) => {
+      const startT = (dashIndex + 0.08) / dashCount;
+      const endT = Math.min(startT + dashSize / arc, (dashIndex + 0.72) / dashCount);
 
-  useFrame(() => {
-    if (!computed.current && lineRef.current) {
-      lineRef.current.computeLineDistances();
-      computed.current = true;
-    }
+      return {
+        start: pathPoint(start, end, startT, edgeIndex),
+        end: pathPoint(start, end, endT, edgeIndex),
+      };
+    });
+  });
+  const geometry = new THREE.CylinderGeometry(dashRadius, dashRadius, 1, 8, 1, false);
+  const material = new THREE.MeshBasicMaterial({
+    color,
+    transparent: true,
+    opacity,
+    depthTest: true,
+    depthWrite: false,
+  });
+  const mesh = new THREE.InstancedMesh(geometry, material, dashSegments.length);
+  const dummy = new THREE.Object3D();
+  const yAxis = new THREE.Vector3(0, 1, 0);
+
+  dashSegments.forEach((segment, index) => {
+    const start = segment.start.clone().multiplyScalar(LINE_RADIUS);
+    const end = segment.end.clone().multiplyScalar(LINE_RADIUS);
+    const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+    const direction = new THREE.Vector3().subVectors(end, start);
+    const length = direction.length();
+
+    dummy.position.copy(midpoint);
+    dummy.quaternion.setFromUnitVectors(yAxis, direction.normalize());
+    dummy.scale.set(scaleBoost, length, scaleBoost);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(index, dummy.matrix);
   });
 
-  return (
-    <line ref={lineRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          array={positions}
-          count={(positions.length / 3) | 0}
-          itemSize={3}
-        />
-      </bufferGeometry>
-      <lineDashedMaterial
-        color={0xe2b94a}
-        linewidth={2}
-        dashSize={0.07}
-        gapSize={0.04}
-        transparent
-        opacity={0.85}
-      />
-    </line>
-  );
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.renderOrder = renderOrder;
+
+  return mesh;
 }
 
-function SectionLines({ radius }: { radius: number }) {
-  return (
-    <>
-      {GC_NORMALS.map(([x, y, z], i) => (
-        <GreatCircleLine key={i} nx={x} ny={y} nz={z} radius={radius + 0.015} />
-      ))}
-    </>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Scene
-// ---------------------------------------------------------------------------
-function PlanetScene({
-  rotationRef,
-}: {
-  rotationRef: React.MutableRefObject<{ x: number; y: number }>;
-}) {
-  const groupRef = useRef<THREE.Group>(null);
-
-  const planetMat = useMemo(
+function DottedGoldSections() {
+  const glowMesh = useMemo(
     () =>
-      new THREE.ShaderMaterial({
-        vertexShader: VERT,
-        fragmentShader: PLANET_FRAG,
-        uniforms: {
-          uSunDir: { value: new THREE.Vector3(0.6, 0.4, 0.7).normalize() },
-        },
+      createDashedPathMesh({
+        dashRadius: 0.009,
+        opacity: 0.22,
+        color: 0xffb833,
+        scaleBoost: 1.65,
+        renderOrder: 3,
+      }),
+    [],
+  );
+  const dashedMesh = useMemo(
+    () =>
+      createDashedPathMesh({
+        dashRadius: 0.0048,
+        opacity: 0.98,
+        color: 0xffd166,
+        scaleBoost: 1,
+        renderOrder: 4,
       }),
     [],
   );
 
-  useFrame(() => {
-    if (groupRef.current) {
-      groupRef.current.rotation.x = rotationRef.current.x;
-      groupRef.current.rotation.y = rotationRef.current.y;
-    }
-  });
-
   return (
     <>
-      {/* Rotating planet group */}
-      <group ref={groupRef}>
-        <mesh>
-          <sphereGeometry args={[RADIUS, 80, 80]} />
-          <primitive object={planetMat} attach="material" />
-        </mesh>
-        <SectionLines radius={RADIUS} />
-      </group>
-
-      {/* Inner atmosphere — thin haze just above surface */}
-      <mesh>
-        <sphereGeometry args={[RADIUS + 0.05, 32, 32]} />
-        <meshBasicMaterial color="#1d4ed8" transparent opacity={0.10} depthWrite={false} />
-      </mesh>
-
-      {/* Outer glow halo */}
-      <mesh>
-        <sphereGeometry args={[RADIUS + 0.55, 32, 32]} />
-        <meshBasicMaterial color="#2563eb" transparent opacity={0.07} side={THREE.BackSide} depthWrite={false} />
-      </mesh>
+      <primitive object={glowMesh} />
+      <primitive object={dashedMesh} />
     </>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Exported component
-// ---------------------------------------------------------------------------
+function PlanetSurface() {
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadPlanetTexture() {
+      const asset = Asset.fromModule(PLANET_TEXTURE);
+      await asset.downloadAsync();
+      const uri = asset.localUri ?? asset.uri;
+      const size = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+        Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
+      });
+      const loadedTexture = new THREE.Texture({
+        data: asset,
+        width: size.width,
+        height: size.height,
+      });
+
+      // Expo GL uploads this object shape directly.
+      (loadedTexture as THREE.Texture & { isDataTexture: boolean }).isDataTexture = true;
+      loadedTexture.flipY = true;
+      loadedTexture.wrapS = THREE.ClampToEdgeWrapping;
+      loadedTexture.wrapT = THREE.ClampToEdgeWrapping;
+      loadedTexture.generateMipmaps = false;
+      loadedTexture.minFilter = THREE.LinearFilter;
+      loadedTexture.magFilter = THREE.LinearFilter;
+      loadedTexture.colorSpace = THREE.SRGBColorSpace;
+      loadedTexture.needsUpdate = true;
+
+      return loadedTexture;
+    }
+
+    loadPlanetTexture()
+      .then((loadedTexture) => {
+        if (!mounted) {
+          loadedTexture.dispose();
+          return;
+        }
+
+        setTexture(loadedTexture);
+      })
+      .catch((error) => {
+        console.warn('Failed to load Hinduism planet texture', error);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  return (
+    <mesh>
+      <sphereGeometry args={[RADIUS, 128, 96]} />
+      <meshStandardMaterial
+        key={texture ? 'hinduism-planet-textured' : 'hinduism-planet-loading'}
+        map={texture ?? undefined}
+        color={texture ? '#ffffff' : '#0757c8'}
+        emissive={texture ? '#00122f' : '#063f9e'}
+        emissiveIntensity={texture ? 0.12 : 0.38}
+        roughness={0.58}
+        metalness={0.02}
+      />
+    </mesh>
+  );
+}
+
+function PlanetScene({
+  targetRotationRef,
+  isDraggingRef,
+  velocityRef,
+}: {
+  targetRotationRef: RotationRef;
+  isDraggingRef: DragRef;
+  velocityRef: RotationRef;
+}) {
+  const planetRef = useRef<THREE.Group>(null);
+  const smoothedRotationRef = useRef<Rotation>({ ...INITIAL_ROTATION });
+
+  const atmosphereMaterial = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        vertexShader: ATMOSPHERE_VERTEX,
+        fragmentShader: ATMOSPHERE_FRAGMENT,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.FrontSide,
+      }),
+    [],
+  );
+
+  useFrame((_, delta) => {
+    const frameDelta = Math.min(delta, 0.033);
+    const target = targetRotationRef.current;
+
+    if (!isDraggingRef.current) {
+      target.y += (0.12 + velocityRef.current.y) * frameDelta;
+      target.x = clamp(target.x + velocityRef.current.x * frameDelta, -MAX_TILT, MAX_TILT);
+
+      velocityRef.current.x *= 0.91;
+      velocityRef.current.y *= 0.91;
+    }
+
+    const current = smoothedRotationRef.current;
+    const ease = 1 - Math.pow(0.0008, frameDelta);
+
+    current.x += (target.x - current.x) * ease;
+    current.y += (target.y - current.y) * ease;
+
+    if (planetRef.current) {
+      planetRef.current.rotation.set(current.x, current.y, 0);
+    }
+  });
+
+  return (
+    <group ref={planetRef}>
+      <PlanetSurface />
+
+      <DottedGoldSections />
+
+      <mesh scale={1.075}>
+        <sphereGeometry args={[RADIUS, 72, 54]} />
+        <primitive object={atmosphereMaterial} attach="material" />
+      </mesh>
+    </group>
+  );
+}
+
 export default function HinduismPlanet() {
-  const rotationRef = useRef({ x: 0.3, y: 0.4 });
-  const startRef    = useRef({ x: 0.3, y: 0.4 });
+  const targetRotationRef = useRef<Rotation>({ ...INITIAL_ROTATION });
+  const startRotationRef = useRef<Rotation>({ ...INITIAL_ROTATION });
+  const velocityRef = useRef<Rotation>({ x: 0, y: 0 });
+  const isDraggingRef = useRef(false);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder:  () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => {
-        startRef.current = { ...rotationRef.current };
+        isDraggingRef.current = true;
+        velocityRef.current = { x: 0, y: 0 };
+        startRotationRef.current = { ...targetRotationRef.current };
       },
-      onPanResponderMove: (_evt, gesture) => {
-        rotationRef.current = {
-          x: startRef.current.x + gesture.dy * 0.008,
-          y: startRef.current.y + gesture.dx * 0.008,
+      onPanResponderMove: (_event, gesture) => {
+        targetRotationRef.current = {
+          x: clamp(startRotationRef.current.x + gesture.dy * DRAG_SENSITIVITY, -MAX_TILT, MAX_TILT),
+          y: startRotationRef.current.y + gesture.dx * DRAG_SENSITIVITY,
         };
+      },
+      onPanResponderRelease: (_event, gesture) => {
+        isDraggingRef.current = false;
+        velocityRef.current = {
+          x: clamp(gesture.vy * DRAG_SENSITIVITY * 7.0, -0.75, 0.75),
+          y: clamp(gesture.vx * DRAG_SENSITIVITY * 7.0, -1.05, 1.05),
+        };
+      },
+      onPanResponderTerminate: () => {
+        isDraggingRef.current = false;
       },
     }),
   ).current;
 
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
-      <Canvas camera={{ position: [0, 0, 4], fov: 45 }}>
-        <PlanetScene rotationRef={rotationRef} />
+      <Canvas
+        camera={{ position: [0, 0, 4], fov: 45 }}
+        gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+      >
+        <color attach="background" args={['#020617']} />
+        <ambientLight intensity={0.45} />
+        <directionalLight position={[3.5, 2.4, 4.2]} intensity={1.35} color="#dff4ff" />
+        <directionalLight position={[-3.0, -1.8, -2.5]} intensity={0.28} color="#2563eb" />
+        <PlanetScene
+          targetRotationRef={targetRotationRef}
+          isDraggingRef={isDraggingRef}
+          velocityRef={velocityRef}
+        />
       </Canvas>
     </View>
   );
@@ -298,6 +441,6 @@ export default function HinduismPlanet() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: '#020617',
   },
 });
