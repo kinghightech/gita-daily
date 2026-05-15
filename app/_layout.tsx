@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { Alert, AppState, DeviceEventEmitter, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
-import { Toaster } from 'sonner';
+import { Toaster } from '@/components/Toaster';
 import '../global.css';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
