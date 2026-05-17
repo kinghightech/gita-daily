@@ -424,7 +424,6 @@ export default function HinduismPlanet() {
         camera={{ position: [0, 0, 4], fov: 45 }}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
       >
-        <color attach="background" args={['#020617']} />
         <ambientLight intensity={0.45} />
         <directionalLight position={[3.5, 2.4, 4.2]} intensity={1.35} color="#dff4ff" />
         <directionalLight position={[-3.0, -1.8, -2.5]} intensity={0.28} color="#2563eb" />
@@ -441,6 +440,6 @@ export default function HinduismPlanet() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#020617',
+    backgroundColor: 'transparent',
   },
 });

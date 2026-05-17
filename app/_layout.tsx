@@ -337,6 +337,7 @@ export default function RootLayout() {
             <Stack.Screen name="prayer-detail" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
             <Stack.Screen name="festival-detail" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
             <Stack.Screen name="dharma-coins" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
+            <Stack.Screen name="guide" options={{ headerShown: false, animation: 'slide_from_bottom', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
           </Stack>
           <DharmaCoinEarnedOverlay />
           {Platform.OS === 'web' && <Toaster richColors position="top-center" />}

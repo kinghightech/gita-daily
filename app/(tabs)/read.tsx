@@ -18,6 +18,7 @@ import {
     FileText,
     Heart,
     Lightbulb,
+    Map,
     Pause,
     Play,
     Share2,
@@ -26,6 +27,7 @@ import {
     VolumeX,
     X,
 } from 'lucide-react-native';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
@@ -567,8 +569,8 @@ export default function ReadScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.playBtnWrap}>
-          <Pressable 
+        <View style={styles.actionBtnRow}>
+          <Pressable
             style={[styles.playBtn, isReadingChapter && { borderColor: GitaColors.gold, backgroundColor: 'rgba(251,191,36,0.1)' }]}
             onPress={handleReadChapter}
           >
@@ -577,6 +579,13 @@ export default function ReadScreen() {
             ) : (
               <Play size={24} color="white" fill="white" />
             )}
+          </Pressable>
+
+          <Pressable
+            style={styles.guideBtn}
+            onPress={() => router.push('/guide')}
+          >
+            <Map size={22} color={GitaColors.gold} />
           </Pressable>
         </View>
       </View>
@@ -885,9 +894,12 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     marginTop: 2,
     textAlign: 'center',
   },
-  playBtnWrap: {
+  actionBtnRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 10,
+    gap: 16,
   },
   playBtn: {
     width: 52,
@@ -896,6 +908,16 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     backgroundColor: 'rgba(251,191,36,0.2)',
     borderWidth: 1.8,
     borderColor: 'rgba(251,191,36,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guideBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(251,191,36,0.08)',
+    borderWidth: 1.8,
+    borderColor: 'rgba(251,191,36,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
