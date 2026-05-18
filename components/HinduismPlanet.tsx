@@ -1,13 +1,32 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, PanResponder, StyleSheet, View } from 'react-native';
+import {
+  Image,
+  type LayoutChangeEvent,
+  PanResponder,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Canvas, useFrame } from '@react-three/fiber/native';
 import { Asset } from 'expo-asset';
 import * as THREE from 'three';
+import type { WorldPath } from '@/lib/worldPaths';
 
 type Rotation = { x: number; y: number };
 type RotationRef = React.MutableRefObject<Rotation>;
 type DragRef = React.MutableRefObject<boolean>;
+type PlanetMarker = Pick<WorldPath, 'slug' | 'title' | 'shortTitle' | 'accent' | 'bounds'>;
+type PlanetLayout = { width: number; height: number };
+type ProjectedMarker = {
+  marker: PlanetMarker;
+  left: number;
+  top: number;
+  opacity: number;
+  scale: number;
+};
 
+const EMPTY_MARKERS: PlanetMarker[] = [];
 const warningPatchKey = '__dharmaThreeWarningPatch';
 const globalWithPatch = globalThis as typeof globalThis & Record<string, boolean>;
 
@@ -42,10 +61,14 @@ if (!globalWithPatch[warningPatchKey]) {
 }
 
 const RADIUS = 0.72;
-const LINE_RADIUS = RADIUS + 0.014;
 const INITIAL_ROTATION: Rotation = { x: -0.14, y: 0.52 };
 const DRAG_SENSITIVITY = 0.0075;
 const MAX_TILT = 1.12;
+const CAMERA_Z = 4;
+const CAMERA_FOV = 45;
+const MARKER_POSITION_EPSILON = 0.1;
+const MARKER_WIDTH = 124;
+const MARKER_HEIGHT = 36;
 const PLANET_TEXTURE = require('../assets/images/hinduism-planet-map.png');
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -78,180 +101,66 @@ const ATMOSPHERE_FRAGMENT = /* glsl */ `
   }
 `;
 
-const SECTION_NODES: [number, number][] = [
-  [64, -42],
-  [48, 34],
-  [36, 112],
-  [8, -120],
-  [10, -32],
-  [12, 58],
-  [-8, 132],
-  [-34, -80],
-  [-32, 10],
-  [-42, 86],
-  [54, -142],
-  [-4, -174],
-  [34, -78],
-  [-58, -12],
-  [-12, -18],
-  [26, 164],
-];
-
-const SECTION_EDGES: [number, number][] = [
-  [10, 0],
-  [10, 3],
-  [0, 12],
-  [0, 1],
-  [12, 4],
-  [3, 4],
-  [3, 11],
-  [11, 7],
-  [7, 8],
-  [7, 13],
-  [4, 14],
-  [14, 8],
-  [14, 5],
-  [1, 4],
-  [1, 5],
-  [5, 2],
-  [5, 6],
-  [2, 15],
-  [15, 6],
-  [6, 9],
-  [8, 9],
-  [8, 13],
-  [9, 13],
-];
-
-function pointOnSphere(latDeg: number, lonDeg: number) {
-  const lat = (latDeg * Math.PI) / 180;
-  const lon = (lonDeg * Math.PI) / 180;
-  const cosLat = Math.cos(lat);
+function markerToSpherePoint(marker: PlanetMarker) {
+  const u = (marker.bounds.left + marker.bounds.width / 2) / 100;
+  const v = (marker.bounds.top + marker.bounds.height / 2) / 100;
+  const phi = u * Math.PI * 2;
+  const theta = v * Math.PI;
+  const sinTheta = Math.sin(theta);
 
   return new THREE.Vector3(
-    Math.cos(lon) * cosLat,
-    Math.sin(lat),
-    Math.sin(lon) * cosLat,
+    -Math.cos(phi) * sinTheta,
+    Math.cos(theta),
+    Math.sin(phi) * sinTheta,
   ).normalize();
 }
 
-function slerpOnSphere(start: THREE.Vector3, end: THREE.Vector3, t: number) {
-  const dot = clamp(start.dot(end), -0.999, 0.999);
-  const omega = Math.acos(dot);
-  const sinOmega = Math.sin(omega);
-  const startScale = Math.sin((1 - t) * omega) / sinOmega;
-  const endScale = Math.sin(t * omega) / sinOmega;
+function projectMarker(marker: PlanetMarker, rotation: Rotation, layout: PlanetLayout) {
+  const point = markerToSpherePoint(marker);
+  point.applyEuler(new THREE.Euler(rotation.x, rotation.y, 0, 'XYZ'));
 
-  return new THREE.Vector3()
-    .addScaledVector(start, startScale)
-    .addScaledVector(end, endScale)
-    .normalize();
+  if (point.z < -0.08) {
+    return null;
+  }
+
+  const aspect = layout.width / layout.height;
+  const tanHalfFov = Math.tan((CAMERA_FOV * Math.PI) / 360);
+  const depth = CAMERA_Z - point.z * RADIUS;
+  const xNdc = (point.x * RADIUS) / (depth * tanHalfFov * aspect);
+  const yNdc = (point.y * RADIUS) / (depth * tanHalfFov);
+  const frontness = clamp((point.z + 0.08) / 1.08, 0, 1);
+
+  return {
+    marker,
+    left: (xNdc * 0.5 + 0.5) * layout.width,
+    top: (-yNdc * 0.5 + 0.5) * layout.height,
+    opacity: 0.42 + frontness * 0.58,
+    scale: 0.84 + frontness * 0.2,
+  };
 }
 
-function pathPoint(start: THREE.Vector3, end: THREE.Vector3, t: number, edgeIndex: number) {
-  const base = slerpOnSphere(start, end, t);
-  const lateral = new THREE.Vector3().crossVectors(start, end).normalize();
-  const wobble =
-    Math.sin(t * Math.PI * 2 + edgeIndex * 1.37) * 0.010 +
-    Math.sin(t * Math.PI * 5 + edgeIndex * 0.61) * 0.004;
-
-  return base.addScaledVector(lateral, wobble).normalize();
+function projectMarkers(markers: PlanetMarker[], rotation: Rotation, layout: PlanetLayout) {
+  return markers
+    .map((marker) => projectMarker(marker, rotation, layout))
+    .filter((marker): marker is ProjectedMarker => marker !== null);
 }
 
-function createDashedPathMesh({
-  dashRadius,
-  opacity,
-  color,
-  scaleBoost,
-  renderOrder,
-}: {
-  dashRadius: number;
-  opacity: number;
-  color: number;
-  scaleBoost: number;
-  renderOrder: number;
-}) {
-  const nodeVectors = SECTION_NODES.map(([lat, lon]) => pointOnSphere(lat, lon));
-  const dashSegments = SECTION_EDGES.flatMap(([startIndex, endIndex], edgeIndex) => {
-    const start = nodeVectors[startIndex];
-    const end = nodeVectors[endIndex];
-    const arc = Math.acos(clamp(start.dot(end), -0.999, 0.999));
-    const dashStep = 0.118;
-    const dashSize = 0.065;
-    const dashCount = Math.max(3, Math.floor(arc / dashStep));
+function projectedMarkersAreEqual(previous: ProjectedMarker[], next: ProjectedMarker[]) {
+  if (previous.length !== next.length) {
+    return false;
+  }
 
-    return Array.from({ length: dashCount }, (_, dashIndex) => {
-      const startT = (dashIndex + 0.08) / dashCount;
-      const endT = Math.min(startT + dashSize / arc, (dashIndex + 0.72) / dashCount);
+  return previous.every((previousMarker, index) => {
+    const nextMarker = next[index];
 
-      return {
-        start: pathPoint(start, end, startT, edgeIndex),
-        end: pathPoint(start, end, endT, edgeIndex),
-      };
-    });
+    return (
+      previousMarker.marker.slug === nextMarker.marker.slug &&
+      Math.abs(previousMarker.left - nextMarker.left) < MARKER_POSITION_EPSILON &&
+      Math.abs(previousMarker.top - nextMarker.top) < MARKER_POSITION_EPSILON &&
+      Math.abs(previousMarker.opacity - nextMarker.opacity) < 0.01 &&
+      Math.abs(previousMarker.scale - nextMarker.scale) < 0.01
+    );
   });
-  const geometry = new THREE.CylinderGeometry(dashRadius, dashRadius, 1, 8, 1, false);
-  const material = new THREE.MeshBasicMaterial({
-    color,
-    transparent: true,
-    opacity,
-    depthTest: true,
-    depthWrite: false,
-  });
-  const mesh = new THREE.InstancedMesh(geometry, material, dashSegments.length);
-  const dummy = new THREE.Object3D();
-  const yAxis = new THREE.Vector3(0, 1, 0);
-
-  dashSegments.forEach((segment, index) => {
-    const start = segment.start.clone().multiplyScalar(LINE_RADIUS);
-    const end = segment.end.clone().multiplyScalar(LINE_RADIUS);
-    const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-    const direction = new THREE.Vector3().subVectors(end, start);
-    const length = direction.length();
-
-    dummy.position.copy(midpoint);
-    dummy.quaternion.setFromUnitVectors(yAxis, direction.normalize());
-    dummy.scale.set(scaleBoost, length, scaleBoost);
-    dummy.updateMatrix();
-    mesh.setMatrixAt(index, dummy.matrix);
-  });
-
-  mesh.instanceMatrix.needsUpdate = true;
-  mesh.renderOrder = renderOrder;
-
-  return mesh;
-}
-
-function DottedGoldSections() {
-  const glowMesh = useMemo(
-    () =>
-      createDashedPathMesh({
-        dashRadius: 0.009,
-        opacity: 0.22,
-        color: 0xffb833,
-        scaleBoost: 1.65,
-        renderOrder: 3,
-      }),
-    [],
-  );
-  const dashedMesh = useMemo(
-    () =>
-      createDashedPathMesh({
-        dashRadius: 0.0048,
-        opacity: 0.98,
-        color: 0xffd166,
-        scaleBoost: 1,
-        renderOrder: 4,
-      }),
-    [],
-  );
-
-  return (
-    <>
-      <primitive object={glowMesh} />
-      <primitive object={dashedMesh} />
-    </>
-  );
 }
 
 function PlanetSurface() {
@@ -325,10 +234,12 @@ function PlanetScene({
   targetRotationRef,
   isDraggingRef,
   velocityRef,
+  displayRotationRef,
 }: {
   targetRotationRef: RotationRef;
   isDraggingRef: DragRef;
   velocityRef: RotationRef;
+  displayRotationRef: RotationRef;
 }) {
   const planetRef = useRef<THREE.Group>(null);
   const smoothedRotationRef = useRef<Rotation>({ ...INITIAL_ROTATION });
@@ -363,6 +274,7 @@ function PlanetScene({
 
     current.x += (target.x - current.x) * ease;
     current.y += (target.y - current.y) * ease;
+    displayRotationRef.current = { x: current.x, y: current.y };
 
     if (planetRef.current) {
       planetRef.current.rotation.set(current.x, current.y, 0);
@@ -373,8 +285,6 @@ function PlanetScene({
     <group ref={planetRef}>
       <PlanetSurface />
 
-      <DottedGoldSections />
-
       <mesh scale={1.075}>
         <sphereGeometry args={[RADIUS, 72, 54]} />
         <primitive object={atmosphereMaterial} attach="material" />
@@ -383,11 +293,105 @@ function PlanetScene({
   );
 }
 
-export default function HinduismPlanet() {
+function PlanetMarkerLayer({
+  markers,
+  layout,
+  displayRotationRef,
+  onMarkerPress,
+}: {
+  markers: PlanetMarker[];
+  layout: PlanetLayout;
+  displayRotationRef: RotationRef;
+  onMarkerPress?: (marker: PlanetMarker) => void;
+}) {
+  const [projectedMarkers, setProjectedMarkers] = useState<ProjectedMarker[]>([]);
+
+  useEffect(() => {
+    if (!markers.length || layout.width === 0 || layout.height === 0) {
+      setProjectedMarkers([]);
+      return;
+    }
+
+    let animationFrame = 0;
+    let isActive = true;
+
+    const updateMarkers = () => {
+      if (!isActive) {
+        return;
+      }
+
+      const nextMarkers = projectMarkers(markers, displayRotationRef.current, layout);
+      setProjectedMarkers((previousMarkers) =>
+        projectedMarkersAreEqual(previousMarkers, nextMarkers) ? previousMarkers : nextMarkers,
+      );
+      animationFrame = requestAnimationFrame(updateMarkers);
+    };
+
+    animationFrame = requestAnimationFrame(updateMarkers);
+
+    return () => {
+      isActive = false;
+      cancelAnimationFrame(animationFrame);
+    };
+  }, [displayRotationRef, layout, markers]);
+
+  return (
+    <View pointerEvents="box-none" style={styles.markerLayer}>
+      {projectedMarkers.map(({ marker, left, top, opacity, scale }) => (
+        <Pressable
+          key={marker.slug}
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${marker.title}`}
+          hitSlop={6}
+          onPress={() => onMarkerPress?.(marker)}
+          style={({ pressed }) => [
+            styles.markerButton,
+            {
+              left,
+              top,
+              opacity,
+              borderColor: marker.accent,
+              backgroundColor: pressed ? `${marker.accent}38` : 'rgba(15,23,42,0.72)',
+              transform: [
+                { translateX: -MARKER_WIDTH / 2 },
+                { translateY: -MARKER_HEIGHT / 2 },
+                { scale: pressed ? scale * 0.96 : scale },
+              ],
+            },
+          ]}
+        >
+          <View style={[styles.markerDot, { backgroundColor: marker.accent }]} />
+          <Text style={styles.markerText} numberOfLines={1}>
+            {marker.shortTitle}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+export default function HinduismPlanet({
+  markers = EMPTY_MARKERS,
+  onMarkerPress,
+}: {
+  markers?: PlanetMarker[];
+  onMarkerPress?: (marker: PlanetMarker) => void;
+}) {
   const targetRotationRef = useRef<Rotation>({ ...INITIAL_ROTATION });
   const startRotationRef = useRef<Rotation>({ ...INITIAL_ROTATION });
   const velocityRef = useRef<Rotation>({ x: 0, y: 0 });
   const isDraggingRef = useRef(false);
+  const displayRotationRef = useRef<Rotation>({ ...INITIAL_ROTATION });
+  const [layout, setLayout] = useState<PlanetLayout>({ width: 0, height: 0 });
+
+  const handleLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    setLayout((previousLayout) =>
+      previousLayout.width === width && previousLayout.height === height
+        ? previousLayout
+        : { width, height },
+    );
+  };
 
   const panResponder = useRef(
     PanResponder.create({
@@ -419,20 +423,30 @@ export default function HinduismPlanet() {
   ).current;
 
   return (
-    <View style={styles.container} {...panResponder.panHandlers}>
-      <Canvas
-        camera={{ position: [0, 0, 4], fov: 45 }}
-        gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
-      >
-        <ambientLight intensity={0.45} />
-        <directionalLight position={[3.5, 2.4, 4.2]} intensity={1.35} color="#dff4ff" />
-        <directionalLight position={[-3.0, -1.8, -2.5]} intensity={0.28} color="#2563eb" />
-        <PlanetScene
-          targetRotationRef={targetRotationRef}
-          isDraggingRef={isDraggingRef}
-          velocityRef={velocityRef}
-        />
-      </Canvas>
+    <View style={styles.container} onLayout={handleLayout}>
+      <View style={styles.canvasLayer} {...panResponder.panHandlers}>
+        <Canvas
+          camera={{ position: [0, 0, CAMERA_Z], fov: CAMERA_FOV }}
+          gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
+        >
+          <ambientLight intensity={0.45} />
+          <directionalLight position={[3.5, 2.4, 4.2]} intensity={1.35} color="#dff4ff" />
+          <directionalLight position={[-3.0, -1.8, -2.5]} intensity={0.28} color="#2563eb" />
+          <PlanetScene
+            targetRotationRef={targetRotationRef}
+            isDraggingRef={isDraggingRef}
+            velocityRef={velocityRef}
+            displayRotationRef={displayRotationRef}
+          />
+        </Canvas>
+      </View>
+
+      <PlanetMarkerLayer
+        markers={markers}
+        layout={layout}
+        displayRotationRef={displayRotationRef}
+        onMarkerPress={onMarkerPress}
+      />
     </View>
   );
 }
@@ -441,5 +455,40 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'transparent',
+  },
+  canvasLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  markerLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  markerButton: {
+    position: 'absolute',
+    width: MARKER_WIDTH,
+    height: MARKER_HEIGHT,
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 8,
+  },
+  markerDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  markerText: {
+    flexShrink: 1,
+    color: '#FEF3C7',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0,
   },
 });

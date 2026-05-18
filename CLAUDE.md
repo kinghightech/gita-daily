@@ -2,7 +2,7 @@
 
 ## What This App Is
 
-Gita Daily is a mobile app (Expo/React Native) that delivers daily Bhagavad Gita wisdom. Users get a verse of the day, can explore all 716 verses, follow a 50-level learning path (Lotus Path), track streaks, earn badges, browse a Hindu festival calendar, and read chapters with audio playback.
+Dharma Daily is a mobile app (Expo/React Native) that delivers daily Bhagavad Gita wisdom. Users get a verse of the day, can explore all 701 verses, follow a 50-level learning path (Lotus Path), track streaks, earn badges, browse a Hindu festival calendar, and read chapters with audio playback.
 
 ## Tech Stack
 
