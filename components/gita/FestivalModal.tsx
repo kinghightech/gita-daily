@@ -180,7 +180,7 @@ export default function FestivalModal({ festival, onClose }: FestivalModalProps)
                 <View style={styles.gridCol}>
                   <View style={styles.sectionHeader}>
                     <X size={18} color="#ef4444" />
-                    <Text style={[styles.sectionTitle, { color: '#ef4444' }]}>DON'TS</Text>
+                    <Text style={[styles.sectionTitle, { color: '#ef4444' }]}>DON&apos;TS</Text>
                   </View>
                   {festival.donts.map((item, idx) => (
                     <View key={idx} style={[styles.itemCard, styles.dontCard]}>

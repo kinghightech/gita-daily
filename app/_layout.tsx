@@ -339,6 +339,8 @@ export default function RootLayout() {
             <Stack.Screen name="dharma-coins" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
             <Stack.Screen name="saved" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
             <Stack.Screen name="world-path/[slug]" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
+            <Stack.Screen name="world-level/[id]" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
+            <Stack.Screen name="mountain-level/[id]" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
             <Stack.Screen name="guide" options={{ headerShown: false, animation: 'slide_from_bottom', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
           </Stack>
           <DharmaCoinEarnedOverlay />

@@ -1,4 +1,4 @@
-﻿import { Fonts } from '@/constants/theme';
+import { Fonts } from '@/constants/theme';
 import { FAVORITES_UPDATED_EVENT, toggleFavoriteVerse } from '@/lib/favorites';
 import { incrementSharesCount } from '@/lib/profile';
 import { stripHindiVerseRef } from '@/lib/verses';

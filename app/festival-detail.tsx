@@ -176,7 +176,7 @@ export default function FestivalDetailScreen() {
             <View style={[styles.gridCard, styles.dontCard, { flex: 1 }]}>
               <View style={styles.gridHeader}>
                 <X size={15} color="#ef4444" />
-                <Text style={[styles.gridTitle, { color: '#ef4444' }]}>DON'TS</Text>
+                <Text style={[styles.gridTitle, { color: '#ef4444' }]}>DON&apos;TS</Text>
               </View>
               {festival.donts.map((item, i) => (
                 <View key={i} style={styles.bulletRow}>

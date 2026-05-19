@@ -186,7 +186,7 @@ function StepTwoDescription({ descOpacity }: { descOpacity: any }) {
   return (
     <Animated.View style={descAnimStyle}>
       <Text style={[styles.subtitle, { marginTop: 12, marginBottom: 24 }]}>
-        Dharma Daily gives daily quotes of the Bhagavad Gita that you can read anytime. Here's a breakdown of the many features:
+        Dharma Daily gives daily quotes of the Bhagavad Gita that you can read anytime. Here&apos;s a breakdown of the many features:
       </Text>
     </Animated.View>
   );

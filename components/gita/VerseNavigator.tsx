@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { ChevronLeft, ChevronRight, Shuffle } from "lucide-react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type Props = {
   onPrevious: () => void;

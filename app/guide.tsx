@@ -119,7 +119,7 @@ export default function GuideScreen() {
         ) : filteredSections.length === 0 ? (
           <View style={styles.emptyWrap}>
             <Search size={40} color={theme.goldSubtle} />
-            <Text style={styles.emptyText}>No results for "{searchQuery}"</Text>
+            <Text style={styles.emptyText}>No results for &quot;{searchQuery}&quot;</Text>
             <Text style={styles.emptySubtext}>Try a different word or Sanskrit term</Text>
           </View>
         ) : (
