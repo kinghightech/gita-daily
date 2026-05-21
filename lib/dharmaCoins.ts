@@ -4,7 +4,14 @@ import { DeviceEventEmitter } from 'react-native';
 export const DHARMA_COINS_UPDATED_EVENT = 'gitaDaily.dharmaCoinsUpdated.v1';
 export const DHARMA_COINS_EARNED_EVENT = 'gitaDaily.dharmaCoinsEarned.v1';
 
-export type DharmaCoinSource = 'streak' | 'prayer' | 'lotus_level' | 'redemption' | 'bonus';
+export type DharmaCoinSource =
+  | 'streak'
+  | 'prayer'
+  | 'lotus_level'
+  | 'redemption'
+  | 'bonus'
+  | 'world_level'
+  | 'wisdom_gate';
 
 export type DharmaCoinTransaction = {
   id: string;

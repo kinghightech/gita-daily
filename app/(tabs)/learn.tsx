@@ -342,11 +342,11 @@ function FestivalsView() {
         </View>
         
         <View style={styles.monthRow}>
-          <TouchableOpacity activeOpacity={0.7} p-4 onPress={prevMonth} hitSlop={20}>
+          <TouchableOpacity activeOpacity={0.7} onPress={prevMonth} hitSlop={20}>
             <Text style={styles.monthArrow}>‹</Text>
           </TouchableOpacity>
           <Text style={styles.monthText}>{monthName}</Text>
-          <TouchableOpacity activeOpacity={0.7} p-4 onPress={nextMonth} hitSlop={20}>
+          <TouchableOpacity activeOpacity={0.7} onPress={nextMonth} hitSlop={20}>
             <Text style={styles.monthArrow}>›</Text>
           </TouchableOpacity>
         </View>

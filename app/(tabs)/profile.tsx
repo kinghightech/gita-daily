@@ -16,7 +16,8 @@ import {
     mapPreferredLanguageToLabel,
     savePreferredLanguageForCurrentUser,
 } from '@/lib/preferredLanguage';
-import { STREAK_UPDATED_EVENT, fetchCurrentUserAndProfile, getProfileDisplayName } from '@/lib/profile';
+import { STREAK_UPDATED_EVENT, deleteCurrentUserAccount, fetchCurrentUserAndProfile, getProfileDisplayName } from '@/lib/profile';
+import { ONBOARDING_VIDEO_URL } from '@/lib/storageAssets';
 import { supabase } from '@/lib/supabase';
 import type { Theme } from '@/theme/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -95,8 +96,12 @@ export default function ProfileScreen() {
   const [earnedBadgeIds, setEarnedBadgeIds] = useState<string[]>([]);
   const [isOnboardingVideoVisible, setIsOnboardingVideoVisible] = useState(false);
 
-  const player = useVideoPlayer(require('@/assets/images/onboarding.MOV'), player => {
+  const player = useVideoPlayer(ONBOARDING_VIDEO_URL, player => {
     player.loop = true;
+    player.bufferOptions = {
+      preferredForwardBufferDuration: 60,
+      maxBufferBytes: 10 * 1024 * 1024,
+    };
   });
 
   useEffect(() => {
@@ -208,6 +213,45 @@ export default function ProfileScreen() {
     await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
     await AsyncStorage.removeItem(ONBOARDING_PROFILE_KEY);
     DeviceEventEmitter.emit(ONBOARDING_REPLAY_EVENT);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This permanently deletes your account, streak, saved verses, notes, badges, and Dharma Coins. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Are you sure?',
+              'Your account and all data will be permanently deleted.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Permanently Delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await deleteCurrentUserAccount();
+                      await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
+                      await AsyncStorage.removeItem(ONBOARDING_PROFILE_KEY);
+                      DeviceEventEmitter.emit(ONBOARDING_REPLAY_EVENT);
+                    } catch (error) {
+                      const message =
+                        error instanceof Error ? error.message : 'Please try again.';
+                      Alert.alert('Could not delete account', message);
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
   };
 
   if (isProfileLoading) {
@@ -426,7 +470,7 @@ export default function ProfileScreen() {
               <Text style={styles.outlineBtnText}>Sign Out</Text>
             </Pressable>
             <Pressable
-              onPress={() => Alert.alert('Delete', 'Account deletion coming soon.')}
+              onPress={handleDeleteAccount}
               style={({ pressed }) => [styles.dangerBtn, pressed && styles.btnPressed]}
             >
               <Trash2 size={16} color="rgba(248,113,113,0.85)" strokeWidth={1.8} />

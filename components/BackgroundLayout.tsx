@@ -1,8 +1,8 @@
 import { useTheme } from '@/hooks/useTheme';
 import { LinearGradient } from 'expo-linear-gradient';
-import type { VideoPlayer } from 'expo-video';
+import type { VideoPlayer, VideoPlayerStatus } from 'expo-video';
 import { VideoView } from 'expo-video';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { AppState, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,7 +14,6 @@ interface BackgroundLayoutProps {
 export default function BackgroundLayout({ children, backgroundPlayer = null }: BackgroundLayoutProps) {
   const theme = useTheme();
   const isDark = theme.blurTint === 'dark';
-  const [videoViewKey, setVideoViewKey] = useState(0);
 
   const bgColors = backgroundPlayer
     ? (isDark ? (['#000000', '#000000', '#000000'] as const) : (['#ffffff', '#ffffff', '#ffffff'] as const))
@@ -25,25 +24,55 @@ export default function BackgroundLayout({ children, backgroundPlayer = null }: 
   useEffect(() => {
     if (!backgroundPlayer) return;
 
-    const syncPlayerWithAppState = (nextState: string) => {
-      if (nextState === 'active') {
-        setVideoViewKey((current) => current + 1);
-        backgroundPlayer.play();
-        return;
-      }
+    const tryPlay = () => {
+      if (AppState.currentState !== 'active') return;
 
-      backgroundPlayer.pause();
+      try {
+        if (!backgroundPlayer.playing) {
+          backgroundPlayer.play();
+        }
+      } catch {
+        // ignore - player may not be ready yet, listeners + timers will retry
+      }
     };
 
-    const subscription = AppState.addEventListener('change', syncPlayerWithAppState);
-
-    if (AppState.currentState === 'active') {
-      setVideoViewKey((current) => current + 1);
-      backgroundPlayer.play();
+    // Source may already be ready by the time this effect runs — fire once synchronously.
+    if (backgroundPlayer.status === 'readyToPlay') {
+      tryPlay();
     }
 
+    // Catch the transition to ready.
+    const statusSub = backgroundPlayer.addListener(
+      'statusChange',
+      ({ status }: { status: VideoPlayerStatus }) => {
+        if (status === 'readyToPlay') {
+          tryPlay();
+        }
+      },
+    );
+
+    // Foreground/background.
+    const appStateSub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        tryPlay();
+      } else {
+        backgroundPlayer.pause();
+      }
+    });
+
+    // Fallback retries in case the status event was missed or play() was a no-op
+    // because the source wasn't yet attached.
+    const t1 = setTimeout(tryPlay, 250);
+    const t2 = setTimeout(tryPlay, 1500);
+    const retryInterval = setInterval(tryPlay, 500);
+    tryPlay();
+
     return () => {
-      subscription.remove();
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearInterval(retryInterval);
+      statusSub.remove();
+      appStateSub.remove();
     };
   }, [backgroundPlayer]);
 
@@ -57,7 +86,6 @@ export default function BackgroundLayout({ children, backgroundPlayer = null }: 
       {backgroundPlayer ? (
         <View style={styles.videoLayer} pointerEvents="none">
           <VideoView
-            key={videoViewKey}
             player={backgroundPlayer}
             style={styles.video}
             contentFit="cover"

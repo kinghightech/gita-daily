@@ -1,6 +1,7 @@
 import { Fonts } from '@/constants/theme';
 import { FAVORITES_UPDATED_EVENT, toggleFavoriteVerse } from '@/lib/favorites';
 import { incrementSharesCount } from '@/lib/profile';
+import { VERSE_BACKGROUND_URLS } from '@/lib/storageAssets';
 import { stripHindiVerseRef } from '@/lib/verses';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,40 +29,11 @@ import {
   type GestureResponderEvent,
 } from 'react-native';
 
-const VERSE_BACKGROUNDS = [
-  require('@/assets/images/verse-bg.jpg'),
-  require('@/assets/images/verse-bg-0.jpg'),
-  require('@/assets/images/verse-bg-2.jpg'),
-  require('@/assets/images/verse-bg-3.jpg'),
-  require('@/assets/images/verse-bg-4.jpg'),
-  require('@/assets/images/verse-bg-5.jpg'),
-  require('@/assets/images/verse-bg-6.jpg'),
-  require('@/assets/images/verse-bg-7.jpg'),
-  require('@/assets/images/verse-bg-8.jpg'),
-  require('@/assets/images/verse-bg-9.jpg'),
-  require('@/assets/images/verse-bg-10.jpg'),
-  require('@/assets/images/verse-bg-11.jpg'),
-  require('@/assets/images/verse-bg-12.jpg'),
-  require('@/assets/images/verse-bg-13.jpg'),
-  require('@/assets/images/verse-bg-14.jpg'),
-  require('@/assets/images/verse-bg-15.jpg'),
-  require('@/assets/images/verse-bg-16.jpg'),
-  require('@/assets/images/verse-bg-17.jpg'),
-  require('@/assets/images/verse-bg-18.jpg'),
-  require('@/assets/images/verse-bg-19.jpg'),
-  require('@/assets/images/verse-bg-20.jpg'),
-  require('@/assets/images/verse-bg-21.jpg'),
-  require('@/assets/images/verse-bg-22.jpg'),
-  require('@/assets/images/verse-bg-23.jpg'),
-  require('@/assets/images/verse-bg-24.jpg'),
-  require('@/assets/images/verse-bg-25.jpg'),
-];
-
 function getTodaysBgIndex(): number {
   const epoch = new Date(2024, 0, 1);
   const now = new Date();
   const daysSinceEpoch = Math.floor((now.getTime() - epoch.getTime()) / (1000 * 60 * 60 * 24));
-  return daysSinceEpoch % VERSE_BACKGROUNDS.length;
+  return daysSinceEpoch % VERSE_BACKGROUND_URLS.length;
 }
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -293,7 +265,7 @@ export default function QuoteCard({
     <View style={isFullscreen ? styles.fullscreenCard : styles.cardOuter}>
       <View style={isFullscreen ? styles.fullscreenCardInner : styles.cardInner}>
         <Image
-          source={VERSE_BACKGROUNDS[bgIndex]}
+          source={VERSE_BACKGROUND_URLS[bgIndex]}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           transition={300}

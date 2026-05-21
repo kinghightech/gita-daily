@@ -1,6 +1,7 @@
 import BackgroundLayout from '@/components/BackgroundLayout';
 import { HapticButton } from '@/components/ui/HapticButton';
 import { Fonts } from '@/constants/theme';
+import { ONBOARDING_VIDEO_URL } from '@/lib/storageAssets';
 import { useVideoPlayer } from 'expo-video';
 import {
     Bell,
@@ -218,11 +219,14 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
   const direction = useSharedValue(1); // 1 for forward, -1 for backward
   const stepOneFormProgress = useSharedValue(0);
   const stepOneCursorOpacity = useSharedValue(1);
-  // Local bundled asset for the full-screen onboarding background.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const backgroundVideoPlayer = useVideoPlayer(require('@/assets/images/onboarding.MOV'), (player) => {
+  const backgroundVideoPlayer = useVideoPlayer(ONBOARDING_VIDEO_URL, (player) => {
     player.loop = true;
     player.muted = true;
+    // Buffer well past the 24s clip so we never re-fetch mid-loop.
+    player.bufferOptions = {
+      preferredForwardBufferDuration: 60,
+      maxBufferBytes: 10 * 1024 * 1024,
+    };
     player.play();
   });
 

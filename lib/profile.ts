@@ -468,3 +468,15 @@ export const updateBookmark = async (userId: string, chapter: number | null, ver
   }
   return true;
 };
+
+export async function deleteCurrentUserAccount(): Promise<void> {
+  const { error } = await supabase.rpc('delete_current_user_account');
+  if (error) {
+    throw error;
+  }
+  try {
+    await supabase.auth.signOut();
+  } catch {
+    // session is already invalid after the RPC; swallow
+  }
+}
