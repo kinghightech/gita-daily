@@ -494,6 +494,54 @@ function WorldLotusPathContent() {
 
         {/* Lotus nodes */}
         {lotusNodes}
+
+        {/* Wisdom Gate state pill — under the gate */}
+        {currentLevel > 21 ? (
+          <View
+            style={[
+              wlStyles.gatePillPassed,
+              { top: WG_PILLAR_BOT + 18, left: WG_CX - 50 },
+            ]}
+            pointerEvents="none"
+          >
+            <Text style={wlStyles.gatePillPassedText}>✓ PASSED</Text>
+          </View>
+        ) : currentLevel === 21 ? (
+          <View
+            style={[
+              wlStyles.gatePillActive,
+              { top: WG_PILLAR_BOT + 18, left: WG_CX - 60 },
+            ]}
+            pointerEvents="none"
+          >
+            <Text style={wlStyles.gatePillActiveText}>TAP TO ENTER</Text>
+          </View>
+        ) : (
+          <View
+            style={[
+              wlStyles.gatePillLocked,
+              { top: WG_PILLAR_BOT + 18, left: WG_CX - 36 },
+            ]}
+            pointerEvents="none"
+          >
+            <Text style={wlStyles.gatePillLockedText}>LOCKED</Text>
+          </View>
+        )}
+
+        {/* Wisdom Gate tap target — covers pillars + arch */}
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={() => handleLevelPress(21)}
+          style={[
+            wlStyles.gateTouch,
+            {
+              top: WG_ARCH_PEAK - 12,
+              left: WG_LEFT_X - WG_CAP_HW - 18,
+              width: WG_RIGHT_X + WG_CAP_HW + 18 - (WG_LEFT_X - WG_CAP_HW - 18),
+              height: WG_PILLAR_BOT + 12 - (WG_ARCH_PEAK - 12),
+            },
+          ]}
+        />
       </View>
     </ScrollView>
     </>
@@ -601,6 +649,67 @@ const wlStyles = StyleSheet.create({
     textShadowColor: 'rgba(251,191,36,0.4)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 6,
+  },
+  gateTouch: {
+    position: 'absolute',
+    zIndex: 15,
+  },
+  gatePillActive: {
+    position: 'absolute',
+    zIndex: 18,
+    width: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(251,191,36,0.20)',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.55)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  gatePillActiveText: {
+    color: '#FBBF24',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+  },
+  gatePillPassed: {
+    position: 'absolute',
+    zIndex: 18,
+    width: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(34,197,94,0.18)',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.55)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  gatePillPassedText: {
+    color: '#22C55E',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+  },
+  gatePillLocked: {
+    position: 'absolute',
+    zIndex: 18,
+    width: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(15,25,50,0.65)',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  gatePillLockedText: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.5,
   },
 });
 

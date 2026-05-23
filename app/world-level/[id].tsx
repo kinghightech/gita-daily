@@ -9,6 +9,7 @@ import {
   fetchWorldLotusLevel,
   getBlockSubstepCount,
   isQuestionBlock,
+  markLotusWisdomGatePassed,
   passThreshold,
   updateCurrentWorldLotusLevel,
   type WorldLotusLevelData,
@@ -72,8 +73,12 @@ export default function WorldLevelScreen() {
   const blocks = levelData?.blocks ?? [];
   const block = blocks[currentIdx];
   const totalBlocks = blocks.length;
+  const isWisdomGate = !!levelData?.is_wisdom_gate;
   const questionTotal = useMemo(() => countQuestionBlocks(blocks), [blocks]);
-  const threshold = useMemo(() => passThreshold(questionTotal), [questionTotal]);
+  const threshold = useMemo(
+    () => passThreshold(questionTotal, isWisdomGate),
+    [questionTotal, isWisdomGate],
+  );
   const substepCount = useMemo(() => getBlockSubstepCount(block), [block]);
 
   const isQuestion = block ? isQuestionBlock(block) : false;
@@ -117,12 +122,18 @@ export default function WorldLevelScreen() {
     const passed = questionTotal === 0 || correctCount >= threshold;
     if (passed) {
       await updateCurrentWorldLotusLevel(levelNumber);
-      void awardDharmaCoins('world_level', String(levelNumber)).catch((err) => {
+      const coinSource = isWisdomGate ? 'wisdom_gate' : 'world_level';
+      void awardDharmaCoins(coinSource, String(levelNumber)).catch((err) => {
         console.warn('World lotus level coin award failed', err);
       });
+      if (isWisdomGate) {
+        void markLotusWisdomGatePassed().catch((err) => {
+          console.warn('Marking wisdom gate as passed failed', err);
+        });
+      }
     }
     router.back();
-  }, [correctCount, levelNumber, questionTotal, threshold]);
+  }, [correctCount, isWisdomGate, levelNumber, questionTotal, threshold]);
 
   const retry = useCallback(() => {
     setCurrentIdx(0);
@@ -156,11 +167,21 @@ export default function WorldLevelScreen() {
           </View>
 
           <Text style={styles.resultHeading}>
-            {passed ? 'Level Complete!' : 'Keep Practicing'}
+            {passed
+              ? isWisdomGate
+                ? 'Wisdom Gate Passed!'
+                : 'Level Complete!'
+              : isWisdomGate
+              ? 'Not Yet'
+              : 'Keep Practicing'}
           </Text>
           <Text style={styles.resultSubtext}>
             {passed
-              ? `You're ready for level ${levelNumber + 1}`
+              ? isWisdomGate
+                ? 'You have completed the Lotus Path. The next region awaits.'
+                : `You're ready for level ${levelNumber + 1}`
+              : isWisdomGate
+              ? `You need ${threshold} of ${questionTotal} correct. Review and try again.`
               : 'Review the lesson and try once more'}
           </Text>
 

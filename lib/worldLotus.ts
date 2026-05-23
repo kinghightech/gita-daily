@@ -353,6 +353,28 @@ export async function updateCurrentWorldLotusLevel(
   return { success: true };
 }
 
+// Mark the lotus-path wisdom gate as passed. Stored in world_lotus_progress so the
+// front-end can later branch on "user has completed the lotus region".
+export async function markLotusWisdomGatePassed(): Promise<{ error?: unknown; success?: boolean }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: 'No user session' };
+
+  const { error } = await supabase
+    .from('world_lotus_progress')
+    .upsert(
+      {
+        user_id: user.id,
+        region_slug: 'lotus_path',
+        passed_wisdom_gate: true,
+      },
+      { onConflict: 'user_id' },
+    );
+  if (error) return { error };
+  return { success: true };
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 // Fisher-Yates. Returns a NEW array; original is untouched.
@@ -405,10 +427,15 @@ export function countQuestionBlocks(blocks: WorldLotusBlock[]): number {
   return blocks.filter(isQuestionBlock).length;
 }
 
-// Pass threshold = 50% of question blocks (rounded up). Min 1 if any questions exist.
-export function passThreshold(questionCount: number): number {
+// Pass threshold: 50% for regular levels, 70% for wisdom-gate levels (rounded up).
+// Min 1 if any questions exist.
+export function passThreshold(
+  questionCount: number,
+  isWisdomGate: boolean = false,
+): number {
   if (questionCount <= 0) return 0;
-  return Math.max(1, Math.ceil(questionCount * 0.5));
+  const ratio = isWisdomGate ? 0.7 : 0.5;
+  return Math.max(1, Math.ceil(questionCount * ratio));
 }
 
 // How many "reveal" clicks a block needs before the Continue button advances
