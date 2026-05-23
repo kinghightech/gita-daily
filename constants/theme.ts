@@ -36,7 +36,7 @@ export const GitaColors = {
   red: '#F87171',
   orange: '#F97316',
   green: '#22C55E',
-  teal: '#14B8A6',
+  teal: '#19b8a6',
 };
 
 export const Fonts = Platform.select({
