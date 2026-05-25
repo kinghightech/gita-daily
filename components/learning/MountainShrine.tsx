@@ -2,7 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { Lock } from 'lucide-react-native';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Path, Polygon, Rect, Line, Circle } from 'react-native-svg';
+import Svg, { Circle, Ellipse, Line, Path, Polygon, Rect } from 'react-native-svg';
 
 interface MountainShrineProps {
   level: number;
@@ -61,8 +61,8 @@ function MountainShrine({
         numberText: '#94A3B8',
       };
 
-  const W = 80;
-  const H = 88;
+  const W = 88;
+  const H = 96;
 
   return (
     <Pressable
@@ -81,109 +81,69 @@ function MountainShrine({
       ]}
       disabled={isLocked && !allowPressWhenLocked}
     >
-      <View style={[styles.svgWrap, isLocked && styles.locked]}>
-        <Svg width={W} height={H} viewBox="0 0 80 88">
+      <View
+        style={[
+          styles.svgWrap,
+          isActive && styles.activeShrineShadow,
+          isCompleted && styles.completedShrineShadow,
+          isWisdomGate && styles.gateShrineShadow,
+          isLocked && styles.locked,
+        ]}
+      >
+        <Svg width={W} height={H} viewBox="0 0 88 96">
+          <Ellipse cx={44} cy={80} rx={28} ry={7} fill="#020617" opacity={0.28} />
+          {(isActive || isCompleted || isWisdomGate) && (
+            <>
+              <Circle cx={44} cy={40} r={32} fill={isCompleted ? '#FBBF24' : '#BAE6FD'} opacity={isWisdomGate ? 0.16 : 0.11} />
+              <Circle cx={44} cy={40} r={22} fill={isCompleted ? '#FDE68A' : '#F8FAFC'} opacity={isWisdomGate ? 0.14 : 0.09} />
+            </>
+          )}
           {/* Snow / stone ledge under the shrine */}
           <Path
-            d="M 8 80 Q 14 72 22 73 Q 30 68 42 70 Q 56 68 64 73 Q 72 74 76 82 L 72 86 L 10 86 Z"
+            d="M 12 70 Q 20 62 30 64 Q 40 59 52 63 Q 64 62 76 70 L 70 82 L 16 82 Z"
             fill={palette.snow}
             opacity={0.95}
           />
           <Path
-            d="M 10 82 Q 18 78 26 79 Q 38 76 50 78 Q 60 78 70 82 L 68 86 L 12 86 Z"
+            d="M 16 72 Q 28 68 42 69 Q 56 68 72 72 L 68 82 L 18 82 Z"
             fill={palette.stoneDark}
             opacity={0.6}
           />
 
           {/* Flag pole */}
-          <Line
-            x1={isWisdomGate ? 40 : 31}
-            y1={isWisdomGate ? 4 : 8}
-            x2={isWisdomGate ? 40 : 31}
-            y2={28}
-            stroke={palette.stoneDark}
-            strokeWidth={1.2}
-          />
+          <Line x1={44} y1={16} x2={44} y2={64} stroke={palette.stoneDark} strokeWidth={1.4} opacity={0.26} />
           {/* Pennant flag */}
-          <Polygon
-            points={
-              isWisdomGate
-                ? '40,4 52,8 40,12'
-                : '31,8 42,12 31,16'
-            }
-            fill={palette.flag}
-          />
+          <Polygon points="44,12 64,24 58,54 44,66 30,54 24,24" fill={palette.stoneDark} opacity={0.45} />
 
           {/* Roof — pointed temple roof */}
-          {isWisdomGate ? (
-            // Wider, taller, dual-tiered roof for the Wisdom Gate
-            <>
-              <Polygon points="14,30 40,12 66,30 60,32 20,32" fill={palette.roof} />
-              <Polygon points="20,32 40,20 60,32 56,34 24,34" fill={palette.roofShadow} opacity={0.6} />
-              <Rect x={14} y={30} width={52} height={4} fill={palette.roofShadow} />
-            </>
-          ) : (
-            <>
-              <Polygon points="14,34 40,14 66,34" fill={palette.roof} />
-              <Polygon points="20,34 40,22 60,34" fill={palette.roofShadow} opacity={0.55} />
-              <Rect x={14} y={33} width={52} height={3.5} fill={palette.roofShadow} />
-            </>
-          )}
+          <Circle cx={44} cy={38} r={28} fill={palette.stone} stroke={palette.stoneDark} strokeWidth={3} />
+          <Circle cx={44} cy={38} r={21} fill={palette.medallion} stroke={palette.medallionRing} strokeWidth={2} />
+          <Polygon points="44,18 54,37 44,32 34,37" fill={palette.snow} opacity={0.9} />
+          <Polygon points="30,50 39,37 44,45 51,34 61,50" fill={palette.stoneDark} opacity={0.38} />
+          <Line x1={28} y1={58} x2={60} y2={58} stroke={palette.stoneDark} strokeWidth={1.2} opacity={0.28} />
 
           {/* Snow on roof */}
-          <Path
-            d={
-              isWisdomGate
-                ? 'M 18 30 Q 30 26 40 28 Q 50 26 62 30 L 60 32 L 20 32 Z'
-                : 'M 18 34 Q 30 30 40 32 Q 50 30 62 34 L 60 35 L 20 35 Z'
-            }
-            fill={palette.snow}
-            opacity={0.9}
-          />
+          <Rect x={30} y={62} width={28} height={7} rx={3.5} fill={palette.stoneDark} opacity={0.5} />
 
           {/* Body — stone block */}
-          <Rect
-            x={18}
-            y={isWisdomGate ? 34 : 36}
-            width={44}
-            height={isWisdomGate ? 44 : 40}
-            rx={3}
-            fill={palette.stone}
-          />
+          <Rect x={28} y={20} width={10} height={24} rx={5} fill="#FFFFFF" opacity={0.12} />
           {/* Body shadow band */}
-          <Rect
-            x={18}
-            y={isWisdomGate ? 70 : 70}
-            width={44}
-            height={isWisdomGate ? 8 : 6}
-            fill={palette.stoneDark}
-            opacity={0.55}
-          />
+          <Path d="M 61 23 Q 71 39 59 56 Q 68 38 54 18" fill={palette.stoneDark} opacity={0.18} />
           {/* Stone block lines */}
-          <Line x1={18} y1={isWisdomGate ? 50 : 52} x2={62} y2={isWisdomGate ? 50 : 52} stroke={palette.stoneDark} strokeWidth={0.6} opacity={0.45} />
-          <Line x1={40} y1={isWisdomGate ? 34 : 36} x2={40} y2={isWisdomGate ? 50 : 52} stroke={palette.stoneDark} strokeWidth={0.6} opacity={0.45} />
-          <Line x1={28} y1={isWisdomGate ? 50 : 52} x2={28} y2={isWisdomGate ? 64 : 64} stroke={palette.stoneDark} strokeWidth={0.6} opacity={0.45} />
-          <Line x1={52} y1={isWisdomGate ? 50 : 52} x2={52} y2={isWisdomGate ? 64 : 64} stroke={palette.stoneDark} strokeWidth={0.6} opacity={0.45} />
+          <Line x1={31} y1={28} x2={57} y2={28} stroke={palette.stoneDark} strokeWidth={0.8} opacity={0.3} />
+          <Line x1={30} y1={48} x2={58} y2={48} stroke={palette.stoneDark} strokeWidth={0.8} opacity={0.3} />
 
           {/* Door arch (darker recess) */}
-          <Path
-            d={
-              isWisdomGate
-                ? 'M 32 78 L 32 56 Q 32 46 40 46 Q 48 46 48 56 L 48 78 Z'
-                : 'M 33 76 L 33 58 Q 33 50 40 50 Q 47 50 47 58 L 47 76 Z'
-            }
-            fill={palette.stoneDark}
-            opacity={0.6}
-          />
+          <Circle cx={44} cy={38} r={12} fill={palette.stoneDark} opacity={isLocked ? 0.42 : 0.18} />
 
           {/* Medallion — circle with number or lock */}
           <Circle
-            cx={40}
-            cy={isWisdomGate ? 60 : 60}
-            r={isWisdomGate ? 11 : 9.5}
-            fill={palette.medallion}
+            cx={44}
+            cy={38}
+            r={isWisdomGate ? 14 : 12}
+            fill={isLocked ? palette.stoneDark : palette.medallion}
             stroke={palette.medallionRing}
-            strokeWidth={1.2}
+            strokeWidth={1.4}
           />
         </Svg>
 
@@ -232,21 +192,39 @@ const styles = StyleSheet.create({
   svgWrap: {
     position: 'relative',
   },
+  activeShrineShadow: {
+    shadowColor: '#BAE6FD',
+    shadowOpacity: 0.55,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  completedShrineShadow: {
+    shadowColor: '#FBBF24',
+    shadowOpacity: 0.55,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  gateShrineShadow: {
+    shadowColor: '#FBBF24',
+    shadowOpacity: 0.7,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 0 },
+  },
   locked: {
     opacity: 0.6,
   },
   medallionOverlay: {
     position: 'absolute',
-    top: 50,
-    left: 30,
+    top: 28,
+    left: 34,
     width: 20,
     height: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   medallionOverlayGate: {
-    top: 49,
-    left: 28,
+    top: 26,
+    left: 32,
     width: 24,
     height: 24,
   },

@@ -1,22 +1,24 @@
-import { getWorldPathBySlug } from '@/lib/worldPaths';
-import { useTheme } from '@/hooks/useTheme';
-import { GitaColors, Fonts } from '@/constants/theme';
 import LearnBackground from '@/components/LearnBackground';
 import LotusLevel from '@/components/learning/LotusLevel';
 import MountainShrine from '@/components/learning/MountainShrine';
 import LotusLoader from '@/components/ui/LotusLoader';
-import {
-  fetchCurrentWorldLotusLevel,
-  fetchWorldLotusLevels,
-  type WorldLotusLevelData,
-} from '@/lib/worldLotus';
+import { Fonts, GitaColors } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import {
   fetchCurrentMountainLevel,
   fetchMountainLevels,
   type MountainLevelData,
 } from '@/lib/mountainPath';
 import { STREAK_UPDATED_EVENT } from '@/lib/profile';
+import {
+  fetchCurrentWorldLotusLevel,
+  fetchWorldLotusLevels,
+  type WorldLotusLevelData,
+} from '@/lib/worldLotus';
+import { getWorldPathBySlug } from '@/lib/worldPaths';
+import type { Theme } from '@/theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, BookOpen, ChevronRight, Flower2, MapPin, Sparkles } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -32,9 +34,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path as SvgPath, Rect, Circle, Ellipse, Polygon } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
-import type { Theme } from '@/theme/colors';
+import Svg, { Circle, Ellipse, G, Polygon, Rect, Path as SvgPath } from 'react-native-svg';
 
 // ── World Lotus Path constants ────────────────────────────────────────────────
 const WL_TOTAL = 20;
@@ -911,49 +911,64 @@ function createStyles(theme: Theme) {
 // completing the Lotus Path first. Flip to false to enforce gating on
 // current_mountain_path_level.
 const MP_TEST_MODE = true;
+const MP_SHOW_TEST_BADGE = false;
 
 const MP_TOTAL = 23;
-const MP_ROW_H = 110;
+const MP_ROW_H = 132;
 const MP_PATH_W = 360;
 const MP_NODE_R = 44;
 const MP_SCALE = 1;
 const MP_PATH_H = MP_TOTAL * MP_ROW_H;
-const MP_GATE_AREA = 200;
+const MP_GATE_AREA = 260;
 
 function mpPos(i: number) {
-  // Alternate left/right, slight serpentine variance to feel like a winding climb.
-  const offset = (i % 4 === 2 ? 30 : i % 4 === 0 ? -10 : 0);
+  const side = i % 2 === 0 ? -1 : 1;
+  const offset = i % 6 === 2 ? 18 : i % 6 === 5 ? -16 : i % 3 === 0 ? 6 : 0;
   return {
-    cx: i % 2 === 0 ? 80 + offset : 280 - offset,
-    cy: i * MP_ROW_H + 60,
+    cx: 180 + side * (70 + offset),
+    cy: i * MP_ROW_H + 118,
   };
 }
 
-function buildMpPath() {
-  let d = '';
-  for (let i = 0; i < MP_TOTAL; i++) {
-    const { cx, cy } = mpPos(i);
-    d += i === 0 ? `M ${cx} ${cy}` : ` L ${cx} ${cy}`;
+const MP_LAST = mpPos(MP_TOTAL - 1);
+const MP_GATE_CX = 180;
+const MP_GATE_CY = MP_PATH_H + 112;
+const MP_CONTAINER_H = MP_PATH_H + MP_GATE_AREA;
+
+function buildMpTrailPath() {
+  const first = mpPos(0);
+  let d = `M ${first.cx} ${first.cy + 58}`;
+  for (let i = 1; i < MP_TOTAL; i++) {
+    const prev = mpPos(i - 1);
+    const next = mpPos(i);
+    const bend = i % 2 === 0 ? 62 : -62;
+    d += ` C ${prev.cx + bend} ${prev.cy + 96} ${next.cx - bend} ${next.cy + 20} ${next.cx} ${next.cy + 58}`;
   }
   return d;
 }
 
-const MP_PATH_D = buildMpPath();
-const MP_LAST = mpPos(MP_TOTAL - 1);
-const MP_GATE_CX = 180;
-const MP_GATE_CY = MP_PATH_H + 90;
-const MP_CONTAINER_H = MP_PATH_H + MP_GATE_AREA;
+const MP_TRAIL_D = buildMpTrailPath();
+
+function mpLedgePath(cx: number, cy: number, w: number) {
+  return `M ${cx - w / 2} ${cy + 58} Q ${cx - w * 0.32} ${cy + 38} ${cx - w * 0.08} ${cy + 43} Q ${cx + w * 0.12} ${cy + 31} ${cx + w * 0.35} ${cy + 46} Q ${cx + w * 0.48} ${cy + 50} ${cx + w / 2} ${cy + 62} Q ${cx + w * 0.18} ${cy + 78} ${cx - w * 0.42} ${cy + 72} Q ${cx - w * 0.5} ${cy + 66} ${cx - w / 2} ${cy + 58} Z`;
+}
+
+function mpLedgeSnowPath(cx: number, cy: number, w: number) {
+  return `M ${cx - w * 0.38} ${cy + 57} Q ${cx - w * 0.18} ${cy + 46} ${cx + 2} ${cy + 48} Q ${cx + w * 0.2} ${cy + 44} ${cx + w * 0.42} ${cy + 58} Q ${cx + w * 0.12} ${cy + 64} ${cx - w * 0.38} ${cy + 57} Z`;
+}
 
 function MountainPathScreen() {
+  const insets = useSafeAreaInsets();
+
   return (
     <View style={{ flex: 1, backgroundColor: '#0B1224' }}>
       <Stack.Screen options={{ headerShown: false, animation: 'slide_from_right' }} />
       <MountainBackground />
-      <View style={mpStyles.navBar}>
+      <View style={[mpStyles.navBar, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={() => router.back()} style={mpStyles.navBtn} activeOpacity={0.72}>
           <ArrowLeft size={22} color="#E2E8F0" />
         </TouchableOpacity>
-        <Text style={mpStyles.navTitle}>The Mountain Path</Text>
+        <Text style={mpStyles.navTitle}> </Text>
         <View style={mpStyles.navSpacer} />
       </View>
       <MountainPathContent />
@@ -967,24 +982,19 @@ function MountainBackground() {
   return (
     <View pointerEvents="none" style={mpStyles.bgAbsolute}>
       <LinearGradient
-        colors={['#1E3A5F', '#1E2A4A', '#0B1224']}
-        locations={[0, 0.55, 1]}
+        colors={['#2A8AA0', '#1B638A', '#123A6A', '#071832']}
+        locations={[0, 0.3, 0.68, 1]}
         style={StyleSheet.absoluteFill}
       />
+      <View style={mpStyles.bgGoldGlow} />
+      <View style={mpStyles.bgBlueGlow} />
       <Svg width="100%" height="100%" viewBox="0 0 400 900" preserveAspectRatio="xMidYMid slice" style={StyleSheet.absoluteFill}>
-        {/* Distant mountains */}
-        <Polygon points="-20,440 60,300 140,400 220,280 320,410 420,340 420,900 -20,900" fill="#283C5C" opacity={0.65} />
-        {/* Mid mountains */}
-        <Polygon points="-20,560 50,440 130,520 200,380 280,500 360,420 420,520 420,900 -20,900" fill="#1E2F4D" opacity={0.85} />
-        {/* Snow caps mid */}
-        <Polygon points="40,460 50,440 70,470" fill="#E2E8F0" opacity={0.7} />
-        <Polygon points="190,400 200,380 218,408" fill="#E2E8F0" opacity={0.7} />
-        <Polygon points="350,440 360,420 378,448" fill="#E2E8F0" opacity={0.7} />
-        {/* Near mountains */}
-        <Polygon points="-20,700 80,580 180,680 260,540 340,660 420,600 420,900 -20,900" fill="#152339" opacity={0.95} />
-        {/* Snow caps near */}
-        <Polygon points="68,600 80,580 100,610" fill="#F1F5F9" opacity={0.85} />
-        <Polygon points="248,560 260,540 280,572" fill="#F1F5F9" opacity={0.85} />
+        <Circle cx={110} cy={155} r={82} fill="#FBBF24" opacity={0.09} />
+        <Circle cx={110} cy={155} r={46} fill="#FEF3C7" opacity={0.08} />
+        <Ellipse cx={292} cy={225} rx={122} ry={58} fill="#60A5FA" opacity={0.06} />
+        <Polygon points="-40,520 46,378 118,474 198,318 278,472 354,370 440,520 440,900 -40,900" fill="#1F4B77" opacity={0.28} />
+        <Polygon points="-40,660 74,486 178,612 260,450 344,610 440,520 440,900 -40,900" fill="#123764" opacity={0.44} />
+        <Polygon points="-40,780 84,600 180,736 270,560 358,724 440,640 440,900 -40,900" fill="#071E45" opacity={0.58} />
       </Svg>
 
       {/* Stars */}
@@ -1077,19 +1087,21 @@ function MountainPathContent() {
       const isCompleted = level < effectiveCurrent && !MP_TEST_MODE;
       const isUnlocked = level <= effectiveCurrent;
       const available = allLevels.some((l) => l.level_number === level);
+      const visuallyLocked = MP_TEST_MODE ? level !== 1 : !isUnlocked || !available;
+      const visuallyActive = MP_TEST_MODE ? level === 1 : isUnlocked && available && !isCompleted;
       return (
         <View
           key={level}
           style={[
             mpStyles.nodeWrap,
-            { left: cx - MP_NODE_R, top: cy - MP_NODE_R, transform: [{ scale: MP_SCALE }] },
+            { left: cx - MP_NODE_R, top: cy - 30, transform: [{ scale: MP_SCALE }] },
           ]}
         >
           <MountainShrine
             level={level}
             isCompleted={isCompleted}
-            isLocked={!isUnlocked || !available}
-            isActive={isUnlocked && available && !isCompleted}
+            isLocked={visuallyLocked}
+            isActive={visuallyActive}
             allowPressWhenLocked
             onPress={handleLevelPress}
           />
@@ -1131,7 +1143,7 @@ function MountainPathContent() {
             </Svg>
             <Text style={mpStyles.title}>The Mountain Path</Text>
           </View>
-          <Text style={mpStyles.subtitle}>{MP_TOTAL} milestones toward self-realization</Text>
+          <Text style={mpStyles.subtitle}>{MP_TOTAL} climbs toward inner strength</Text>
           {!MP_TEST_MODE && (
             <View style={mpStyles.progressContainer}>
               <Text style={mpStyles.progress}>Climb {Math.min(currentLevel, MP_TOTAL)} of {MP_TOTAL}</Text>
@@ -1145,7 +1157,7 @@ function MountainPathContent() {
               </View>
             </View>
           )}
-          {MP_TEST_MODE && (
+          {MP_SHOW_TEST_BADGE && MP_TEST_MODE && (
             <View style={mpStyles.testBadge}>
               <Sparkles size={12} color={GitaColors.gold} />
               <Text style={mpStyles.testBadgeText}>Test mode — all levels unlocked</Text>
@@ -1155,56 +1167,79 @@ function MountainPathContent() {
 
         <View style={[mpStyles.pathContainer, { width: MP_PATH_W, height: MP_CONTAINER_H }]}>
           <Svg width={MP_PATH_W} height={MP_CONTAINER_H} style={mpStyles.pathSvg}>
-            {/* Stone path — wide grey-brown base */}
-            <SvgPath
-              d={MP_PATH_D}
-              stroke="#475569"
-              strokeWidth="20"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <Ellipse cx={180} cy={MP_CONTAINER_H - 42} rx={176} ry={34} fill="#020617" opacity={0.32} />
+            <Polygon
+              points={`22,${MP_CONTAINER_H - 42} 44,${MP_CONTAINER_H - 420} 64,${MP_CONTAINER_H - 780} 84,${MP_CONTAINER_H - 1140} 104,${MP_CONTAINER_H - 1500} 124,${MP_CONTAINER_H - 1860} 144,${MP_CONTAINER_H - 2220} 160,520 164,142 180,82 198,142 204,520 216,${MP_CONTAINER_H - 2220} 236,${MP_CONTAINER_H - 1860} 256,${MP_CONTAINER_H - 1500} 276,${MP_CONTAINER_H - 1140} 296,${MP_CONTAINER_H - 780} 316,${MP_CONTAINER_H - 420} 340,${MP_CONTAINER_H - 42}`}
+              fill="#1D3654"
             />
-            {/* Inner highlight (stone bevel) */}
-            <SvgPath
-              d={MP_PATH_D}
-              stroke="#94A3B8"
-              strokeWidth="3"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity={0.55}
+            <Polygon
+              points={`180,82 198,142 204,520 216,${MP_CONTAINER_H - 2220} 236,${MP_CONTAINER_H - 1860} 256,${MP_CONTAINER_H - 1500} 276,${MP_CONTAINER_H - 1140} 296,${MP_CONTAINER_H - 780} 316,${MP_CONTAINER_H - 420} 340,${MP_CONTAINER_H - 42} 180,${MP_CONTAINER_H - 42} 188,720 174,310`}
+              fill="#12243D"
+              opacity={0.95}
             />
-            {/* Snow trail on top */}
-            <SvgPath
-              d={MP_PATH_D}
-              stroke="#E2E8F0"
-              strokeWidth="1.4"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeDasharray="6 8"
-              opacity={0.6}
+            <Polygon
+              points={`22,${MP_CONTAINER_H - 42} 44,${MP_CONTAINER_H - 420} 64,${MP_CONTAINER_H - 780} 84,${MP_CONTAINER_H - 1140} 104,${MP_CONTAINER_H - 1500} 124,${MP_CONTAINER_H - 1860} 144,${MP_CONTAINER_H - 2220} 160,520 180,82 160,560 140,1120 154,1680 132,2240 150,${MP_CONTAINER_H - 360}`}
+              fill="#2D4A6B"
+              opacity={0.4}
             />
+            <Polygon
+              points={`180,82 198,142 204,520 216,${MP_CONTAINER_H - 2220} 236,${MP_CONTAINER_H - 1860} 256,${MP_CONTAINER_H - 1500} 276,${MP_CONTAINER_H - 1140} 296,${MP_CONTAINER_H - 780} 316,${MP_CONTAINER_H - 420} 340,${MP_CONTAINER_H - 42} 224,${MP_CONTAINER_H - 360} 246,2240 218,1680 238,1120 212,590`}
+              fill="#08192F"
+              opacity={0.32}
+            />
+            <Circle cx={110} cy={176} r={70} fill="#FBBF24" opacity={0.08} />
+            <Circle cx={110} cy={176} r={42} fill="#FEF3C7" opacity={0.1} />
+            <Polygon points="118,294 142,250 164,142 180,82 198,142 226,250 252,294 226,276 206,224 190,168 180,126 168,174 152,226 132,276" fill="#F8FAFC" opacity={0.94} />
+            <Polygon points="180,82 198,142 226,250 252,294 226,276 206,224 190,168 180,126" fill="#CBD5E1" opacity={0.72} />
+            <SvgPath d="M 126 304 L 150 276 L 166 286 L 180 244 L 198 286 L 224 276 L 248 304" stroke="#E0F2FE" strokeWidth={4} fill="none" opacity={0.55} strokeLinecap="round" strokeLinejoin="round" />
+            <SvgPath d="M 116 620 L 142 760 L 124 940" stroke="#E0F2FE" strokeWidth={2} fill="none" opacity={0.14} strokeLinecap="round" strokeLinejoin="round" />
+            <SvgPath d="M 246 720 L 224 880 L 246 1080" stroke="#020617" strokeWidth={4} fill="none" opacity={0.13} strokeLinecap="round" strokeLinejoin="round" />
+            <SvgPath d={MP_TRAIL_D} stroke="#07101F" strokeWidth={34} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.38} />
+            <SvgPath d={MP_TRAIL_D} stroke="#4B5563" strokeWidth={27} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.94} />
+            <SvgPath d={MP_TRAIL_D} stroke="#8C7C63" strokeWidth={18} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.96} />
+            <SvgPath d={MP_TRAIL_D} stroke="#D8C7A7" strokeWidth={4} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.42} />
+            <SvgPath d={MP_TRAIL_D} stroke="#F8FAFC" strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4 16" opacity={0.62} />
+            {Array.from({ length: MP_TOTAL }, (_, index) => {
+              const { cx, cy } = mpPos(index);
+              const width = index % 4 === 0 ? 126 : index % 3 === 0 ? 116 : 106;
+              return (
+                <G key={`mp-ledge-${index}`}>
+                  <Ellipse cx={cx} cy={cy + 82} rx={width * 0.44} ry={10} fill="#020617" opacity={0.22} />
+                  <SvgPath d={mpLedgePath(cx, cy, width)} fill="#586577" stroke="#A7B1C2" strokeWidth={1.2} />
+                  <SvgPath d={mpLedgeSnowPath(cx, cy, width)} fill="#E5E7EB" opacity={0.78} />
+                  <SvgPath d={`M ${cx - width * 0.48} ${cy + 64} Q ${cx - width * 0.22} ${cy + 78} ${cx + width * 0.44} ${cy + 66}`} stroke="#1F2937" strokeWidth={5} opacity={0.28} fill="none" strokeLinecap="round" />
+                  {index % 5 === 1 && (
+                    <>
+                      <SvgPath d={`M ${cx + width * 0.38} ${cy + 56} L ${cx + width * 0.38} ${cy + 28}`} stroke="#94A3B8" strokeWidth={1.2} />
+                      <Polygon points={`${cx + width * 0.38},${cy + 28} ${cx + width * 0.5},${cy + 33} ${cx + width * 0.38},${cy + 39}`} fill="#FBBF24" />
+                    </>
+                  )}
+                </G>
+              );
+            })}
 
             {/* Dashed gold connector to Wisdom Gate */}
             <SvgPath
-              d={`M ${MP_LAST.cx} ${MP_LAST.cy} L ${MP_GATE_CX} ${MP_GATE_CY - 30}`}
-              stroke="rgba(251,191,36,0.5)"
-              strokeWidth="3.5"
+              d={`M ${MP_LAST.cx} ${MP_LAST.cy} C ${MP_LAST.cx} ${MP_LAST.cy + 48} ${MP_GATE_CX} ${MP_GATE_CY - 90} ${MP_GATE_CX} ${MP_GATE_CY - 48}`}
+              stroke="rgba(251,191,36,0.58)"
+              strokeWidth="4.5"
               fill="none"
               strokeDasharray="7 5"
               strokeLinecap="round"
             />
 
             {/* Wisdom Gate platform (mountain summit) */}
+            <Circle cx={MP_GATE_CX} cy={MP_GATE_CY - 40} r={72} fill="#FBBF24" opacity={0.1} />
+            <Circle cx={MP_GATE_CX} cy={MP_GATE_CY - 40} r={42} fill="#FEF3C7" opacity={0.1} />
+            <Ellipse cx={MP_GATE_CX} cy={MP_GATE_CY + 60} rx={86} ry={17} fill="#020617" opacity={0.32} />
             <Polygon
-              points={`${MP_GATE_CX - 60},${MP_GATE_CY + 30} ${MP_GATE_CX - 25},${MP_GATE_CY - 20} ${MP_GATE_CX + 25},${MP_GATE_CY - 25} ${MP_GATE_CX + 60},${MP_GATE_CY + 30}`}
-              fill="#1E293B"
-              stroke="#475569"
+              points={`${MP_GATE_CX - 96},${MP_GATE_CY + 24} ${MP_GATE_CX - 34},${MP_GATE_CY - 44} ${MP_GATE_CX + 34},${MP_GATE_CY - 46} ${MP_GATE_CX + 96},${MP_GATE_CY + 24} ${MP_GATE_CX + 48},${MP_GATE_CY + 78} ${MP_GATE_CX - 54},${MP_GATE_CY + 74}`}
+              fill="#24364E"
+              stroke="#7890AA"
               strokeWidth={1.5}
             />
             <Polygon
-              points={`${MP_GATE_CX - 25},${MP_GATE_CY - 20} ${MP_GATE_CX - 10},${MP_GATE_CY - 28} ${MP_GATE_CX + 25},${MP_GATE_CY - 25}`}
+              points={`${MP_GATE_CX - 68},${MP_GATE_CY + 12} ${MP_GATE_CX - 28},${MP_GATE_CY - 38} ${MP_GATE_CX + 34},${MP_GATE_CY - 40} ${MP_GATE_CX + 70},${MP_GATE_CY + 12}`}
               fill="#F1F5F9"
               opacity={0.9}
             />
@@ -1224,8 +1259,8 @@ function MountainPathContent() {
               <MountainShrine
                 level={24}
                 isCompleted={false}
-                isLocked={!gateUnlocked}
-                isActive={gateUnlocked}
+                isLocked={MP_TEST_MODE ? true : !gateUnlocked}
+                isActive={MP_TEST_MODE ? false : gateUnlocked}
                 isWisdomGate
                 allowPressWhenLocked
                 onPress={handleLevelPress}
@@ -1258,6 +1293,32 @@ const mpStyles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 0,
   },
+  bgGoldGlow: {
+    position: 'absolute',
+    top: 126,
+    left: 54,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(251,191,36,0.12)',
+    shadowColor: '#FBBF24',
+    shadowOpacity: 0.5,
+    shadowRadius: 42,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  bgBlueGlow: {
+    position: 'absolute',
+    top: 220,
+    right: 20,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: 'rgba(96,165,250,0.08)',
+    shadowColor: '#60A5FA',
+    shadowOpacity: 0.35,
+    shadowRadius: 50,
+    shadowOffset: { width: 0, height: 0 },
+  },
   star: {
     position: 'absolute',
     backgroundColor: '#FFFFFF',
@@ -1267,11 +1328,9 @@ const mpStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 18,
-    paddingTop: 52,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(226,232,240,0.10)',
-    backgroundColor: 'rgba(11,18,36,0.55)',
+    paddingBottom: 0,
+    borderBottomWidth: 0,
+    backgroundColor: 'transparent',
     zIndex: 5,
   },
   navBtn: {
@@ -1280,13 +1339,13 @@ const mpStyles = StyleSheet.create({
     borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(30,58,95,0.65)',
+    backgroundColor: 'rgba(8,25,58,0.38)',
     borderWidth: 1,
-    borderColor: 'rgba(226,232,240,0.20)',
+    borderColor: 'rgba(186,230,253,0.18)',
   },
   navTitle: {
     flex: 1,
-    color: '#FFFFFF',
+    color: '#FEF3C7',
     fontSize: 18,
     fontWeight: '900',
     textAlign: 'center',
@@ -1296,18 +1355,21 @@ const mpStyles = StyleSheet.create({
   navSpacer: { width: 42 },
   scroll: { flex: 1 },
   scrollContent: { alignItems: 'center', paddingBottom: 140 },
-  header: { paddingVertical: 22, alignItems: 'center', gap: 6 },
+  header: { paddingTop: 8, paddingBottom: 18, alignItems: 'center', gap: 6 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   title: {
-    fontSize: 26,
-    color: '#FFFFFF',
+    fontSize: 28,
+    color: '#FEF3C7',
     fontFamily: Fonts.serif,
     fontWeight: '800',
+    textShadowColor: 'rgba(15,23,42,0.9)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
   },
   subtitle: {
-    color: 'rgba(226,232,240,0.78)',
-    fontSize: 13,
-    fontWeight: '500',
+    color: 'rgba(186,230,253,0.78)',
+    fontSize: 15,
+    fontWeight: '700',
   },
   progressContainer: { width: '100%', alignItems: 'center', marginTop: 10 },
   progress: { color: 'rgba(226,232,240,0.6)', fontSize: 12, marginBottom: 6 },
