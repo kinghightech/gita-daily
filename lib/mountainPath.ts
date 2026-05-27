@@ -1,44 +1,45 @@
 import { supabase } from './supabase';
-
-export type MountainQuestion = {
-  question: string;
-  options: string[];
-  correct_index: number;
-};
+import type { WorldLotusBlock } from './worldLotus';
 
 export type MountainLevelData = {
   id: number;
   level_number: number;
   title: string;
-  reading: string;
-  questions: MountainQuestion[];
   difficulty_tier: string | null;
   is_wisdom_gate: boolean;
+  blocks: WorldLotusBlock[];
 };
 
 type RawMountainRow = {
   id: number;
   title: string;
-  reading: string;
-  questions: MountainQuestion[] | null;
   difficulty_tier: string | null;
   is_wisdom_gate: boolean | null;
+  blocks: unknown;
 };
 
-const mapRow = (row: RawMountainRow): MountainLevelData => ({
-  id: row.id,
-  level_number: row.id,
-  title: row.title,
-  reading: row.reading,
-  questions: Array.isArray(row.questions) ? row.questions : [],
-  difficulty_tier: row.difficulty_tier,
-  is_wisdom_gate: !!row.is_wisdom_gate,
-});
+function normalizeBlocks(raw: unknown): WorldLotusBlock[] {
+  if (!Array.isArray(raw)) return [];
+  return (raw as WorldLotusBlock[])
+    .filter((b) => b && typeof b === 'object' && 'type' in b)
+    .sort((a, b) => ((a as { order?: number }).order ?? 0) - ((b as { order?: number }).order ?? 0));
+}
+
+function mapRow(row: RawMountainRow): MountainLevelData {
+  return {
+    id: row.id,
+    level_number: row.id,
+    title: row.title,
+    difficulty_tier: row.difficulty_tier,
+    is_wisdom_gate: !!row.is_wisdom_gate,
+    blocks: normalizeBlocks(row.blocks),
+  };
+}
 
 export const fetchMountainLevels = async (): Promise<MountainLevelData[]> => {
   const { data, error } = await supabase
     .from('mountain_path_levels')
-    .select('id, title, reading, questions, difficulty_tier, is_wisdom_gate')
+    .select('id, title, difficulty_tier, is_wisdom_gate, blocks')
     .order('id', { ascending: true });
 
   if (error) {
@@ -46,7 +47,7 @@ export const fetchMountainLevels = async (): Promise<MountainLevelData[]> => {
     return [];
   }
 
-  return (data ?? []).map(mapRow);
+  return (data ?? []).map((row) => mapRow(row as RawMountainRow));
 };
 
 export const fetchMountainLevel = async (
@@ -54,7 +55,7 @@ export const fetchMountainLevel = async (
 ): Promise<MountainLevelData | null> => {
   const { data, error } = await supabase
     .from('mountain_path_levels')
-    .select('id, title, reading, questions, difficulty_tier, is_wisdom_gate')
+    .select('id, title, difficulty_tier, is_wisdom_gate, blocks')
     .eq('id', levelNumber)
     .maybeSingle();
 
@@ -63,7 +64,7 @@ export const fetchMountainLevel = async (
     return null;
   }
 
-  return data ? mapRow(data) : null;
+  return data ? mapRow(data as RawMountainRow) : null;
 };
 
 export const fetchCurrentMountainLevel = async (): Promise<number> => {

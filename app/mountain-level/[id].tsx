@@ -1,68 +1,36 @@
+import WorldLotusBlockView from '@/components/learning/WorldLotusBlock';
 import { HapticButton } from '@/components/ui/HapticButton';
 import LotusLoader from '@/components/ui/LotusLoader';
-import * as Haptics from 'expo-haptics';
-import { GitaColors, Fonts } from '@/constants/theme';
+import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { awardDharmaCoins } from '@/lib/dharmaCoins';
 import {
   fetchMountainLevel,
   updateCurrentMountainLevel,
   type MountainLevelData,
-  type MountainQuestion,
 } from '@/lib/mountainPath';
+import {
+  countQuestionBlocks,
+  getBlockSubstepCount,
+  isQuestionBlock,
+  passThreshold,
+} from '@/lib/worldLotus';
+import type { Theme } from '@/theme/colors';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, CheckCircle2, Flower2, XCircle } from 'lucide-react-native';
+import { ArrowLeft, CheckCircle2, Mountain, XCircle } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
+import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Reanimated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
-import type { Theme } from '@/theme/colors';
 
-type Phase = 'loading' | 'reading' | 'quiz' | 'result';
-
-function RichText({
-  text,
-  bodyStyle,
-  boldStyle,
-}: {
-  text: string;
-  bodyStyle: object;
-  boldStyle: object;
-}) {
-  const normalized = text.replace(/\\n/g, '\n');
-  const paragraphs = normalized.split('\n').filter((p) => p.trim().length > 0);
-
-  return (
-    <>
-      {paragraphs.map((para, pIdx) => {
-        const parts = para.split(/(\*\*[^*]+\*\*)/g);
-        return (
-          <Text key={pIdx} style={[bodyStyle, { marginBottom: 18 }]}>
-            {parts.map((part, i) =>
-              part.startsWith('**') && part.endsWith('**') ? (
-                <Text key={i} style={boldStyle}>
-                  {part.slice(2, -2)}
-                </Text>
-              ) : (
-                part
-              ),
-            )}
-          </Text>
-        );
-      })}
-    </>
-  );
-}
+type Phase = 'loading' | 'playing' | 'result';
 
 export default function MountainLevelScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -73,140 +41,111 @@ export default function MountainLevelScreen() {
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [levelData, setLevelData] = useState<MountainLevelData | null>(null);
-  const [currentQ, setCurrentQ] = useState(0);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [currentIdx, setCurrentIdx] = useState(0);
   const [revealed, setRevealed] = useState(false);
-  const [score, setScore] = useState(0);
-
-  const questionOpacity = useSharedValue(1);
-  const questionTranslateY = useSharedValue(0);
-  const revealOpacity = useSharedValue(0);
-  const revealTranslateY = useSharedValue(24);
-  const resultOpacity = useSharedValue(0);
-  const resultScale = useSharedValue(0.94);
-
-  const prevQ = useRef(currentQ);
+  const [currentCorrect, setCurrentCorrect] = useState<boolean | null>(null);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [substep, setSubstep] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       const data = await fetchMountainLevel(levelNumber);
-      if (data) {
-        setLevelData(data);
-        setPhase('reading');
-      } else {
+      if (cancelled) return;
+      if (!data || data.blocks.length === 0) {
         router.back();
+        return;
       }
+      setLevelData(data);
+      setPhase('playing');
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [levelNumber]);
 
   useEffect(() => {
-    if (prevQ.current !== currentQ) {
-      prevQ.current = currentQ;
-      questionTranslateY.value = 22;
-      questionOpacity.value = 0;
-      questionOpacity.value = withTiming(1, { duration: 280 });
-      questionTranslateY.value = withTiming(0, { duration: 270, easing: Easing.out(Easing.cubic) });
-    }
-  }, [currentQ, questionOpacity, questionTranslateY]);
+    setSubstep(0);
+    setRevealed(false);
+    setCurrentCorrect(null);
+  }, [currentIdx]);
 
-  useEffect(() => {
-    if (revealed) {
-      revealOpacity.value = withTiming(1, { duration: 240 });
-      revealTranslateY.value = withTiming(0, { duration: 240, easing: Easing.out(Easing.cubic) });
-    } else {
-      revealOpacity.value = 0;
-      revealTranslateY.value = 24;
-    }
-  }, [revealed, revealOpacity, revealTranslateY]);
+  const blocks = levelData?.blocks ?? [];
+  const block = blocks[currentIdx];
+  const totalBlocks = blocks.length;
+  const isWisdomGate = !!levelData?.is_wisdom_gate;
+  const questionTotal = useMemo(() => countQuestionBlocks(blocks), [blocks]);
+  const threshold = useMemo(() => {
+    if (questionTotal <= 0) return 0;
+    if (isWisdomGate) return passThreshold(questionTotal, true); // 70%
+    return Math.max(1, Math.ceil(questionTotal * 0.6)); // 60% for mountain path
+  }, [questionTotal, isWisdomGate]);
+  const substepCount = useMemo(() => getBlockSubstepCount(block), [block]);
 
-  useEffect(() => {
-    if (phase === 'result') {
-      resultOpacity.value = withTiming(1, { duration: 400 });
-      resultScale.value = withTiming(1, { duration: 370, easing: Easing.out(Easing.cubic) });
-    }
-  }, [phase, resultOpacity, resultScale]);
+  const isQuestion = block ? isQuestionBlock(block) : false;
+  const hasMoreSubsteps = !isQuestion && substep < substepCount;
 
-  const questions: MountainQuestion[] = levelData?.questions ?? [];
-  const totalQ = questions.length;
-  const question = questions[currentQ];
+  const handleAnswerChange = useCallback((c: boolean | null) => {
+    setCurrentCorrect(c);
+  }, []);
 
-  const questionAnimStyle = useAnimatedStyle(() => ({
-    opacity: questionOpacity.value,
-    transform: [{ translateY: questionTranslateY.value }],
-  }));
+  const handleInputFocus = useCallback(() => {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 320);
+  }, []);
 
-  const revealAnimStyle = useAnimatedStyle(() => ({
-    opacity: revealOpacity.value,
-    transform: [{ translateY: revealTranslateY.value }],
-  }));
-
-  const resultAnimStyle = useAnimatedStyle(() => ({
-    opacity: resultOpacity.value,
-    transform: [{ scale: resultScale.value }],
-  }));
-
-  const handleSelect = useCallback(
-    (idx: number) => {
-      if (!revealed) {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setSelected(idx);
-      }
-    },
-    [revealed],
-  );
-
-  const submitAnswer = useCallback(() => {
-    if (selected === null || revealed) return;
-    if (selected === question?.correct_index) {
-      setScore((prev) => prev + 1);
-    }
-    setRevealed(true);
-  }, [selected, revealed, question]);
-
-  const goNext = useCallback(() => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (currentQ + 1 < totalQ) {
-      setCurrentQ((prev) => prev + 1);
-      setSelected(null);
-      setRevealed(false);
+  const advanceBlock = useCallback(() => {
+    if (currentIdx + 1 < totalBlocks) {
+      setCurrentIdx((i) => i + 1);
     } else {
       setPhase('result');
     }
-  }, [currentQ, totalQ]);
+  }, [currentIdx, totalBlocks]);
+
+  const onBottomPress = useCallback(() => {
+    if (!block) return;
+    if (isQuestion && !revealed) {
+      if (currentCorrect === null) return;
+      if (currentCorrect) setCorrectCount((c) => c + 1);
+      setRevealed(true);
+      return;
+    }
+    if (hasMoreSubsteps) {
+      setSubstep((s) => s + 1);
+      return;
+    }
+    advanceBlock();
+  }, [block, isQuestion, revealed, currentCorrect, hasMoreSubsteps, advanceBlock]);
+
+  const onRevealContinuePress = useCallback(() => {
+    advanceBlock();
+  }, [advanceBlock]);
 
   const finish = useCallback(async () => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const passCriteria = Math.ceil((totalQ * 2) / 3);
-    if (score >= passCriteria) {
+    const passed = questionTotal === 0 || correctCount >= threshold;
+    if (passed) {
       await updateCurrentMountainLevel(levelNumber);
+      const coinSource = isWisdomGate ? 'wisdom_gate' : 'world_level';
+      void awardDharmaCoins(coinSource, String(levelNumber)).catch((err) => {
+        console.warn('Mountain level coin award failed', err);
+      });
     }
     router.back();
-  }, [score, totalQ, levelNumber]);
+  }, [correctCount, isWisdomGate, levelNumber, questionTotal, threshold]);
 
   const retry = useCallback(() => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setCurrentQ(0);
-    setSelected(null);
+    setCurrentIdx(0);
+    setSubstep(0);
     setRevealed(false);
-    setScore(0);
-    prevQ.current = 0;
-    questionOpacity.value = 1;
-    questionTranslateY.value = 0;
-    revealOpacity.value = 0;
-    revealTranslateY.value = 24;
-    resultOpacity.value = 0;
-    resultScale.value = 0.94;
-    setPhase('reading');
-  }, [
-    questionOpacity,
-    questionTranslateY,
-    revealOpacity,
-    revealTranslateY,
-    resultOpacity,
-    resultScale,
-  ]);
+    setCurrentCorrect(null);
+    setCorrectCount(0);
+    setPhase('playing');
+  }, []);
 
-  if (phase === 'loading') {
+  // ── Loading ────────────────────────────────────────────────────────────────
+  if (phase === 'loading' || !levelData) {
     return (
       <View style={[styles.root, styles.center]}>
         <Stack.Screen options={{ headerShown: false }} />
@@ -216,258 +155,187 @@ export default function MountainLevelScreen() {
     );
   }
 
-  if (phase === 'reading') {
-    return (
-      <View style={styles.root}>
-        <Stack.Screen options={{ headerShown: false }} />
+  // ── Result ─────────────────────────────────────────────────────────────────
+  if (phase === 'result') {
+    const passed = questionTotal === 0 || correctCount >= threshold;
 
-        <View style={[styles.readHeader, { paddingTop: insets.top + 10 }]}>
+    // Special wisdom gate completion
+    if (passed && isWisdomGate) {
+      return (
+        <View style={[styles.root, styles.wisdomRoot]}>
+          <Stack.Screen options={{ headerShown: false }} />
+          <ScrollView
+            contentContainerStyle={[styles.wisdomScroll, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }]}
+            showsVerticalScrollIndicator={false}
+          >
+            <Animated.View entering={FadeInUp.duration(500)} style={styles.wisdomContainer}>
+              <Text style={styles.wisdomStars}>✦  ✦  ✦</Text>
+              <View style={styles.wisdomIconBig}>
+                <Mountain size={56} color={GitaColors.gold} />
+              </View>
+              <Text style={styles.wisdomTitle}>The Summit!</Text>
+              <Text style={styles.wisdomSubheading}>Mountain Path Wisdom Gate — Passed</Text>
+              <Text style={styles.wisdomMessage}>
+                {"You stood at the question \"What is real?\" and walked all the way to the answer.\n\nThe truth was never hidden — only unseen. You have seen it now."}
+              </Text>
+              {questionTotal > 0 && (
+                <View style={[styles.scoreCard, styles.wisdomScoreCard]}>
+                  <Text style={styles.scoreLabel}>FINAL SCORE</Text>
+                  <Text style={[styles.scoreValue, styles.scorePass]}>
+                    {correctCount}
+                    <Text style={styles.scoreTotal}> / {questionTotal}</Text>
+                  </Text>
+                </View>
+              )}
+              <HapticButton onPress={finish} style={styles.wisdomBtn}>
+                <Text style={styles.wisdomBtnText}>Continue the Journey</Text>
+              </HapticButton>
+            </Animated.View>
+          </ScrollView>
+        </View>
+      );
+    }
+
+    return (
+      <View style={[styles.root, styles.center]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <Animated.View entering={FadeInUp.duration(400)} style={styles.resultContainer}>
+          <View style={[styles.resultIcon, passed ? styles.resultIconPass : styles.resultIconFail]}>
+            <Mountain size={44} color={GitaColors.gold} />
+          </View>
+
+          <Text style={styles.resultHeading}>
+            {passed ? 'Level Complete!' : isWisdomGate ? 'Not Yet' : 'Keep Practicing'}
+          </Text>
+          <Text style={styles.resultSubtext}>
+            {passed
+              ? `You're ready for level ${levelNumber + 1}`
+              : isWisdomGate
+              ? `You need ${threshold} of ${questionTotal} correct. Review and try again.`
+              : 'Review the lesson and try once more'}
+          </Text>
+
+          {questionTotal > 0 && (
+            <View style={styles.scoreCard}>
+              <Text style={styles.scoreLabel}>YOUR SCORE</Text>
+              <Text style={[styles.scoreValue, passed ? styles.scorePass : styles.scoreFail]}>
+                {correctCount}
+                <Text style={styles.scoreTotal}> / {questionTotal}</Text>
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.resultBtns}>
+            {!passed && (
+              <HapticButton onPress={retry} style={styles.secondaryBtn}>
+                <Text style={styles.secondaryBtnText}>Try Again</Text>
+              </HapticButton>
+            )}
+            <HapticButton onPress={finish} style={[styles.primaryBtn, { flex: 1 }]}>
+              <Text style={styles.primaryBtnText}>
+                {passed ? 'Continue Journey' : 'Back to Path'}
+              </Text>
+            </HapticButton>
+          </View>
+        </Animated.View>
+      </View>
+    );
+  }
+
+  // ── Playing ────────────────────────────────────────────────────────────────
+  const bottomLabel = !isQuestion
+    ? 'Continue'
+    : revealed
+    ? currentIdx + 1 < totalBlocks ? 'Continue' : 'Finish'
+    : 'Check';
+  const bottomDisabled = isQuestion && !revealed && currentCorrect === null;
+  const isLastBlock = currentIdx + 1 >= totalBlocks;
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+    >
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <View style={styles.headerTopRow}>
           <HapticButton onPress={() => router.back()} style={styles.iconBtn}>
             <ArrowLeft size={20} color={theme.text} />
           </HapticButton>
           <View style={styles.levelChip}>
             <Text style={styles.levelChipText}>LEVEL {levelNumber}</Text>
           </View>
-          <View style={{ width: 44 }} />
-        </View>
-
-        <ScrollView
-          style={styles.readScroll}
-          contentContainerStyle={styles.readContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.ornament}>
-            <View style={styles.ornamentLine} />
-            <Flower2 size={16} color={GitaColors.goldMuted} />
-            <View style={styles.ornamentLine} />
-          </View>
-
-          <Text style={styles.miniLabel}>MINI-LESSON</Text>
-          <Text style={styles.readTitle}>{levelData?.title}</Text>
-
-          {levelData && (
-            <RichText
-              text={levelData.reading}
-              bodyStyle={styles.readBody}
-              boldStyle={styles.readBold}
-            />
+          {isWisdomGate ? (
+            <View style={styles.wisdomGateChip}>
+              <Text style={styles.wisdomGateChipText}>GATE</Text>
+            </View>
+          ) : (
+            <View style={{ width: 44 }} />
           )}
-        </ScrollView>
-
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
-          <HapticButton style={styles.onboardingBtn} onPress={() => setPhase('quiz')}>
-            <Text style={styles.onboardingBtnText}>Start Quiz</Text>
-          </HapticButton>
         </View>
-      </View>
-    );
-  }
-
-  if (phase === 'result') {
-    const passed = score >= Math.ceil((totalQ * 2) / 3);
-    return (
-      <View style={[styles.root, styles.center]}>
-        <Stack.Screen options={{ headerShown: false }} />
-        <Reanimated.View style={[styles.resultContainer, resultAnimStyle]}>
-          <View
-            style={[
-              styles.resultIcon,
-              passed ? styles.resultIconPass : styles.resultIconFail,
-            ]}
-          >
-            <Flower2
-              size={44}
-              color={passed ? GitaColors.gold : 'rgba(255,255,255,0.25)'}
-            />
-          </View>
-
-          <Text style={styles.resultHeading}>
-            {passed ? 'Level Complete!' : 'Keep Practicing'}
-          </Text>
-          <Text style={styles.resultSubtext}>
-            {passed
-              ? `You're ready for level ${levelNumber + 1}`
-              : 'Review the lesson and try once more'}
-          </Text>
-
-          <View style={styles.scoreCard}>
-            <Text style={styles.scoreLabel}>YOUR SCORE</Text>
-            <Text style={[styles.scoreValue, passed ? styles.scorePass : styles.scoreFail]}>
-              {score}
-              <Text style={styles.scoreTotal}> / {totalQ}</Text>
-            </Text>
-          </View>
-
-          <View style={styles.resultBtns}>
-            {!passed && (
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={styles.secondaryBtn}
-                onPress={retry}
-              >
-                <Text style={styles.secondaryBtnText}>Try Again</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              activeOpacity={0.85}
-              style={[styles.primaryBtn, { flex: 1 }]}
-              onPress={finish}
-            >
-              <Text style={styles.primaryBtnText}>
-                {passed ? 'Continue Journey' : 'Back to Path'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </Reanimated.View>
-      </View>
-    );
-  }
-
-  const isCorrect = revealed && selected === question?.correct_index;
-
-  return (
-    <View style={styles.root}>
-      <Stack.Screen options={{ headerShown: false }} />
-
-      <View style={[styles.quizHeader, { paddingTop: insets.top + 10 }]}>
-        <HapticButton onPress={() => router.back()} style={styles.iconBtn}>
-          <ArrowLeft size={20} color={theme.subtext} />
-        </HapticButton>
+        <Text style={styles.headerTitle} numberOfLines={2}>
+          {levelData.title}
+        </Text>
         <View style={styles.progressRow}>
-          {Array.from({ length: totalQ }, (_, i) => (
+          {Array.from({ length: totalBlocks }, (_, i) => (
             <View
               key={i}
               style={[
                 styles.progressSeg,
-                i < currentQ
+                i < currentIdx
                   ? styles.progressSegDone
-                  : i === currentQ
+                  : i === currentIdx
                   ? styles.progressSegActive
                   : styles.progressSegEmpty,
               ]}
             />
           ))}
         </View>
-        <View style={{ width: 44 }} />
       </View>
 
       <ScrollView
-        style={styles.quizScroll}
+        ref={scrollRef}
+        style={styles.scroll}
         contentContainerStyle={[
-          styles.quizContent,
-          { paddingBottom: revealed ? 210 : 96 },
+          styles.scrollContent,
+          {
+            paddingBottom:
+              revealed && isQuestion ? 200
+              : block?.type === 'fill_blank' ? 240
+              : 130,
+          },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <Reanimated.View style={questionAnimStyle}>
-          <Text style={styles.questionText}>{question?.question}</Text>
-
-          <View style={styles.optionsWrap}>
-            {question?.options.map((opt, idx) => {
-              const isThisCorrect = idx === question.correct_index;
-              const isThisSelected = selected === idx;
-
-              let borderColor: string = theme.border;
-              let bgColor: string = theme.surface;
-
-              if (revealed) {
-                if (isThisCorrect) {
-                  borderColor = '#22C55E';
-                  bgColor = 'rgba(34,197,94,0.1)';
-                } else if (isThisSelected) {
-                  borderColor = '#EF4444';
-                  bgColor = 'rgba(239,68,68,0.1)';
-                }
-              } else if (isThisSelected) {
-                borderColor = GitaColors.gold;
-                bgColor = 'rgba(251,191,36,0.08)';
-              }
-
-              return (
-                <TouchableOpacity
-                  key={idx}
-                  activeOpacity={revealed ? 1 : 0.72}
-                  onPress={() => handleSelect(idx)}
-                  style={[styles.optionCard, { borderColor, backgroundColor: bgColor }]}
-                >
-                  <View
-                    style={[
-                      styles.optionBadge,
-                      !revealed && isThisSelected && styles.optionBadgeSelected,
-                      revealed && isThisCorrect && styles.optionBadgeCorrect,
-                      revealed && isThisSelected && !isThisCorrect && styles.optionBadgeWrong,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.optionBadgeText,
-                        !revealed && isThisSelected && styles.optionBadgeTextSelected,
-                        revealed &&
-                          (isThisCorrect || (isThisSelected && !isThisCorrect)) &&
-                          styles.optionBadgeTextLight,
-                      ]}
-                    >
-                      {String.fromCharCode(65 + idx)}
-                    </Text>
-                  </View>
-
-                  <Text
-                    style={[
-                      styles.optionText,
-                      revealed && isThisCorrect && styles.optionTextCorrect,
-                      revealed && isThisSelected && !isThisCorrect && styles.optionTextWrong,
-                    ]}
-                  >
-                    {opt}
-                  </Text>
-
-                  {revealed && isThisCorrect && (
-                    <CheckCircle2 size={20} color="#22C55E" />
-                  )}
-                  {revealed && isThisSelected && !isThisCorrect && (
-                    <XCircle size={20} color="#EF4444" />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </Reanimated.View>
+        <Animated.View key={currentIdx} entering={FadeIn.duration(260)} style={styles.blockWrap}>
+          {block && (
+            <WorldLotusBlockView
+              block={block}
+              revealed={revealed}
+              substep={substep}
+              onAnswerChange={handleAnswerChange}
+              onInputFocus={handleInputFocus}
+              theme={theme}
+            />
+          )}
+        </Animated.View>
       </ScrollView>
 
-      {!revealed && (
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
-          <HapticButton
-            disabled={selected === null}
-            style={[
-              styles.onboardingBtn,
-              selected === null && styles.onboardingBtnDisabled,
-            ]}
-            onPress={submitAnswer}
-          >
-            <Text
-              style={[
-                styles.onboardingBtnText,
-                selected === null && styles.onboardingBtnTextDisabled,
-              ]}
-            >
-              Check Answer
-            </Text>
-          </HapticButton>
-        </View>
-      )}
-
-      {revealed && (
-        <Reanimated.View
+      {isQuestion && revealed && (
+        <Animated.View
+          entering={FadeInUp.duration(240)}
           style={[
             styles.revealBar,
-            isCorrect ? styles.revealBarCorrect : styles.revealBarWrong,
+            currentCorrect ? styles.revealBarCorrect : styles.revealBarWrong,
             { paddingBottom: insets.bottom + 16 },
-            revealAnimStyle,
           ]}
         >
           <View style={styles.revealRow}>
             <View style={styles.revealLeft}>
-              {isCorrect ? (
+              {currentCorrect ? (
                 <CheckCircle2 size={26} color="#22C55E" />
               ) : (
                 <XCircle size={26} color="#EF4444" />
@@ -476,35 +344,40 @@ export default function MountainLevelScreen() {
                 <Text
                   style={[
                     styles.revealHeading,
-                    isCorrect ? styles.revealHeadingCorrect : styles.revealHeadingWrong,
+                    currentCorrect ? styles.revealHeadingCorrect : styles.revealHeadingWrong,
                   ]}
                 >
-                  {isCorrect ? 'Correct!' : 'Incorrect'}
+                  {currentCorrect ? 'Correct!' : 'Not quite'}
                 </Text>
-                {!isCorrect && question && (
-                  <Text style={styles.revealAnswer} numberOfLines={2}>
-                    {question.options[question.correct_index]}
-                  </Text>
-                )}
               </View>
             </View>
-
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={goNext}
+            <HapticButton
+              onPress={onRevealContinuePress}
               style={[
                 styles.continueBtn,
-                isCorrect ? styles.continueBtnCorrect : styles.continueBtnWrong,
+                currentCorrect ? styles.continueBtnCorrect : styles.continueBtnWrong,
               ]}
             >
-              <Text style={styles.continueBtnText}>
-                {currentQ + 1 < totalQ ? 'Continue' : 'Finish'}
-              </Text>
-            </TouchableOpacity>
+              <Text style={styles.continueBtnText}>{isLastBlock ? 'Finish' : 'Continue'}</Text>
+            </HapticButton>
           </View>
-        </Reanimated.View>
+        </Animated.View>
       )}
-    </View>
+
+      {!(isQuestion && revealed) && (
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
+          <HapticButton
+            disabled={bottomDisabled}
+            onPress={onBottomPress}
+            style={[styles.bottomBtn, bottomDisabled && styles.bottomBtnDisabled]}
+          >
+            <Text style={[styles.bottomBtnText, bottomDisabled && styles.bottomBtnTextDisabled]}>
+              {bottomLabel}
+            </Text>
+          </HapticButton>
+        </View>
+      )}
+    </KeyboardAvoidingView>
   );
 }
 
@@ -518,14 +391,12 @@ const createStyles = (theme: Theme) =>
       fontFamily: Fonts.serif,
       marginTop: 8,
     },
-    readHeader: {
+
+    header: { paddingHorizontal: 20, paddingBottom: 12, gap: 12 },
+    headerTopRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 20,
-      paddingBottom: 14,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
     },
     iconBtn: {
       width: 44,
@@ -539,51 +410,54 @@ const createStyles = (theme: Theme) =>
       backgroundColor: 'rgba(251,191,36,0.1)',
       borderWidth: 1,
       borderColor: 'rgba(251,191,36,0.22)',
-      borderRadius: 20,
-      paddingHorizontal: 16,
-      paddingVertical: 7,
+      borderRadius: 999,
+      paddingHorizontal: 14,
+      paddingVertical: 6,
     },
     levelChipText: {
       color: GitaColors.gold,
       fontSize: 11,
-      fontWeight: '800',
+      fontWeight: '900',
       letterSpacing: 1.8,
     },
-    readScroll: { flex: 1 },
-    readContent: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 16 },
-    ornament: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      marginBottom: 24,
-    },
-    ornamentLine: {
-      flex: 1,
-      height: 1,
+    wisdomGateChip: {
       backgroundColor: 'rgba(251,191,36,0.18)',
+      borderWidth: 1,
+      borderColor: 'rgba(251,191,36,0.42)',
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
     },
-    miniLabel: {
-      color: GitaColors.goldMuted,
-      fontSize: 11,
-      fontWeight: '800',
-      letterSpacing: 2.2,
-      marginBottom: 10,
+    wisdomGateChipText: {
+      color: GitaColors.gold,
+      fontSize: 10,
+      fontWeight: '900',
+      letterSpacing: 1.6,
     },
-    readTitle: {
+    headerTitle: {
       color: theme.text,
-      fontSize: 28,
+      fontSize: 19,
       fontWeight: '800',
       fontFamily: Fonts.serif,
-      lineHeight: 34,
-      marginBottom: 24,
+      lineHeight: 25,
+      textAlign: 'center',
+      paddingHorizontal: 8,
     },
-    readBody: {
-      color: theme.textWarm,
-      fontSize: 17,
-      lineHeight: 27,
-      fontWeight: '400',
+    progressRow: {
+      flexDirection: 'row',
+      gap: 6,
+      alignItems: 'center',
+      marginTop: 4,
     },
-    readBold: { color: GitaColors.gold, fontWeight: '700' },
+    progressSeg: { flex: 1, height: 6, borderRadius: 3 },
+    progressSegDone: { backgroundColor: GitaColors.gold },
+    progressSegActive: { backgroundColor: 'rgba(251,191,36,0.45)' },
+    progressSegEmpty: { backgroundColor: theme.surface },
+
+    scroll: { flex: 1 },
+    scrollContent: { paddingHorizontal: 24, paddingTop: 26 },
+    blockWrap: { paddingVertical: 6 },
+
     footer: {
       paddingHorizontal: 24,
       paddingTop: 14,
@@ -591,13 +465,11 @@ const createStyles = (theme: Theme) =>
       borderTopColor: theme.border,
       backgroundColor: theme.background,
     },
-    onboardingBtn: {
+    bottomBtn: {
       borderRadius: 16,
-      backgroundColor: 'rgba(251, 191, 36, 0.45)',
-      borderWidth: 1,
-      borderColor: 'rgba(251, 191, 36, 0.65)',
+      backgroundColor: GitaColors.gold,
       paddingHorizontal: 24,
-      paddingVertical: 16,
+      paddingVertical: 18,
       shadowColor: '#000000',
       shadowOpacity: 0.18,
       shadowRadius: 18,
@@ -605,147 +477,34 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    onboardingBtnText: {
-      color: '#fff9e6',
-      letterSpacing: 0.25,
-      fontSize: 17,
-      fontWeight: '800',
-    },
-    onboardingBtnDisabled: {
-      backgroundColor: 'rgba(251, 191, 36, 0.15)',
-      borderColor: 'rgba(251, 191, 36, 0.25)',
-    },
-    onboardingBtnTextDisabled: { color: 'rgba(255, 249, 230, 0.40)' },
-    primaryBtn: {
-      backgroundColor: GitaColors.gold,
-      borderRadius: 16,
-      paddingVertical: 17,
-      paddingHorizontal: 24,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    primaryBtnText: {
+    bottomBtnText: {
       color: '#0F172A',
+      letterSpacing: 0.4,
       fontSize: 17,
-      fontWeight: '800',
-      letterSpacing: 0.1,
+      fontWeight: '900',
     },
-    secondaryBtn: {
-      borderWidth: 2,
-      borderColor: theme.border,
-      borderRadius: 16,
-      paddingVertical: 17,
-      paddingHorizontal: 20,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    secondaryBtnText: {
-      color: theme.subtext,
-      fontSize: 17,
-      fontWeight: '700',
-    },
-    quizHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 20,
-      paddingBottom: 16,
-      gap: 12,
-    },
-    progressRow: {
-      flex: 1,
-      flexDirection: 'row',
-      gap: 6,
-      alignItems: 'center',
-    },
-    progressSeg: { flex: 1, height: 6, borderRadius: 3 },
-    progressSegDone: { backgroundColor: GitaColors.gold },
-    progressSegActive: { backgroundColor: 'rgba(251,191,36,0.45)' },
-    progressSegEmpty: { backgroundColor: theme.surface },
-    quizScroll: { flex: 1 },
-    quizContent: { paddingHorizontal: 24, paddingTop: 8 },
-    questionText: {
-      color: theme.text,
-      fontSize: 22,
-      fontWeight: '800',
-      lineHeight: 30,
-      marginBottom: 28,
-      fontFamily: Fonts.serif,
-    },
-    optionsWrap: { gap: 12 },
-    optionCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 15,
-      paddingHorizontal: 16,
-      borderRadius: 16,
-      borderWidth: 2,
-      minHeight: 62,
-      gap: 12,
-    },
-    optionBadge: {
-      width: 36,
-      height: 36,
-      borderRadius: 10,
+    bottomBtnDisabled: {
       backgroundColor: theme.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexShrink: 0,
+      borderWidth: 1,
+      borderColor: theme.border,
     },
-    optionBadgeSelected: { backgroundColor: 'rgba(251,191,36,0.18)' },
-    optionBadgeCorrect: { backgroundColor: '#22C55E' },
-    optionBadgeWrong: { backgroundColor: '#EF4444' },
-    optionBadgeText: {
-      color: theme.subtext,
-      fontSize: 14,
-      fontWeight: '800',
-    },
-    optionBadgeTextSelected: { color: GitaColors.gold },
-    optionBadgeTextLight: { color: '#FFFFFF' },
-    optionText: {
-      color: theme.text,
-      fontSize: 16,
-      fontWeight: '600',
-      flex: 1,
-      flexWrap: 'wrap',
-      lineHeight: 22,
-    },
-    optionTextCorrect: { color: '#22C55E' },
-    optionTextWrong: { color: '#EF4444' },
-    revealBar: {
-      paddingHorizontal: 24,
-      paddingTop: 20,
-      borderTopWidth: 2,
-    },
+    bottomBtnTextDisabled: { color: theme.subtextMuted },
+
+    revealBar: { paddingHorizontal: 24, paddingTop: 18, borderTopWidth: 2 },
     revealBarCorrect: {
-      backgroundColor: 'rgba(34,197,94,0.07)',
+      backgroundColor: 'rgba(34,197,94,0.08)',
       borderTopColor: '#22C55E',
     },
     revealBarWrong: {
-      backgroundColor: 'rgba(239,68,68,0.07)',
+      backgroundColor: 'rgba(239,68,68,0.08)',
       borderTopColor: '#EF4444',
     },
-    revealRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 16,
-      marginBottom: 16,
-    },
-    revealLeft: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 12,
-    },
+    revealRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+    revealLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
     revealTextWrap: { flex: 1 },
-    revealHeading: { fontSize: 17, fontWeight: '800', marginBottom: 3 },
+    revealHeading: { fontSize: 17, fontWeight: '800' },
     revealHeadingCorrect: { color: '#22C55E' },
     revealHeadingWrong: { color: '#EF4444' },
-    revealAnswer: {
-      color: theme.subtext,
-      fontSize: 14,
-      fontWeight: '500',
-      lineHeight: 20,
-    },
     continueBtn: {
       paddingVertical: 14,
       paddingHorizontal: 22,
@@ -757,6 +516,7 @@ const createStyles = (theme: Theme) =>
     continueBtnCorrect: { backgroundColor: '#22C55E' },
     continueBtnWrong: { backgroundColor: '#EF4444' },
     continueBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+
     resultContainer: {
       alignItems: 'center',
       paddingHorizontal: 32,
@@ -817,4 +577,103 @@ const createStyles = (theme: Theme) =>
     scoreFail: { color: theme.text },
     scoreTotal: { fontSize: 30, fontWeight: '600', color: theme.subtext },
     resultBtns: { flexDirection: 'row', gap: 12, width: '100%' },
+
+    wisdomRoot: { backgroundColor: '#07111F' },
+    wisdomScroll: { alignItems: 'center', paddingHorizontal: 28 },
+    wisdomContainer: { alignItems: 'center', width: '100%' },
+    wisdomStars: {
+      color: GitaColors.gold,
+      fontSize: 18,
+      letterSpacing: 16,
+      opacity: 0.65,
+      marginBottom: 32,
+    },
+    wisdomIconBig: {
+      width: 116,
+      height: 116,
+      borderRadius: 58,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(251,191,36,0.10)',
+      borderWidth: 2,
+      borderColor: 'rgba(251,191,36,0.30)',
+      marginBottom: 28,
+      shadowColor: '#FBBF24',
+      shadowOpacity: 0.42,
+      shadowRadius: 28,
+      shadowOffset: { width: 0, height: 0 },
+    },
+    wisdomTitle: {
+      color: GitaColors.gold,
+      fontSize: 40,
+      fontWeight: '900',
+      fontFamily: Fonts.serif,
+      textAlign: 'center',
+      marginBottom: 6,
+    },
+    wisdomSubheading: {
+      color: '#FEF3C7',
+      fontSize: 16,
+      fontWeight: '700',
+      textAlign: 'center',
+      marginBottom: 24,
+      lineHeight: 24,
+    },
+    wisdomMessage: {
+      color: 'rgba(254,243,199,0.72)',
+      fontSize: 15,
+      textAlign: 'center',
+      lineHeight: 25,
+      marginBottom: 32,
+    },
+    wisdomScoreCard: {
+      backgroundColor: 'rgba(251,191,36,0.07)',
+      borderColor: 'rgba(251,191,36,0.2)',
+      marginBottom: 28,
+    },
+    wisdomBtn: {
+      width: '100%',
+      backgroundColor: GitaColors.gold,
+      borderRadius: 16,
+      paddingVertical: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#FBBF24',
+      shadowOpacity: 0.38,
+      shadowRadius: 22,
+      shadowOffset: { width: 0, height: 4 },
+    },
+    wisdomBtnText: {
+      color: '#0F172A',
+      fontSize: 18,
+      fontWeight: '900',
+    },
+    primaryBtn: {
+      backgroundColor: GitaColors.gold,
+      borderRadius: 16,
+      paddingVertical: 17,
+      paddingHorizontal: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    primaryBtnText: {
+      color: '#0F172A',
+      fontSize: 17,
+      fontWeight: '800',
+      letterSpacing: 0.1,
+    },
+    secondaryBtn: {
+      borderWidth: 2,
+      borderColor: theme.border,
+      borderRadius: 16,
+      paddingVertical: 17,
+      paddingHorizontal: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    secondaryBtnText: {
+      color: theme.subtext,
+      fontSize: 17,
+      fontWeight: '700',
+    },
   });

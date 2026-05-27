@@ -5,9 +5,11 @@ import {
   shuffle,
   type AudioReciteBlock,
   type BuildSentenceBlock,
+  type ComparisonTableBlock,
   type ConceptMapBlock,
   type DialogueBlock,
   type DragToOrderBlock,
+  type EmojiPollBlock,
   type FactCardBlock,
   type FillBlankBlock,
   type InteractiveDiagramBlock,
@@ -17,6 +19,9 @@ import {
   type MultipleChoiceBlock,
   type OddOneOutBlock,
   type ParagraphBlock,
+  type QuoteCardBlock,
+  type ScenarioChoiceBlock,
+  type StepListBlock,
   type StoryPanelsBlock,
   type TapCorrectImageBlock,
   type TapRevealBlock,
@@ -47,6 +52,7 @@ export type WorldLotusBlockProps = {
   revealed: boolean;
   substep: number; // for multi-step reveal blocks (e.g. dialogue). Default 0.
   onAnswerChange?: (correct: boolean | null) => void;
+  onInputFocus?: () => void; // called when a text input gains focus (e.g. fill_blank)
   theme: Theme;
 };
 
@@ -93,6 +99,16 @@ export default function WorldLotusBlockView(props: WorldLotusBlockProps) {
       return <WordSortView {...props} block={block} />;
     case 'tap_correct_image':
       return <TapCorrectImageView {...props} block={block} />;
+    case 'quote_card':
+      return <QuoteCardView {...props} block={block} />;
+    case 'comparison_table':
+      return <ComparisonTableView {...props} block={block} />;
+    case 'step_list':
+      return <StepListView {...props} block={block} />;
+    case 'emoji_poll':
+      return <EmojiPollView {...props} block={block} />;
+    case 'scenario_choice':
+      return <ScenarioChoiceView {...props} block={block} />;
     default:
       return <UnsupportedView blockType={(block as { type: string }).type} />;
   }
@@ -227,7 +243,7 @@ function DialogueView({
       {/* Acharya intro header */}
       <View style={styles.dialogueAcharyaHeader}>
         <View style={styles.dialogueAvatar}>
-          <Text style={styles.dialogueAvatarEmoji}>🙏</Text>
+          <Text style={styles.dialogueAvatarEmoji}>🧘</Text>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.dialogueAcharyaName}>Acharya</Text>
@@ -258,7 +274,7 @@ function DialogueView({
           return (
             <View key={idx} style={styles.dialogueRowAcharya}>
               <View style={styles.dialogueAvatarSmall}>
-                <Text style={styles.dialogueAvatarEmojiSmall}>🙏</Text>
+                <Text style={styles.dialogueAvatarEmojiSmall}>🧘</Text>
               </View>
               <View style={[styles.dialogueBubble, styles.dialogueBubbleAcharya]}>
                 <Text style={styles.dialogueText}>{ex.text}</Text>
@@ -673,6 +689,7 @@ function FillBlankView({
   block,
   revealed,
   onAnswerChange,
+  onInputFocus,
   theme,
 }: WorldLotusBlockProps & { block: FillBlankBlock }) {
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -703,6 +720,7 @@ function FillBlankView({
         editable={!revealed}
         value={text}
         onChangeText={setText}
+        onFocus={() => onInputFocus?.()}
         placeholder="Type your answer"
         placeholderTextColor={theme.subtextMuted}
         style={[
@@ -1218,6 +1236,201 @@ function TapCorrectImageView({
           );
         })}
       </View>
+    </View>
+  );
+}
+
+// ── New reading block renderers ───────────────────────────────────────────────
+
+function QuoteCardView({ block, theme }: WorldLotusBlockProps & { block: QuoteCardBlock }) {
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  return (
+    <View style={styles.quoteCard}>
+      <Text style={styles.quoteCardMark}>&ldquo;</Text>
+      <Text style={styles.quoteCardText}>{block.content.quote}</Text>
+      <Text style={styles.quoteCardSource}>— {block.content.source}</Text>
+    </View>
+  );
+}
+
+function ComparisonTableView({
+  block,
+  theme,
+}: WorldLotusBlockProps & { block: ComparisonTableBlock }) {
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  return (
+    <View>
+      <View style={styles.cmpHeaderRow}>
+        <View style={styles.cmpHeaderCell}>
+          <Text style={styles.cmpHeaderText}>{block.content.left_label}</Text>
+        </View>
+        <View style={styles.cmpHeaderCell}>
+          <Text style={styles.cmpHeaderText}>{block.content.right_label}</Text>
+        </View>
+      </View>
+      <View style={styles.cmpTable}>
+        {block.content.rows.map((row, idx) => (
+          <View key={idx} style={[styles.cmpRow, idx % 2 === 1 && styles.cmpRowAlt]}>
+            <Text style={styles.cmpCell}>{row.left}</Text>
+            <View style={styles.cmpDivider} />
+            <Text style={styles.cmpCell}>{row.right}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function StepListView({ block, theme }: WorldLotusBlockProps & { block: StepListBlock }) {
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  return (
+    <View>
+      <Text style={styles.stepListTitle}>{block.content.title}</Text>
+      {block.content.steps.map((step, idx) => (
+        <View key={idx} style={styles.stepRow}>
+          <View style={styles.stepNumWrap}>
+            <Text style={styles.stepNum}>{idx + 1}</Text>
+          </View>
+          <Text style={styles.stepText}>{step}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// ── New question block renderers ──────────────────────────────────────────────
+
+function EmojiPollView({
+  block,
+  revealed,
+  onAnswerChange,
+  theme,
+}: WorldLotusBlockProps & { block: EmojiPollBlock }) {
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const [selected, setSelected] = useState<number | null>(null);
+  useReportAnswer(
+    onAnswerChange,
+    selected === null ? null : selected === block.content.best_index,
+  );
+
+  return (
+    <View>
+      <Text style={styles.questionText}>{block.content.prompt}</Text>
+      <View style={styles.emojiPollRow}>
+        {block.content.emojis.map((emoji, idx) => {
+          const isBest = idx === block.content.best_index;
+          const isSelected = selected === idx;
+          let borderColor = theme.border;
+          let bgColor = theme.surface;
+          if (revealed) {
+            if (isBest) { borderColor = '#22C55E'; bgColor = 'rgba(34,197,94,0.10)'; }
+            else if (isSelected) { borderColor = '#EF4444'; bgColor = 'rgba(239,68,68,0.10)'; }
+          } else if (isSelected) {
+            borderColor = GitaColors.gold;
+            bgColor = 'rgba(251,191,36,0.08)';
+          }
+          return (
+            <TouchableOpacity
+              key={idx}
+              activeOpacity={revealed ? 1 : 0.8}
+              onPress={() => {
+                if (revealed) return;
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setSelected(idx);
+              }}
+              style={[styles.emojiPollBtn, { borderColor, backgroundColor: bgColor }]}
+            >
+              <Text style={styles.emojiPollEmoji}>{emoji}</Text>
+              {revealed && isBest && <CheckCircle2 size={16} color="#22C55E" style={{ marginTop: 4 }} />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      {revealed && (
+        <View style={styles.explanationBox}>
+          <Text style={styles.explanationText}>{block.content.explanation}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function ScenarioChoiceView({
+  block,
+  revealed,
+  onAnswerChange,
+  theme,
+}: WorldLotusBlockProps & { block: ScenarioChoiceBlock }) {
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const [selected, setSelected] = useState<number | null>(null);
+  useReportAnswer(
+    onAnswerChange,
+    selected === null ? null : selected === block.content.correct_index,
+  );
+
+  return (
+    <View>
+      <View style={styles.scenarioBox}>
+        <Text style={styles.scenarioLabel}>SCENARIO</Text>
+        <Text style={styles.scenarioText}>{block.content.scenario}</Text>
+      </View>
+      <Text style={styles.questionText}>{block.content.question}</Text>
+      <View style={{ gap: 12 }}>
+        {block.content.options.map((opt, idx) => {
+          const isCorrect = idx === block.content.correct_index;
+          const isSelected = selected === idx;
+          let borderColor = theme.border;
+          let bgColor = theme.surface;
+          if (revealed) {
+            if (isCorrect) { borderColor = '#22C55E'; bgColor = 'rgba(34,197,94,0.10)'; }
+            else if (isSelected) { borderColor = '#EF4444'; bgColor = 'rgba(239,68,68,0.10)'; }
+          } else if (isSelected) {
+            borderColor = GitaColors.gold;
+            bgColor = 'rgba(251,191,36,0.08)';
+          }
+          return (
+            <TouchableOpacity
+              key={idx}
+              activeOpacity={revealed ? 1 : 0.72}
+              onPress={() => {
+                if (revealed) return;
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setSelected(idx);
+              }}
+              style={[styles.optionCard, { borderColor, backgroundColor: bgColor }]}
+            >
+              <View style={[
+                styles.optionBadge,
+                !revealed && isSelected && styles.optionBadgeSelected,
+                revealed && isCorrect && styles.optionBadgeCorrect,
+                revealed && isSelected && !isCorrect && styles.optionBadgeWrong,
+              ]}>
+                <Text style={[
+                  styles.optionBadgeText,
+                  !revealed && isSelected && styles.optionBadgeTextSelected,
+                  revealed && (isCorrect || (isSelected && !isCorrect)) && styles.optionBadgeTextLight,
+                ]}>
+                  {String.fromCharCode(65 + idx)}
+                </Text>
+              </View>
+              <Text style={[
+                styles.optionText,
+                revealed && isCorrect && styles.optionTextCorrect,
+                revealed && isSelected && !isCorrect && styles.optionTextWrong,
+              ]}>
+                {opt}
+              </Text>
+              {revealed && isCorrect && <CheckCircle2 size={20} color="#22C55E" />}
+              {revealed && isSelected && !isCorrect && <XCircle size={20} color="#EF4444" />}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      {revealed && (
+        <View style={styles.explanationBox}>
+          <Text style={styles.explanationText}>{block.content.explanation}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -1990,4 +2203,171 @@ const createStyles = (theme: Theme) =>
       gap: 6,
     },
     tciLabel: { color: theme.text, fontSize: 14, fontWeight: '700', flex: 1 },
+
+    // ── Quote card ───────────────────────────────────────────────────────────
+    quoteCard: {
+      backgroundColor: 'rgba(251,191,36,0.06)',
+      borderWidth: 1.5,
+      borderColor: 'rgba(251,191,36,0.3)',
+      borderRadius: 22,
+      paddingVertical: 28,
+      paddingHorizontal: 28,
+      alignItems: 'center',
+    },
+    quoteCardMark: {
+      color: GitaColors.gold,
+      fontSize: 52,
+      lineHeight: 48,
+      fontWeight: '900',
+      alignSelf: 'flex-start',
+      marginBottom: -4,
+    },
+    quoteCardText: {
+      color: theme.text,
+      fontSize: 19,
+      lineHeight: 30,
+      fontFamily: Fonts.serif,
+      fontStyle: 'italic',
+      textAlign: 'center',
+      marginBottom: 16,
+    },
+    quoteCardSource: {
+      color: GitaColors.gold,
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: 0.4,
+      textAlign: 'center',
+    },
+
+    // ── Comparison table ─────────────────────────────────────────────────────
+    cmpHeaderRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 8,
+    },
+    cmpHeaderCell: {
+      flex: 1,
+      backgroundColor: 'rgba(251,191,36,0.12)',
+      borderRadius: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      alignItems: 'center',
+    },
+    cmpHeaderText: {
+      color: GitaColors.gold,
+      fontSize: 12,
+      fontWeight: '900',
+      letterSpacing: 0.8,
+      textAlign: 'center',
+    },
+    cmpTable: {
+      borderRadius: 12,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    cmpRow: {
+      flexDirection: 'row',
+      backgroundColor: theme.surface,
+    },
+    cmpRowAlt: {
+      backgroundColor: 'rgba(255,255,255,0.04)',
+    },
+    cmpCell: {
+      flex: 1,
+      color: theme.text,
+      fontSize: 14,
+      lineHeight: 20,
+      paddingVertical: 12,
+      paddingHorizontal: 12,
+    },
+    cmpDivider: {
+      width: 1,
+      backgroundColor: theme.border,
+    },
+
+    // ── Step list ────────────────────────────────────────────────────────────
+    stepListTitle: {
+      color: theme.text,
+      fontSize: 18,
+      fontWeight: '800',
+      fontFamily: Fonts.serif,
+      marginBottom: 18,
+      lineHeight: 25,
+    },
+    stepRow: {
+      flexDirection: 'row',
+      gap: 14,
+      marginBottom: 16,
+      alignItems: 'flex-start',
+    },
+    stepNumWrap: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: 'rgba(251,191,36,0.12)',
+      borderWidth: 1.5,
+      borderColor: 'rgba(251,191,36,0.35)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      marginTop: 2,
+    },
+    stepNum: {
+      color: GitaColors.gold,
+      fontSize: 13,
+      fontWeight: '900',
+    },
+    stepText: {
+      color: theme.text,
+      fontSize: 16,
+      lineHeight: 23,
+      flex: 1,
+    },
+
+    // ── Emoji poll ───────────────────────────────────────────────────────────
+    emojiPollRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      marginVertical: 20,
+      flexWrap: 'wrap',
+      gap: 12,
+    },
+    emojiPollBtn: {
+      width: 72,
+      height: 80,
+      borderRadius: 20,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+    },
+    emojiPollEmoji: {
+      fontSize: 34,
+      lineHeight: 40,
+    },
+
+    // ── Scenario choice ──────────────────────────────────────────────────────
+    scenarioBox: {
+      backgroundColor: theme.surface,
+      borderWidth: 1.5,
+      borderColor: 'rgba(251,191,36,0.25)',
+      borderRadius: 20,
+      paddingVertical: 26,
+      paddingHorizontal: 24,
+      marginBottom: 26,
+    },
+    scenarioLabel: {
+      color: GitaColors.gold,
+      fontSize: 12,
+      fontWeight: '900',
+      letterSpacing: 2.2,
+      marginBottom: 12,
+    },
+    scenarioText: {
+      color: theme.text,
+      fontSize: 19,
+      lineHeight: 29,
+      fontFamily: Fonts.serif,
+    },
   });

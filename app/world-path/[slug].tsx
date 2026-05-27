@@ -69,7 +69,6 @@ const WL_SEGMENT_LENGTH = Math.hypot(
   WL_SECOND_POS.cx - WL_FIRST_POS.cx,
   WL_SECOND_POS.cy - WL_FIRST_POS.cy,
 );
-const AnimatedWlPath = Animated.createAnimatedComponent(SvgPath);
 
 // ── Wisdom Gate geometry ──────────────────────────────────────────────────────
 const WG_CX = 170;
@@ -374,12 +373,9 @@ function WorldLotusPathContent() {
   const [allLevels, setAllLevels] = useState<WorldLotusLevelData[]>([]);
   const [lockedMessage, setLockedMessage] = useState<string | null>(null);
   const [lotusReady, setLotusReady] = useState(false);
-  const [prevLevel, setPrevLevel] = useState<number | null>(null);
-  const hasInitialPathDrawn = useRef(false);
 
   const refreshProgress = useCallback(async () => {
     const next = await fetchCurrentWorldLotusLevel();
-    setPrevLevel((prev) => (prev === null ? next : prev));
     setCurrentLevel(next);
   }, []);
 
@@ -406,31 +402,7 @@ function WorldLotusPathContent() {
 
   const totalSegmentLength = (WL_TOTAL - 1) * WL_SEGMENT_LENGTH;
   const progressCount = Math.min(currentLevel - 1, allLevels.length);
-  const targetLineLength = progressCount * WL_SEGMENT_LENGTH;
-  const lineAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const isFirstLoad = !hasInitialPathDrawn.current;
-    const duration = (!isFirstLoad && prevLevel !== null && currentLevel > prevLevel) ? 1200 : 0;
-
-    if (isFirstLoad && allLevels.length > 0) {
-      lineAnim.setValue(targetLineLength);
-      hasInitialPathDrawn.current = true;
-    } else {
-      Animated.timing(lineAnim, {
-        toValue: targetLineLength,
-        duration,
-        easing: Easing.inOut(Easing.cubic),
-        useNativeDriver: false,
-      }).start();
-    }
-  }, [lineAnim, targetLineLength, currentLevel, prevLevel, allLevels.length]);
-
-  const dashOffset = lineAnim.interpolate({
-    inputRange: [0, totalSegmentLength || 1],
-    outputRange: [totalSegmentLength || 1, 0],
-    extrapolate: 'clamp',
-  });
+  const dashOffsetValue = totalSegmentLength - progressCount * WL_SEGMENT_LENGTH;
 
   const showLockedMessage = (message: string) => {
     setLockedMessage(message);
@@ -534,15 +506,15 @@ function WorldLotusPathContent() {
             strokeLinecap="round"
           />
 
-          {/* Animated green progress track */}
-          <AnimatedWlPath
+          {/* Green progress track */}
+          <SvgPath
             d={WL_PATH_D}
             stroke="#22c55e"
             strokeWidth="12"
             fill="none"
             strokeLinecap="round"
             strokeDasharray={`${totalSegmentLength} ${totalSegmentLength}`}
-            strokeDashoffset={dashOffset as any}
+            strokeDashoffset={dashOffsetValue}
           />
 
           {/* Dashed gold connector from last lotus to gate entrance */}
@@ -2679,6 +2651,28 @@ function buildMpRouteD(count = MP_TOTAL) {
 
 const MP_ROUTE_D = buildMpRouteD();
 
+// Pre-compute segment lengths so we can animate the progress line exactly
+// the same way the Lotus Path does (strokeDasharray + animated dashOffset).
+function getMpSegmentLengths(): number[] {
+  const out: number[] = [];
+  for (let i = 1; i < MP_TOTAL; i++) {
+    const a = mpPos(i - 1);
+    const b = mpPos(i);
+    out.push(Math.hypot(b.cx - a.cx, b.cy - a.cy));
+  }
+  return out;
+}
+const MP_SEGMENT_LENGTHS = getMpSegmentLengths();
+const MP_TOTAL_PATH_LENGTH = MP_SEGMENT_LENGTHS.reduce((a, b) => a + b, 0);
+
+// Length of the route from node 0 up-to-and-including node (toLevel-1).
+function getMpProgressLength(toLevel: number): number {
+  const segCount = Math.min(Math.max(toLevel - 1, 0), MP_SEGMENT_LENGTHS.length);
+  let len = 0;
+  for (let i = 0; i < segCount; i++) len += MP_SEGMENT_LENGTHS[i];
+  return len;
+}
+
 const MP_GATE_CX = 180;
 const MP_GATE_CY = MP_PATH_H + 112;
 const MP_CONTAINER_H = MP_PATH_H + MP_GATE_AREA;
@@ -2837,10 +2831,8 @@ function MountainPathContent() {
 
   const gateAvailable = allLevels.some((l) => l.level_number === 24);
   const gateUnlocked = MP_TEST_MODE || currentLevel >= MP_TOTAL + 1;
-  const completedRouteD = useMemo(
-    () => buildMpRouteD(Math.min(Math.max(currentLevel - 1, 0), MP_TOTAL)),
-    [currentLevel],
-  );
+
+  const dashOffsetValue = MP_TOTAL_PATH_LENGTH - getMpProgressLength(Math.min(currentLevel, MP_TOTAL + 1));
 
   if (!ready || allLevels.length === 0) {
     return (
@@ -2993,40 +2985,56 @@ function MountainPathContent() {
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-            {completedRouteD.length > 0 && (
-              <SvgPath
-                d={completedRouteD}
-                stroke="#22C55E"
-                strokeWidth={6}
-                opacity={0.95}
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            )}
+            <SvgPath
+              d={MP_ROUTE_D}
+              stroke="#22C55E"
+              strokeWidth={6}
+              opacity={0.95}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeDasharray={`${MP_TOTAL_PATH_LENGTH} ${MP_TOTAL_PATH_LENGTH}`}
+              strokeDashoffset={dashOffsetValue}
+            />
           </Svg>
 
-          {/* Wisdom Gate shrine (id 24) overlay */}
+          {/* Wisdom Gate label + shrine (id 24) overlay */}
           {gateAvailable && (
-            <View
-              style={[
-                mpStyles.nodeWrap,
-                {
-                  left: MP_GATE_CX - MP_NODE_R,
-                  top: MP_GATE_CY - MP_NODE_R,
-                },
-              ]}
-            >
-              <MountainShrine
-                level={24}
-                side="left"
-                isCompleted={false}
-                isLocked={MP_TEST_MODE ? true : !gateUnlocked}
-                isActive={MP_TEST_MODE ? false : gateUnlocked}
-                isWisdomGate
-                onPress={handleLevelPress}
-              />
-            </View>
+            <>
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: MP_GATE_CY - MP_NODE_R - 42,
+                  left: 0,
+                  right: 0,
+                  zIndex: 20,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={mpStyles.gateStar}>✦</Text>
+                <Text style={mpStyles.gateWord}>Wisdom Gate</Text>
+              </View>
+              <View
+                style={[
+                  mpStyles.nodeWrap,
+                  {
+                    left: MP_GATE_CX - MP_NODE_R,
+                    top: MP_GATE_CY - MP_NODE_R,
+                  },
+                ]}
+              >
+                <MountainShrine
+                  level={24}
+                  side="left"
+                  isCompleted={false}
+                  isLocked={MP_TEST_MODE ? true : !gateUnlocked}
+                  isActive={MP_TEST_MODE ? false : gateUnlocked}
+                  isWisdomGate
+                  onPress={handleLevelPress}
+                />
+              </View>
+            </>
           )}
 
           {/* Shrines along path */}

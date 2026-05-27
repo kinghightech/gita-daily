@@ -96,7 +96,7 @@ function MountainShrine({
           {isLocked ? (
             <Lock size={16} color={palette.text} />
           ) : isWisdomGate ? (
-            <Text style={[styles.gateText, { color: palette.text }]}>OM</Text>
+            <Text style={[styles.gateText, { color: palette.text }]}>✦</Text>
           ) : (
             <Text
               style={[styles.numberText, { color: palette.text }]}

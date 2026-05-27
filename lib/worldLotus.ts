@@ -13,7 +13,10 @@ export type ReadingBlockType =
   | 'tap_reveal'
   | 'audio_recite'
   | 'story_panels'
-  | 'interactive_diagram';
+  | 'interactive_diagram'
+  | 'quote_card'
+  | 'comparison_table'
+  | 'step_list';
 
 export type QuestionBlockType =
   | 'multiple_choice'
@@ -24,7 +27,9 @@ export type QuestionBlockType =
   | 'drag_to_order'
   | 'matching_cards'
   | 'word_sort'
-  | 'tap_correct_image';
+  | 'tap_correct_image'
+  | 'emoji_poll'
+  | 'scenario_choice';
 
 export type BlockType = ReadingBlockType | QuestionBlockType;
 
@@ -38,6 +43,8 @@ const QUESTION_BLOCK_TYPES: ReadonlySet<string> = new Set([
   'matching_cards',
   'word_sort',
   'tap_correct_image',
+  'emoji_poll',
+  'scenario_choice',
 ]);
 
 export function isQuestionBlock(block: WorldLotusBlock): boolean {
@@ -214,6 +221,56 @@ export type TapCorrectImageBlock = {
   content: { question: string; options: TapImageOption[] };
 };
 
+// ── New reading blocks ────────────────────────────────────────────────────────
+
+export type QuoteCardBlock = {
+  type: 'quote_card';
+  order: number;
+  content: { quote: string; source: string };
+};
+
+export type ComparisonTableRow = { left: string; right: string };
+export type ComparisonTableBlock = {
+  type: 'comparison_table';
+  order: number;
+  content: {
+    left_label: string;
+    right_label: string;
+    rows: ComparisonTableRow[];
+  };
+};
+
+export type StepListBlock = {
+  type: 'step_list';
+  order: number;
+  content: { title: string; steps: string[] };
+};
+
+// ── New question blocks ───────────────────────────────────────────────────────
+
+export type EmojiPollBlock = {
+  type: 'emoji_poll';
+  order: number;
+  content: {
+    prompt: string;
+    emojis: string[];
+    best_index: number;
+    explanation: string;
+  };
+};
+
+export type ScenarioChoiceBlock = {
+  type: 'scenario_choice';
+  order: number;
+  content: {
+    scenario: string;
+    question: string;
+    options: string[];
+    correct_index: number;
+    explanation: string;
+  };
+};
+
 // ── Union ────────────────────────────────────────────────────────────────────
 
 export type WorldLotusBlock =
@@ -236,7 +293,12 @@ export type WorldLotusBlock =
   | DragToOrderBlock
   | MatchingCardsBlock
   | WordSortBlock
-  | TapCorrectImageBlock;
+  | TapCorrectImageBlock
+  | QuoteCardBlock
+  | ComparisonTableBlock
+  | StepListBlock
+  | EmojiPollBlock
+  | ScenarioChoiceBlock;
 
 export type WorldLotusLevelData = {
   id: number;
