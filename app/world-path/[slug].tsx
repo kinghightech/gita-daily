@@ -8,6 +8,12 @@ import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import {
+  fetchCurrentGardenLevel,
+  fetchGardenLevels,
+  GARDEN_PATH_TOTAL,
+  type GardenLevelData,
+} from '@/lib/gardenPath';
+import {
   fetchCurrentMountainLevel,
   fetchMountainLevels,
   type MountainLevelData,
@@ -84,7 +90,7 @@ const WG_CONTAINER_H = WL_PATH_H + WG_GATE_AREA; // 2085
 const WG_OM_CY = Math.round((WG_ARCH_PEAK + WG_PILLAR_TOP) / 2); // 1928
 // ─────────────────────────────────────────────────────────────────────────────
 
-const GP_TOTAL = 24;
+const GP_TOTAL = GARDEN_PATH_TOTAL;
 const GP_ROW_H = 108;
 const GP_PATH_W = 360;
 const GP_NODE_R = WL_NODE_R;
@@ -113,7 +119,6 @@ function buildGpPathD() {
 }
 
 const GP_PATH_D = buildGpPathD();
-const GP_ACTIVE_LEVEL = 1;
 
 const GP_GRASS_TUFTS = [
   { left: '-2%', bottom: -10, scale: 1.08, flip: false },
@@ -883,29 +888,72 @@ function GardenPathScreen() {
 }
 
 function GardenPathContent() {
-  const [message, setMessage] = useState<string | null>(null);
+  const [currentLevel, setCurrentLevel] = useState(1);
+  const [allLevels, setAllLevels] = useState<GardenLevelData[]>([]);
+  const [lockedMessage, setLockedMessage] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const refreshProgress = useCallback(async () => {
+    const next = await fetchCurrentGardenLevel();
+    setCurrentLevel(next);
+  }, []);
+
   useEffect(() => {
+    (async () => {
+      try {
+        const levels = await fetchGardenLevels();
+        setAllLevels(levels);
+      } catch (err) {
+        console.error('Failed to fetch garden levels:', err);
+      }
+    })();
+    refreshProgress();
+    const sub = DeviceEventEmitter.addListener(STREAK_UPDATED_EVENT, refreshProgress);
     return () => {
       if (messageTimerRef.current) {
         clearTimeout(messageTimerRef.current);
       }
+      sub.remove();
     };
+  }, [refreshProgress]);
+
+  useFocusEffect(useCallback(() => { refreshProgress(); }, [refreshProgress]));
+
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => setReady(true));
+    return () => task.cancel();
   }, []);
 
-  const showComingSoon = useCallback(() => {
+  const showLockedMessage = useCallback((message: string) => {
     if (messageTimerRef.current) {
       clearTimeout(messageTimerRef.current);
     }
-    setMessage('Garden lessons coming soon.');
-    messageTimerRef.current = setTimeout(() => setMessage(null), 1500);
+    setLockedMessage(message);
+    messageTimerRef.current = setTimeout(() => setLockedMessage(null), 1600);
   }, []);
 
-  const sunflowerNodes = useMemo(() => (
-    Array.from({ length: GP_TOTAL }, (_, index) => {
+  const handleLevelPress = useCallback((level: number) => {
+    if (level > currentLevel) {
+      showLockedMessage('Complete previous levels first!');
+      return;
+    }
+    const found = allLevels.some((item) => item.level_number === level);
+    if (!found) {
+      showLockedMessage('Level coming soon!');
+      return;
+    }
+    router.push({ pathname: '/garden-level/[id]', params: { id: level } });
+  }, [currentLevel, allLevels, showLockedMessage]);
+
+  const sunflowerNodes = useMemo(() => {
+    if (!ready || allLevels.length === 0) return null;
+    return Array.from({ length: GP_TOTAL }, (_, index) => {
       const level = index + 1;
       const { cx, cy } = gpPos(index);
+      const isCompleted = level < currentLevel;
+      const isUnlocked = level <= currentLevel;
+      const available = allLevels.some((item) => item.level_number === level);
       return (
         <View
           key={level}
@@ -916,21 +964,30 @@ function GardenPathContent() {
         >
           <SunflowerLevel
             level={level}
-            isCompleted={false}
-            isLocked={false}
-            isActive={level === GP_ACTIVE_LEVEL}
-            onPress={showComingSoon}
+            isCompleted={isCompleted}
+            isLocked={!isUnlocked || !available}
+            isActive={isUnlocked && available && !isCompleted}
+            onPress={handleLevelPress}
           />
         </View>
       );
-    })
-  ), [showComingSoon]);
+    });
+  }, [currentLevel, allLevels, handleLevelPress, ready]);
+
+  if (!ready || allLevels.length === 0) {
+    return (
+      <View style={gpStyles.loaderCenter}>
+        <LotusLoader size={110} color={GitaColors.gold} />
+        <Text style={gpStyles.loadingTextMain}>Entering the Garden Path...</Text>
+      </View>
+    );
+  }
 
   return (
     <>
-      {message && (
+      {lockedMessage && (
         <View style={gpStyles.lockedBanner}>
-          <Text style={gpStyles.lockedBannerText}>{message}</Text>
+          <Text style={gpStyles.lockedBannerText}>{lockedMessage}</Text>
         </View>
       )}
       <ScrollView
@@ -940,14 +997,19 @@ function GardenPathContent() {
       >
         <View style={gpStyles.header}>
           <View style={gpStyles.titleRow}>
-            <Flower2 size={24} color="#FDE68A" />
+            <Flower2 size={24} color={GitaColors.gold} />
             <Text style={gpStyles.title}>The Garden Path</Text>
           </View>
           <Text style={gpStyles.subtitle}>Karma, dharma, samsara, moksha</Text>
           <View style={gpStyles.progressContainer}>
-            <Text style={gpStyles.progress}>Bloom {GP_ACTIVE_LEVEL} of {GP_TOTAL}</Text>
+            <Text style={gpStyles.progress}>Bloom {Math.min(currentLevel, GP_TOTAL)} of {GP_TOTAL}</Text>
             <View style={gpStyles.progressBarBg}>
-              <View style={[gpStyles.progressBarFill, { width: `${(GP_ACTIVE_LEVEL / GP_TOTAL) * 100}%` }]} />
+              <View
+                style={[
+                  gpStyles.progressBarFill,
+                  { width: `${(Math.min(currentLevel - 1, GP_TOTAL) / GP_TOTAL) * 100}%` },
+                ]}
+              />
             </View>
           </View>
         </View>
@@ -963,7 +1025,7 @@ function GardenPathContent() {
             />
             <SvgPath
               d={`M 12 ${GP_CONTAINER_H - 260} C 96 ${GP_CONTAINER_H - 306} 224 ${GP_CONTAINER_H - 206} 348 ${GP_CONTAINER_H - 254}`}
-              stroke="rgba(253,230,138,0.16)"
+              stroke="rgba(251,191,36,0.16)"
               strokeWidth={2}
               strokeLinecap="round"
               fill="none"
@@ -1325,15 +1387,27 @@ const gpStyles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#FDE68A',
+    backgroundColor: GitaColors.gold,
     borderRadius: 2,
+  },
+  loaderCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingTextMain: {
+    color: '#ECFDF5',
+    fontSize: 16,
+    fontFamily: Fonts.serif,
+    opacity: 0.86,
   },
   lockedBanner: {
     marginHorizontal: 16,
     marginBottom: 8,
     backgroundColor: 'rgba(20,83,45,0.88)',
     borderWidth: 1,
-    borderColor: 'rgba(253,230,138,0.42)',
+    borderColor: 'rgba(251,191,36,0.42)',
     borderRadius: 12,
     padding: 10,
     alignItems: 'center',
