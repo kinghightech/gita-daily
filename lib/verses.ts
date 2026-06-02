@@ -108,7 +108,11 @@ export const fetchAllGitaVerses = async (): Promise<GitaVerse[]> => {
   return data ?? [];
 };
 
-const TOTAL_VERSES = 716;
+// Exact row count of gita_verses. MUST stay in sync with `totalVerses` in
+// ios/DharmaDailyWidget/DharmaDailyWidget.swift so the app and the home-screen
+// widget resolve to the same verse of the day. (Was 716, which overshot the
+// real count and left ~2% of days with no verse.)
+const TOTAL_VERSES = 701;
 
 // Deterministic [0, 1) PRNG seeded by the local calendar date.
 // Same day → same verse; consecutive days → unrelated verses (not sequential).

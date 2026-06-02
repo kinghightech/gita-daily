@@ -1,6 +1,7 @@
 import { useTheme } from '@/hooks/useTheme';
 import type { Theme } from '@/theme/colors';
-import { Calendar, Flame, Share2, Trophy, X } from 'lucide-react-native';
+import DiyaStreak from '@/components/ui/DiyaStreak';
+import { Calendar, Share2, Trophy, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TouchableOpacity, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -199,8 +200,8 @@ export default function StreakModal({ open, onClose, preferences }: StreakModalP
                 onScroll={(event) => { scrollOffsetY.value = event.nativeEvent.contentOffset.y; }}
               >
                 <View style={styles.currentHeader}>
-                  <View style={styles.flameWrap}>
-                    <Flame size={28} color="#fbbf24" />
+                  <View style={{ marginBottom: 8 }}>
+                    <DiyaStreak streak={streak} hideNumber scale={1.6} />
                   </View>
 
                   <Text style={styles.currentLabel}>CURRENT STREAK</Text>
@@ -285,17 +286,6 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingTop: 8, paddingBottom: 22 },
   currentHeader: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 4, paddingBottom: 16 },
-  flameWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(251,191,36,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
   currentLabel: { color: theme.goldText, fontSize: 11, letterSpacing: 2.2, fontWeight: '600' },
   currentValue: { color: theme.text, fontSize: 42, fontWeight: '800', lineHeight: 46, marginTop: 2, fontFamily: 'serif' },
   currentSub: { color: theme.goldSubtle, fontSize: 13, marginTop: 1 },

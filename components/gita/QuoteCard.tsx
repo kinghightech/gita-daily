@@ -1,4 +1,5 @@
 import { Fonts } from '@/constants/theme';
+import * as Haptics from 'expo-haptics';
 import { FAVORITES_UPDATED_EVENT, toggleFavoriteVerse } from '@/lib/favorites';
 import { incrementSharesCount } from '@/lib/profile';
 import { VERSE_BACKGROUND_URLS } from '@/lib/storageAssets';
@@ -67,6 +68,8 @@ export default function QuoteCard({
   const [expanded, setExpanded] = useState(false);
   const expandAnim = useRef(new Animated.Value(0)).current;
   const lastTapRef = useRef(0);
+  const cardRef = useRef<View>(null);
+  const fullscreenCardRef = useRef<View>(null);
   const tapHeartScale = useRef(new Animated.Value(0.35)).current;
   const tapHeartOpacity = useRef(new Animated.Value(0)).current;
   const hideTapHeartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -187,10 +190,14 @@ export default function QuoteCard({
   const handleDoubleTap = useCallback((event: GestureResponderEvent) => {
     const now = Date.now();
     const diff = now - lastTapRef.current;
-    const { locationX, locationY } = event.nativeEvent;
+    const { pageX, pageY } = event.nativeEvent;
 
     if (diff < 300 && diff > 0) {
-      showTapHeart(locationX, locationY);
+      const ref = expanded ? fullscreenCardRef : cardRef;
+      ref.current?.measure((_fx, _fy, _w, _h, containerPageX, containerPageY) => {
+        showTapHeart(pageX - containerPageX, pageY - containerPageY);
+      });
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       if (verse && !isFavorite && user?.id) {
         void handleFavorite();
@@ -202,7 +209,7 @@ export default function QuoteCard({
 
     lastTapRef.current = now;
     return false;
-  }, [isFavorite, handleFavorite, showTapHeart, verse, user?.id]);
+  }, [expanded, isFavorite, handleFavorite, showTapHeart, verse, user?.id]);
 
   const handleCardPress = useCallback((event: GestureResponderEvent) => {
     const wasDoubleTap = handleDoubleTap(event);
@@ -283,6 +290,7 @@ export default function QuoteCard({
         />
 
       <Pressable
+        ref={isFullscreen ? fullscreenCardRef : cardRef}
         style={isFullscreen ? styles.fullscreenContent : styles.content}
         onPress={isFullscreen ? handleDoubleTap : handleCardPress}
       >

@@ -1,6 +1,7 @@
 import DharmaCoinPill from '@/components/gita/DharmaCoinPill';
 import QuoteCard from '@/components/gita/QuoteCard';
 import StreakModal from '@/components/gita/StreakModal';
+import DiyaStreak from '@/components/ui/DiyaStreak';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { useTheme } from '@/hooks/useTheme';
 import { FAVORITES_UPDATED_EVENT, fetchUserFavorites } from '@/lib/favorites';
@@ -13,9 +14,8 @@ import { fetchCurrentUserAndProfile, getProfileDisplayName, STREAK_UPDATED_EVENT
 import { fetchVerseOfTheDay, type GitaVerse } from '@/lib/verses';
 import type { Theme } from '@/theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
-import { Flame } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { DeviceEventEmitter, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { DeviceEventEmitter, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -153,18 +153,13 @@ export default function Home() {
                 <Text style={styles.greeting}>{greeting.toUpperCase()}</Text>
                 <Text style={styles.userName}>{isIdentityLoading ? 'Loading...' : displayName || 'Your Name'}</Text>
               </View>
-              <View style={styles.headerRightStack}>
+              <View style={styles.headerRight}>
                 <DharmaCoinPill />
-                <TouchableOpacity activeOpacity={0.7}
-                  style={styles.streakIndicator}
+                <DiyaStreak
+                  streak={currentStreak}
                   onPress={() => setIsStreakModalOpen(true)}
-                >
-                  <Flame size={20} color={theme.primary} />
-                  <Text style={styles.streakText}>
-                    <Text style={styles.streakNumber}>{currentStreak}</Text>
-                    <Text style={styles.streakLabel}> days</Text>
-                  </Text>
-                </TouchableOpacity>
+                  textColor={theme.primary}
+                />
               </View>
             </Animated.View>
 
@@ -258,32 +253,11 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     lineHeight: 32,
     marginBottom: 2,
   },
-  headerRightStack: {
-    flexDirection: 'column',
-    alignItems: 'flex-end',
-    gap: 8,
-    flexShrink: 0,
-  },
-  streakIndicator: {
+  headerRight: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.6)',
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  streakText: {
-    color: theme.primary,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  streakNumber: {
-    fontWeight: '700',
-  },
-  streakLabel: {
-    fontWeight: '400',
+    alignItems: 'flex-end',
+    gap: 14,
+    flexShrink: 0,
   },
   loadingContainer: {
     alignItems: 'center',
