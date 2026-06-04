@@ -1,4 +1,5 @@
 import BackgroundLayout from '@/components/BackgroundLayout';
+import DiyaStreak from '@/components/ui/DiyaStreak';
 import { HapticButton } from '@/components/ui/HapticButton';
 import { Fonts } from '@/constants/theme';
 import { ONBOARDING_VIDEO_URL } from '@/lib/storageAssets';
@@ -20,9 +21,9 @@ import {
     Share,
     Shield
 } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 
 type AuthChoice = 'email';
 type AuthMode = 'signup' | 'login';
@@ -46,7 +47,7 @@ interface OnboardingFlowProps {
 }
 
 type ReminderChoice = 'yes' | 'no' | null;
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 const INTRO_HEADLINE = "Did you know connecting back to your roots doesn't have to feel...";
 const INTRO_WORDS = ['hard?', 'stressful?', 'complicated?'] as const;
 const WELCOME_TOP = 'Welcome to';
@@ -246,7 +247,112 @@ function StepTwoDescription({ descOpacity }: { descOpacity: any }) {
   );
 }
 
+function StreakCelebration() {
+  const [isLit, setIsLit] = useState(false);
+  const matchProgress = useSharedValue(0);
+  const matchOpacity = useSharedValue(0);
+  const glowProgress = useSharedValue(0);
+  const rewardProgress = useSharedValue(0);
+  const diyaScale = useSharedValue(0.84);
+  const matchFlamePulse = useSharedValue(0);
+
+  useEffect(() => {
+    matchOpacity.value = withTiming(1, { duration: 220 });
+    matchFlamePulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 180 }),
+        withTiming(0, { duration: 240 }),
+      ),
+      -1,
+      true,
+    );
+    diyaScale.value = withSpring(1, { damping: 12, stiffness: 150 });
+    matchProgress.value = withDelay(
+      350,
+      withTiming(1, { duration: 850, easing: Easing.inOut(Easing.cubic) }, (finished) => {
+        if (!finished) return;
+        runOnJS(setIsLit)(true);
+        glowProgress.value = withSequence(
+          withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) }),
+          withRepeat(withTiming(0.72, { duration: 900 }), -1, true),
+        );
+        rewardProgress.value = withDelay(280, withSpring(1, { damping: 12, stiffness: 135 }));
+        matchOpacity.value = withDelay(180, withTiming(0, { duration: 380 }));
+      }),
+    );
+  }, [diyaScale, glowProgress, matchFlamePulse, matchOpacity, matchProgress, rewardProgress]);
+
+  const matchStyle = useAnimatedStyle(() => ({
+    opacity: matchOpacity.value,
+    transform: [
+      { translateX: -34 * matchProgress.value },
+      { translateY: 50 * matchProgress.value },
+      { rotate: `${-18 - matchProgress.value * 12}deg` },
+    ],
+  }));
+
+  const matchFlameStyle = useAnimatedStyle(() => ({
+    opacity: matchOpacity.value,
+    transform: [
+      { translateY: matchFlamePulse.value * -1.5 },
+      { scaleX: 0.9 + matchFlamePulse.value * 0.16 },
+      { scaleY: 0.94 + matchFlamePulse.value * 0.12 },
+      { rotate: `${-5 + matchFlamePulse.value * 8}deg` },
+    ],
+  }));
+
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: glowProgress.value * 0.72,
+    transform: [{ scale: 0.72 + glowProgress.value * 0.52 }],
+  }));
+
+  const diyaStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: diyaScale.value }],
+  }));
+
+  const rewardStyle = useAnimatedStyle(() => ({
+    opacity: rewardProgress.value,
+    transform: [
+      { translateY: (1 - rewardProgress.value) * 18 },
+      { scale: 0.88 + rewardProgress.value * 0.12 },
+    ],
+  }));
+
+  return (
+    <View style={styles.streakCelebration}>
+      <Text style={styles.streakEyebrow}>YOUR JOURNEY BEGINS</Text>
+      <Text style={styles.streakTitle}>Light your daily flame</Text>
+      <Text style={styles.streakSubtitle}>Return each day to keep your diya glowing.</Text>
+
+      <View style={styles.diyaStage}>
+        <Animated.View style={[styles.diyaGlow, glowStyle]} />
+
+        <Animated.View style={[styles.largeDiya, diyaStyle]}>
+          <DiyaStreak streak={1} scale={3.35} lit={isLit} />
+        </Animated.View>
+
+        <Animated.View style={[styles.matchstick, matchStyle]}>
+          <Animated.View style={[styles.matchFlame, matchFlameStyle]}>
+            <View style={styles.matchFlameInner} />
+          </Animated.View>
+          <View style={styles.matchHead} />
+          <View style={styles.matchStem} />
+        </Animated.View>
+      </View>
+
+      <Animated.View style={[styles.streakReward, rewardStyle]}>
+        <Flame size={20} color="#0f172a" fill="#0f172a" />
+        <View>
+          <Text style={styles.streakRewardValue}>1 day streak</Text>
+          <Text style={styles.streakRewardCaption}>Your first flame is lit</Text>
+        </View>
+      </Animated.View>
+    </View>
+  );
+}
+
 export default function OnboardingFlow({ onComplete, onReminderPreferenceChange }: OnboardingFlowProps) {
+  const onboardingScrollRef = useRef<ScrollView>(null);
   const [step, setStep] = useState(0);
   const [previousStep, setPreviousStep] = useState<number | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -401,10 +507,10 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
   const canContinue = useMemo(() => {
     if (step === 0) return true;
     if (step === 1) return fullName.trim().length > 0;
-    if (step === 3) return reminderChoice !== null;
-    if (step === 4) return preferredLanguage !== null;
+    if (step === 4) return reminderChoice !== null;
+    if (step === 5) return preferredLanguage !== null;
 
-    if (step === 5) {
+    if (step === 6) {
       if (authMode === 'signup') {
         return fullName.trim().length > 0 && email.trim().length > 0 && password.trim().length >= 6;
       }
@@ -417,6 +523,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
 
   const animateToStep = (nextStep: number) => {
     const isForward = nextStep > step;
+    onboardingScrollRef.current?.scrollTo({ y: 0, animated: false });
     setPreviousStep(step);
     setIsTransitioning(true);
     setStep(nextStep);
@@ -578,6 +685,10 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     }
 
     if (currentStep === 3) {
+      return <StreakCelebration />;
+    }
+
+    if (currentStep === 4) {
       return (
         <>
           <Text style={styles.title}>Would you want daily reminders?</Text>
@@ -608,7 +719,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
       );
     }
 
-    if (currentStep === 4) {
+    if (currentStep === 5) {
       return (
         <>
           <Text style={styles.title}>Choose your preferred language</Text>
@@ -778,6 +889,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
           </View>
 
           <ScrollView
+            ref={onboardingScrollRef}
             style={styles.scroll}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
@@ -1031,6 +1143,141 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     paddingTop: 30, // Increased top padding
+  },
+  streakCelebration: {
+    flex: 1,
+    alignItems: 'center',
+    paddingTop: 18,
+    paddingBottom: 40,
+  },
+  streakEyebrow: {
+    color: '#fbbf24',
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '800',
+    letterSpacing: 2.2,
+    marginBottom: 12,
+  },
+  streakTitle: {
+    color: '#fef3c7',
+    fontSize: 36,
+    lineHeight: 42,
+    fontWeight: '700',
+    fontFamily: Fonts.serif,
+    textAlign: 'center',
+  },
+  streakSubtitle: {
+    color: 'rgba(254,243,199,0.72)',
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginTop: 8,
+    maxWidth: 280,
+  },
+  diyaStage: {
+    width: 280,
+    height: 270,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginTop: 8,
+  },
+  diyaGlow: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: '#fbbf24',
+    shadowColor: '#f59e0b',
+    shadowOpacity: 0.95,
+    shadowRadius: 36,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  largeDiya: {
+    zIndex: 2,
+    marginTop: 30,
+  },
+  matchstick: {
+    position: 'absolute',
+    zIndex: 3,
+    top: 64,
+    right: 18,
+    width: 94,
+    height: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  matchFlame: {
+    position: 'absolute',
+    left: -1,
+    top: -23,
+    width: 18,
+    height: 27,
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+    borderBottomLeftRadius: 13,
+    borderBottomRightRadius: 4,
+    backgroundColor: '#ff6b00',
+    transform: [{ rotate: '45deg' }],
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 4,
+    shadowColor: '#fbbf24',
+    shadowOpacity: 0.95,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  matchFlameInner: {
+    width: 8,
+    height: 13,
+    borderTopLeftRadius: 7,
+    borderTopRightRadius: 7,
+    borderBottomLeftRadius: 6,
+    borderBottomRightRadius: 2,
+    backgroundColor: '#fff3a3',
+  },
+  matchHead: {
+    width: 15,
+    height: 15,
+    borderRadius: 8,
+    backgroundColor: '#dc2626',
+    borderWidth: 2,
+    borderColor: '#7f1d1d',
+  },
+  matchStem: {
+    flex: 1,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#f4c27a',
+  },
+  streakReward: {
+    minWidth: 230,
+    borderRadius: 20,
+    backgroundColor: '#fbbf24',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    shadowColor: '#f59e0b',
+    shadowOpacity: 0.34,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  streakRewardValue: {
+    color: '#0f172a',
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '900',
+  },
+  streakRewardCaption: {
+    color: 'rgba(15,23,42,0.72)',
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '600',
   },
   firstStepForm: {
     marginTop: 10,

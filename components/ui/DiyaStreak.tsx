@@ -8,6 +8,7 @@ interface Props {
   textColor?: string;
   hideNumber?: boolean;
   scale?: number;
+  lit?: boolean;
 }
 
 // p  = side lean (-1 left → 1 right)
@@ -31,7 +32,7 @@ function buildMid(p: number, tp: number) {
 const STATIC_OUTER = buildOuter(0, 0);
 const STATIC_MID = buildMid(0, 0);
 
-export default function DiyaStreak({ streak, onPress, textColor = '#FBBF24', hideNumber = false, scale = 1 }: Props) {
+export default function DiyaStreak({ streak, onPress, textColor = '#FBBF24', hideNumber = false, scale = 1, lit = true }: Props) {
   const [outerD, setOuterD] = useState(STATIC_OUTER);
   const [midD, setMidD] = useState(STATIC_MID);
   const rafRef = useRef<number>(0);
@@ -73,12 +74,16 @@ export default function DiyaStreak({ streak, onPress, textColor = '#FBBF24', hid
           </LinearGradient>
         </Defs>
 
-        <Path d={outerD} fill="url(#dsFOuter)" />
-        <Path d={midD} fill="url(#dsFMid)" />
-        <Path
-          d="M 13,14 C 16,14 18,17 18,21 C 18,24 16,25 13,25 C 10,25 8,24 8,21 C 8,17 10,14 13,14 Z"
-          fill="url(#dsFCore)"
-        />
+        {lit ? (
+          <>
+            <Path d={outerD} fill="url(#dsFOuter)" />
+            <Path d={midD} fill="url(#dsFMid)" />
+            <Path
+              d="M 13,14 C 16,14 18,17 18,21 C 18,24 16,25 13,25 C 10,25 8,24 8,21 C 8,17 10,14 13,14 Z"
+              fill="url(#dsFCore)"
+            />
+          </>
+        ) : null}
         <Rect x={12} y={26} width={2} height={7} fill="#5C3010" rx={1} />
       </Svg>
 
