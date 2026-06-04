@@ -26,12 +26,17 @@
     },
     "plugins": [
       "expo-router",
+      "expo-notifications",
       [
         "expo-splash-screen",
         {
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "image": "./assets/images/splashscreen.png",
+          "resizeMode": "cover",
+          "enableFullScreenImage_legacy": true,
+          "backgroundColor": "#000000",
           "dark": {
+            "image": "./assets/images/splashscreen.png",
+            "resizeMode": "cover",
             "backgroundColor": "#000000"
           }
         }

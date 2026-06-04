@@ -1,11 +1,14 @@
+import AnimatedSplash from '@/components/gita/AnimatedSplash';
 import DharmaCoinEarnedOverlay from '@/components/gita/DharmaCoinEarnedOverlay';
 import OnboardingFlow from '@/components/gita/OnboardingFlow';
+import { cancelDailyWisdomNotification, setupDailyWisdomNotification } from '@/lib/notifications';
 import { PREFERRED_LANGUAGE_CHANGED_EVENT } from '@/lib/preferredLanguage';
 import { completeOnboardingProfile, getCurrentAuthUserWithRetry, syncProfileFromAuthUser, updateUserStreak } from '@/lib/profile';
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Alert, AppState, DeviceEventEmitter, Platform } from 'react-native';
@@ -20,6 +23,12 @@ import { darkTheme, lightTheme } from '@/theme/colors';
 export const unstable_settings = {
   anchor: '(tabs)',
 };
+
+// Keep the native splash up until our animated splash takes over, so there is no
+// blank frame between launch and the first app screen.
+SplashScreen.preventAutoHideAsync().catch(() => {
+  // Already hidden / not available (e.g. web) — safe to ignore.
+});
 
 const ONBOARDING_COMPLETE_KEY = 'gitaDaily.onboardingComplete.v1';
 const ONBOARDING_PROFILE_KEY = 'gitaDaily.onboardingProfile.v1';
@@ -41,8 +50,15 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [isBooting, setIsBooting] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [splashVisible, setSplashVisible] = useState(true);
 
   const persistReminderPreference = async (enabled: boolean) => {
+    if (enabled) {
+      await setupDailyWisdomNotification();
+    } else {
+      await cancelDailyWisdomNotification();
+    }
+
     const authenticatedUser = await getCurrentAuthUserWithRetry();
 
     if (!authenticatedUser) {
@@ -348,6 +364,9 @@ export default function RootLayout() {
           {Platform.OS === 'web' && <Toaster richColors position="top-center" />}
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         </ThemeProvider>
+      )}
+      {splashVisible && (
+        <AnimatedSplash active={isBooting} onHidden={() => setSplashVisible(false)} />
       )}
     </GestureHandlerRootView>
   );

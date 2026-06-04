@@ -20,7 +20,7 @@ import {
     Share,
     Shield
 } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
 
@@ -49,30 +49,72 @@ type ReminderChoice = 'yes' | 'no' | null;
 const TOTAL_STEPS = 6;
 const INTRO_HEADLINE = "Did you know connecting back to your roots doesn't have to feel...";
 const INTRO_WORDS = ['hard?', 'stressful?', 'complicated?'] as const;
+const WELCOME_TOP = 'Welcome to';
+const WELCOME_MAIN = 'Dharma Daily';
 const STEP_ONE_PROMPT_TOP = "Let’s personalize your journey";
 const STEP_ONE_PROMPT_BOTTOM = "What’s your full name?";
 
-function OnboardingIntroHero() {
+function OnboardingIntroHero({ startTyping }: { startTyping: boolean }) {
+  const [titleTopLength, setTitleTopLength] = useState(0);
+  const [titleMainLength, setTitleMainLength] = useState(0);
   const [headlineLength, setHeadlineLength] = useState(0);
   const [wordIndex, setWordIndex] = useState(0);
   const [wordLength, setWordLength] = useState(0);
   const [wordPhase, setWordPhase] = useState<'typing' | 'holding' | 'deleting'>('typing');
   const cursorOpacity = useSharedValue(1);
+  const titleReveal = useSharedValue(0);
+
+  const titleTopDone = titleTopLength >= WELCOME_TOP.length;
+  const titleMainDone = titleMainLength >= WELCOME_MAIN.length;
+  const titleDone = titleTopDone && titleMainDone;
 
   useEffect(() => {
     cursorOpacity.value = withRepeat(withTiming(0.18, { duration: 520 }), -1, true);
   }, [cursorOpacity]);
 
+  // Smooth entrance for the whole title once the video has loaded.
   useEffect(() => {
+    if (!startTyping) return;
+    titleReveal.value = withTiming(1, { duration: 450, easing: Easing.out(Easing.cubic) });
+  }, [startTyping, titleReveal]);
+
+  // 1) Type "Welcome to".
+  useEffect(() => {
+    if (!startTyping) return;
+    if (titleTopLength >= WELCOME_TOP.length) return;
+
+    const timeout = setTimeout(() => {
+      setTitleTopLength((current) => current + 1);
+    }, titleTopLength === 0 ? 120 : 45);
+
+    return () => clearTimeout(timeout);
+  }, [startTyping, titleTopLength]);
+
+  // 2) Then type "Dharma Daily".
+  useEffect(() => {
+    if (!startTyping || !titleTopDone) return;
+    if (titleMainLength >= WELCOME_MAIN.length) return;
+
+    const timeout = setTimeout(() => {
+      setTitleMainLength((current) => current + 1);
+    }, titleMainLength === 0 ? 180 : 48);
+
+    return () => clearTimeout(timeout);
+  }, [startTyping, titleTopDone, titleMainLength]);
+
+  // 3) Then type the headline.
+  useEffect(() => {
+    if (!startTyping || !titleDone) return;
     if (headlineLength >= INTRO_HEADLINE.length) return;
 
     const timeout = setTimeout(() => {
       setHeadlineLength((current) => current + 1);
-    }, headlineLength === 0 ? 220 : 34);
+    }, headlineLength === 0 ? 200 : 50);
 
     return () => clearTimeout(timeout);
-  }, [headlineLength]);
+  }, [startTyping, titleDone, headlineLength]);
 
+  // 4) Then cycle the rotating words — fast write + fast delete.
   useEffect(() => {
     if (headlineLength < INTRO_HEADLINE.length) return;
 
@@ -80,19 +122,19 @@ function OnboardingIntroHero() {
 
     if (wordPhase === 'typing') {
       if (wordLength >= currentWord.length) {
-        const holdTimeout = setTimeout(() => setWordPhase('holding'), 850);
+        const holdTimeout = setTimeout(() => setWordPhase('holding'), 450);
         return () => clearTimeout(holdTimeout);
       }
 
       const typeTimeout = setTimeout(() => {
         setWordLength((current) => current + 1);
-      }, 70);
+      }, 40);
 
       return () => clearTimeout(typeTimeout);
     }
 
     if (wordPhase === 'holding') {
-      const holdTimeout = setTimeout(() => setWordPhase('deleting'), 950);
+      const holdTimeout = setTimeout(() => setWordPhase('deleting'), 150);
       return () => clearTimeout(holdTimeout);
     }
 
@@ -100,14 +142,14 @@ function OnboardingIntroHero() {
       const nextWordTimeout = setTimeout(() => {
         setWordIndex((current) => (current + 1) % INTRO_WORDS.length);
         setWordPhase('typing');
-      }, 150);
+      }, 80);
 
       return () => clearTimeout(nextWordTimeout);
     }
 
     const deleteTimeout = setTimeout(() => {
       setWordLength((current) => current - 1);
-    }, 38);
+    }, 20);
 
     return () => clearTimeout(deleteTimeout);
   }, [headlineLength, wordIndex, wordLength, wordPhase]);
@@ -116,27 +158,38 @@ function OnboardingIntroHero() {
     opacity: cursorOpacity.value,
   }));
 
+  const titleRevealStyle = useAnimatedStyle(() => ({
+    opacity: titleReveal.value,
+    transform: [{ translateY: (1 - titleReveal.value) * 10 }],
+  }));
+
+  const displayedTitleTop = WELCOME_TOP.slice(0, titleTopLength);
+  const displayedTitleMain = WELCOME_MAIN.slice(0, titleMainLength);
   const displayedHeadline = INTRO_HEADLINE.slice(0, headlineLength);
   const displayedWord = INTRO_WORDS[wordIndex].slice(0, wordLength);
   const isHeadlineTyping = headlineLength < INTRO_HEADLINE.length;
 
   return (
     <View style={styles.heroBlock}>
-      <View style={styles.heroTitleWrap}>
-        <Text style={styles.heroTitleIntro}>Welcome to</Text>
-        <Text numberOfLines={1} style={styles.heroTitleMain}>
-          Dharma Daily
+      <Animated.View style={[styles.heroTitleWrap, titleRevealStyle]}>
+        <Text style={styles.heroTitleIntro}>
+          {displayedTitleTop}
+          {startTyping && !titleTopDone ? <Animated.Text style={[styles.heroTitleCursor, cursorStyle]}>|</Animated.Text> : null}
         </Text>
-      </View>
+        <Text numberOfLines={1} style={styles.heroTitleMain}>
+          {displayedTitleMain}
+          {startTyping && titleTopDone && !titleMainDone ? <Animated.Text style={[styles.heroTitleCursor, cursorStyle]}>|</Animated.Text> : null}
+        </Text>
+      </Animated.View>
 
       <Text style={styles.heroHeadline}>
         {displayedHeadline}
-        {isHeadlineTyping ? <Animated.Text style={[styles.heroBodyCursor, cursorStyle]}>|</Animated.Text> : null}
+        {startTyping && titleDone && isHeadlineTyping ? <Animated.Text style={[styles.heroBodyCursor, cursorStyle]}>|</Animated.Text> : null}
       </Text>
 
       <View style={styles.heroWordRow}>
         <Text style={styles.heroWord}>{displayedWord || ' '}</Text>
-        {!isHeadlineTyping ? <Animated.Text style={[styles.heroCursor, cursorStyle]}>|</Animated.Text> : null}
+        {titleDone && !isHeadlineTyping ? <Animated.Text style={[styles.heroCursor, cursorStyle]}>|</Animated.Text> : null}
       </View>
     </View>
   );
@@ -208,6 +261,9 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
   const [stepOnePromptTopLength, setStepOnePromptTopLength] = useState(0);
   const [stepOnePromptBottomLength, setStepOnePromptBottomLength] = useState(0);
   const [stepOnePromptPhase, setStepOnePromptPhase] = useState<'typingTop' | 'typingBottom' | 'done'>('typingTop');
+  // Becomes true once the background video has loaded — gates the intro typewriter.
+  const [videoReady, setVideoReady] = useState(false);
+  const handleVideoReady = useCallback(() => setVideoReady(true), []);
 
   // Step 2 (Features) states
   const [stepTwoPromptLength, setStepTwoPromptLength] = useState(0);
@@ -228,22 +284,6 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
       maxBufferBytes: 10 * 1024 * 1024,
     };
     player.play();
-  });
-
-  const pageAnimatedStyle = useAnimatedStyle(() => {
-    const opacity = pageTransition.value;
-    
-    // When fading out (target 0), we want to slide OUT.
-    // When fading in (target 1), we want to slide IN.
-    // Actually, a simpler way is to just use direction to flip the start/end points.
-    // Use (value - 1) so outgoing (1->0) moves in the direction sign-negated
-    // and incoming (0->1) moves from the opposite side into place.
-    const translateX = (pageTransition.value - 1) * 50 * direction.value;
-
-    return {
-      opacity,
-      transform: [{ translateX }],
-    };
   });
 
   const outgoingPageAnimatedStyle = useAnimatedStyle(() => ({
@@ -394,10 +434,6 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     });
   };
 
-  const requestNotificationsIfNeeded = async () => {
-    if (reminderChoice !== 'yes') return;
-  };
-
   const handleReminderChoice = async (choice: Exclude<ReminderChoice, null>) => {
     setReminderChoice(choice);
 
@@ -410,10 +446,6 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
 
   const continueFlow = async () => {
     if (!canContinue) return;
-
-    if (step === 3) {
-      await requestNotificationsIfNeeded();
-    }
 
     if (step < TOTAL_STEPS - 1) {
       animateToStep(step + 1);
@@ -451,7 +483,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     if (currentStep === 0) {
       return (
         <>
-          <OnboardingIntroHero />
+          <OnboardingIntroHero startTyping={videoReady} />
 
           <View style={[styles.firstStepForm, styles.hiddenHeroForm]}>
             <Text style={styles.label}>What is your full name?</Text>
@@ -723,7 +755,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
   };
 
   return (
-    <BackgroundLayout backgroundPlayer={backgroundVideoPlayer}>
+    <BackgroundLayout backgroundPlayer={backgroundVideoPlayer} onReady={handleVideoReady}>
       <KeyboardAvoidingView
         style={styles.keyboardAvoiding}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -934,6 +966,11 @@ const styles = StyleSheet.create({
     color: '#FCD34D',
     fontSize: 42,
     lineHeight: 48,
+  },
+  heroTitleCursor: {
+    color: '#FCD34D',
+    fontSize: 38,
+    lineHeight: 46,
   },
   heroWordRow: {
     minHeight: 72,

@@ -9,20 +9,30 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 interface BackgroundLayoutProps {
   children: React.ReactNode;
   backgroundPlayer?: VideoPlayer | null;
+  /** Fired once the background video is ready (or a fallback timeout elapses). */
+  onReady?: () => void;
 }
 
-export default function BackgroundLayout({ children, backgroundPlayer = null }: BackgroundLayoutProps) {
+export default function BackgroundLayout({ children, backgroundPlayer = null, onReady }: BackgroundLayoutProps) {
   const theme = useTheme();
   const isDark = theme.blurTint === 'dark';
 
   const bgColors = backgroundPlayer
-    ? (isDark ? (['#000000', '#000000', '#000000'] as const) : (['#ffffff', '#ffffff', '#ffffff'] as const))
+    ? (['#04060f', '#0b1226', '#04060f'] as const)
     : isDark
     ? (['#0f172a', '#172554', '#0f172a'] as const)
     : (['#FFFBF0', '#FEF3C7', '#FFFBF0'] as const);
 
   useEffect(() => {
     if (!backgroundPlayer) return;
+
+    let notified = false;
+    // Let the screen know the video is up so the intro typewriter can begin.
+    const notifyReady = () => {
+      if (notified) return;
+      notified = true;
+      onReady?.();
+    };
 
     const tryPlay = () => {
       if (AppState.currentState !== 'active') return;
@@ -39,6 +49,7 @@ export default function BackgroundLayout({ children, backgroundPlayer = null }: 
     // Source may already be ready by the time this effect runs — fire once synchronously.
     if (backgroundPlayer.status === 'readyToPlay') {
       tryPlay();
+      notifyReady();
     }
 
     // Catch the transition to ready.
@@ -47,6 +58,7 @@ export default function BackgroundLayout({ children, backgroundPlayer = null }: 
       ({ status }: { status: VideoPlayerStatus }) => {
         if (status === 'readyToPlay') {
           tryPlay();
+          notifyReady();
         }
       },
     );
@@ -65,16 +77,19 @@ export default function BackgroundLayout({ children, backgroundPlayer = null }: 
     const t1 = setTimeout(tryPlay, 250);
     const t2 = setTimeout(tryPlay, 1500);
     const retryInterval = setInterval(tryPlay, 500);
+    // Safety net: start the typewriter even if the ready status event is missed.
+    const readyFallback = setTimeout(notifyReady, 2200);
     tryPlay();
 
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(readyFallback);
       clearInterval(retryInterval);
       statusSub.remove();
       appStateSub.remove();
     };
-  }, [backgroundPlayer]);
+  }, [backgroundPlayer, onReady]);
 
   return (
     <LinearGradient
