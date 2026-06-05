@@ -128,7 +128,7 @@ export default function MountainLevelScreen() {
     if (passed) {
       await updateCurrentMountainLevel(levelNumber);
       const coinSource = isWisdomGate ? 'wisdom_gate' : 'world_level';
-      void awardDharmaCoins(coinSource, String(levelNumber)).catch((err) => {
+      void awardDharmaCoins(coinSource, `mountain-${levelNumber}`).catch((err) => {
         console.warn('Mountain level coin award failed', err);
       });
     }

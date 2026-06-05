@@ -160,6 +160,46 @@ export const awardDharmaCoins = async (
   return result;
 };
 
+/**
+ * The user-facing ways to earn Dharma Coins, with the base amounts awarded by
+ * the `award_dharma_coins` RPC. Shared by the Dharma Coins "ways to earn" popup
+ * and the onboarding flow so both stay in sync with the server rules.
+ */
+export type DharmaCoinEarnMethod = {
+  key: 'streak' | 'prayer' | 'lotus_level';
+  title: string;
+  amount: number;
+  cadence: string;
+  description: string;
+};
+
+export const DHARMA_COIN_EARN_METHODS: DharmaCoinEarnMethod[] = [
+  {
+    key: 'streak',
+    title: 'Keep your daily streak',
+    amount: 1,
+    cadence: 'Once a day',
+    description: 'Open Dharma Daily and read your verse of the day to keep your streak going.',
+  },
+  {
+    key: 'prayer',
+    title: 'Complete a prayer',
+    amount: 2,
+    cadence: 'Once a day',
+    description: 'Listen to any prayer all the way through to the end.',
+  },
+  {
+    key: 'lotus_level',
+    title: 'Pass a learning level',
+    amount: 2,
+    cadence: 'Up to 3 a day per path',
+    description: 'Complete a level on the Lotus, World, Garden, or Mountain path (or a Wisdom Gate) and pass its quiz.',
+  },
+];
+
+export const DHARMA_COIN_MULTIPLIER_NOTE =
+  'Your streak multiplier (up to 2×) boosts every coin you earn.';
+
 export const sourceDisplayName = (source: DharmaCoinSource): string => {
   switch (source) {
     case 'streak':

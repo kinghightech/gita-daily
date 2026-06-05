@@ -8,6 +8,11 @@ import {
   fetchUserFavorites,
   fetchUserFestivalFavorites,
 } from '@/lib/favorites';
+import {
+  PRAYER_VERSES_UPDATED_EVENT,
+  fetchUserPrayerVerses,
+  type SavedPrayerVerse,
+} from '@/lib/prayerFavorites';
 import { fetchAllFestivals, getFestivalSymbol, type Festival } from '@/lib/festivals';
 import { fetchUserNotes, NOTES_UPDATED_EVENT, type UserNote } from '@/lib/notes';
 import { loadPreferredLanguageForCurrentUser } from '@/lib/preferredLanguage';
@@ -18,6 +23,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { Stack, useRouter } from 'expo-router';
 import {
+  BookOpen,
   ChevronLeft,
   ChevronRight,
   Feather,
@@ -42,8 +48,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const RED = '#f87171';
 const BLUE = '#93c5fd';
+const VIOLET = '#c4b5fd';
 
-type SavedTab = 'all' | 'verses' | 'festivals' | 'reflections';
+type SavedTab = 'all' | 'verses' | 'prayers' | 'festivals' | 'reflections';
 
 type SavedVerse = {
   id: string;
@@ -63,6 +70,7 @@ type QuoteUser = {
 const TAB_LABELS: { id: SavedTab; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'verses', label: 'Verses' },
+  { id: 'prayers', label: 'Prayers' },
   { id: 'festivals', label: 'Festivals' },
   { id: 'reflections', label: 'Reflections' },
 ];
@@ -79,6 +87,7 @@ export default function SavedScreen() {
   const [favoriteFestivalIds, setFavoriteFestivalIds] = useState<string[]>([]);
   const [allVerses, setAllVerses] = useState<SavedVerse[]>([]);
   const [allFestivals, setAllFestivals] = useState<Festival[]>([]);
+  const [prayerVerses, setPrayerVerses] = useState<SavedPrayerVerse[]>([]);
   const [notes, setNotes] = useState<UserNote[]>([]);
   const [selectedVerse, setSelectedVerse] = useState<SavedVerse | null>(null);
   const [preferredLanguage, setPreferredLanguage] = useState<'english' | 'hindi'>('english');
@@ -90,18 +99,21 @@ export default function SavedScreen() {
       if (!user) {
         setFavoriteVerseIds([]);
         setFavoriteFestivalIds([]);
+        setPrayerVerses([]);
         setNotes([]);
         return;
       }
 
-      const [favIds, favFestivalIds, verses, festivals, userNotes, language] = await Promise.all([
-        fetchUserFavorites(user.id),
-        fetchUserFestivalFavorites(user.id),
-        fetchAllGitaVerses(),
-        fetchAllFestivals(),
-        fetchUserNotes(user.id),
-        loadPreferredLanguageForCurrentUser(),
-      ]);
+      const [favIds, favFestivalIds, verses, festivals, savedPrayerVerses, userNotes, language] =
+        await Promise.all([
+          fetchUserFavorites(user.id),
+          fetchUserFestivalFavorites(user.id),
+          fetchAllGitaVerses(),
+          fetchAllFestivals(),
+          fetchUserPrayerVerses(user.id),
+          fetchUserNotes(user.id),
+          loadPreferredLanguageForCurrentUser(),
+        ]);
 
       setQuoteUser({
         id: user.id,
@@ -113,6 +125,7 @@ export default function SavedScreen() {
       });
       setFavoriteVerseIds(favIds);
       setFavoriteFestivalIds(favFestivalIds);
+      setPrayerVerses(savedPrayerVerses);
       setNotes(userNotes);
       setPreferredLanguage(language);
       setAllFestivals(festivals);
@@ -141,6 +154,7 @@ export default function SavedScreen() {
     const subs = [
       DeviceEventEmitter.addListener(FAVORITES_UPDATED_EVENT, loadSavedContent),
       DeviceEventEmitter.addListener(FESTIVALS_UPDATED_EVENT, loadSavedContent),
+      DeviceEventEmitter.addListener(PRAYER_VERSES_UPDATED_EVENT, loadSavedContent),
       DeviceEventEmitter.addListener(NOTES_UPDATED_EVENT, loadSavedContent),
     ];
 
@@ -165,13 +179,19 @@ export default function SavedScreen() {
   );
 
   const counts: Record<SavedTab, number> = {
-    all: favoriteVerses.length + favoriteFestivals.length + notes.length,
+    all:
+      favoriteVerses.length +
+      prayerVerses.length +
+      favoriteFestivals.length +
+      notes.length,
     verses: favoriteVerses.length,
+    prayers: prayerVerses.length,
     festivals: favoriteFestivals.length,
     reflections: notes.length,
   };
 
   const showVerses = activeTab === 'all' || activeTab === 'verses';
+  const showPrayers = activeTab === 'all' || activeTab === 'prayers';
   const showFestivals = activeTab === 'all' || activeTab === 'festivals';
   const showReflections = activeTab === 'all' || activeTab === 'reflections';
 
@@ -231,6 +251,43 @@ export default function SavedScreen() {
       </View>
     </TouchableOpacity>
   );
+
+  const renderPrayerVerseCard = (item: SavedPrayerVerse) => {
+    const primaryLine =
+      preferredLanguage === 'hindi'
+        ? item.originalText
+        : item.transliteration || item.originalText;
+    const meaningPreview =
+      item.meaning && item.meaning.trim().length > 0 ? item.meaning : 'Meaning coming soon';
+
+    return (
+      <TouchableOpacity
+        key={item.id}
+        activeOpacity={0.76}
+        onPress={() => router.navigate(`/(tabs)/prayer?id=${item.prayerId}&verse=${item.verseIndex}`)}
+        style={styles.itemCard}
+      >
+        <BlurView intensity={20} tint={theme.blurTint} style={StyleSheet.absoluteFill} />
+        <View style={styles.itemInner}>
+          <View style={styles.itemHeader}>
+            <View style={styles.itemTitleRow}>
+              <BookOpen size={14} color={VIOLET} strokeWidth={2} />
+              <Text style={styles.prayerCardTitle} numberOfLines={1}>
+                {item.prayerTitle}
+              </Text>
+            </View>
+            <ChevronRight size={17} color={theme.subtextMuted} strokeWidth={1.8} />
+          </View>
+          <Text style={styles.prayerCardLine} numberOfLines={2}>
+            {primaryLine}
+          </Text>
+          <Text style={styles.prayerCardMeaning} numberOfLines={2}>
+            {meaningPreview}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderFestivalCard = (festival: Festival) => (
     <TouchableOpacity
@@ -399,6 +456,14 @@ export default function SavedScreen() {
                     favoriteVerses.length,
                     <Heart size={15} color={RED} fill={RED} strokeWidth={0} />,
                     <View style={styles.list}>{favoriteVerses.map(renderVerseCard)}</View>
+                  )}
+
+                {showPrayers &&
+                  renderSection(
+                    'Prayer Verses',
+                    prayerVerses.length,
+                    <BookOpen size={15} color={VIOLET} strokeWidth={2} />,
+                    <View style={styles.list}>{prayerVerses.map(renderPrayerVerseCard)}</View>
                   )}
 
                 {showFestivals &&
@@ -613,6 +678,26 @@ const createStyles = (theme: Theme) =>
       fontSize: 14,
       lineHeight: 21,
       fontWeight: '400',
+    },
+    prayerCardTitle: {
+      flex: 1,
+      minWidth: 0,
+      color: VIOLET,
+      fontSize: 14,
+      fontWeight: '800',
+      letterSpacing: 0,
+    },
+    prayerCardLine: {
+      color: theme.text,
+      fontSize: 15,
+      lineHeight: 23,
+      fontFamily: Fonts.serif,
+      marginBottom: 6,
+    },
+    prayerCardMeaning: {
+      color: theme.subtext,
+      fontSize: 13,
+      lineHeight: 19,
     },
     noteVersePreview: {
       color: theme.subtextMuted,

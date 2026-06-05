@@ -17,16 +17,20 @@ import type { Theme } from '@/theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
-import { ArrowLeft, Flame, X } from 'lucide-react-native';
+import { ArrowLeft, Eye, Flame, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     DeviceEventEmitter,
     FlatList,
+    Modal,
+    Pressable,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+import DharmaCoinEarnMethods from '@/components/gita/DharmaCoinEarnMethods';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -65,6 +69,7 @@ export default function DharmaCoinsScreen() {
     hasInitialOverview ? initialSnapshot.transactions : []
   );
   const [isLoading, setIsLoading] = useState(!hasInitialOverview);
+  const [showEarnInfo, setShowEarnInfo] = useState(false);
 
   const applySnapshot = useCallback((snapshot: {
     balance: number;
@@ -221,7 +226,15 @@ export default function DharmaCoinsScreen() {
             <ArrowLeft size={22} color={theme.text} />
           </TouchableOpacity>
           <Text style={styles.navTitle}>Dharma Coins</Text>
-          <View style={{ width: 38 }} />
+          <TouchableOpacity
+            onPress={() => setShowEarnInfo(true)}
+            style={styles.backBtn}
+            activeOpacity={0.7}
+            accessibilityLabel="Ways to earn Dharma Coins"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Eye size={20} color={GitaColors.gold} />
+          </TouchableOpacity>
         </View>
 
         <FlatList
@@ -272,6 +285,53 @@ export default function DharmaCoinsScreen() {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       </SafeAreaView>
+
+      <Modal
+        visible={showEarnInfo}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEarnInfo(false)}
+        statusBarTranslucent
+      >
+        <View style={styles.earnOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowEarnInfo(false)} />
+          <SafeAreaView edges={['bottom']} style={styles.earnSheet}>
+            <View style={styles.earnHandle} />
+            <View style={styles.earnHeader}>
+              <View style={styles.earnHeaderLeft}>
+                <Image
+                  source={require('@/assets/images/coin.png')}
+                  style={styles.earnHeaderCoin}
+                  contentFit="contain"
+                  transition={0}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.earnTitle}>Ways to Earn</Text>
+                  <Text style={styles.earnSubtitle}>
+                    Collect Dharma Coins to unlock rewards (coming soon).
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowEarnInfo(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                activeOpacity={0.7}
+                style={styles.earnClose}
+              >
+                <X size={20} color={theme.subtext} strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              style={styles.earnScroll}
+              contentContainerStyle={styles.earnScrollContent}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
+              <DharmaCoinEarnMethods tone="auto" />
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -510,5 +570,75 @@ const createStyles = (theme: Theme) =>
       textAlign: 'center',
       paddingHorizontal: 24,
       lineHeight: 20,
+    },
+    earnOverlay: {
+      flex: 1,
+      justifyContent: 'flex-end',
+      backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    earnSheet: {
+      backgroundColor: theme.background,
+      borderTopLeftRadius: 26,
+      borderTopRightRadius: 26,
+      paddingHorizontal: 20,
+      paddingTop: 10,
+      maxHeight: '86%',
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderBottomWidth: 0,
+    },
+    earnHandle: {
+      alignSelf: 'center',
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.subtextMuted,
+      opacity: 0.5,
+      marginBottom: 16,
+    },
+    earnHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginBottom: 16,
+    },
+    earnHeaderLeft: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    earnHeaderCoin: {
+      width: 40,
+      height: 40,
+    },
+    earnTitle: {
+      color: theme.text,
+      fontSize: 20,
+      fontWeight: '900',
+      letterSpacing: 0.2,
+    },
+    earnSubtitle: {
+      color: theme.subtext,
+      fontSize: 12.5,
+      lineHeight: 17,
+      marginTop: 2,
+    },
+    earnClose: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: theme.surface,
+      borderWidth: 1,
+      borderColor: theme.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    earnScroll: {
+      flexGrow: 0,
+    },
+    earnScrollContent: {
+      paddingBottom: 16,
     },
   });

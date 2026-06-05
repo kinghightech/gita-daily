@@ -123,7 +123,7 @@ export default function WorldLevelScreen() {
     if (passed) {
       await updateCurrentWorldLotusLevel(levelNumber);
       const coinSource = isWisdomGate ? 'wisdom_gate' : 'world_level';
-      void awardDharmaCoins(coinSource, String(levelNumber)).catch((err) => {
+      void awardDharmaCoins(coinSource, `world-${levelNumber}`).catch((err) => {
         console.warn('World lotus level coin award failed', err);
       });
       if (isWisdomGate) {

@@ -12,6 +12,10 @@ import {
     HINDI_LYRICS as HANUMAN_HINDI,
 } from './hanumanChalisaLyrics';
 import {
+    ENGLISH_LYRICS as MAHA_MRITYUNJAYA_ENGLISH,
+    HINDI_LYRICS as MAHA_MRITYUNJAYA_HINDI,
+} from './mahaMrityunjayaMantraLyrics';
+import {
     ENGLISH_LYRICS as SHIVA_ENGLISH,
     HINDI_LYRICS as SHIVA_HINDI,
 } from './shivaTandavaStotramLyrics';
@@ -53,7 +57,7 @@ export const PRAYERS: Prayer[] = [
     nameHindi: 'हनुमान चालीसा',
     duration: '4:42',
     deity: 'Lord Hanuman',
-    thumbnail: require('@/assets/images/backgroundprayer.jpg'),
+    thumbnail: require('@/assets/images/backgroundprayer.png'),
     audioFile: getAudioUrl('Hanuman Chalisa.mp3'),
     hindiLyrics: HANUMAN_HINDI,
     englishLyrics: HANUMAN_ENGLISH,
@@ -154,6 +158,42 @@ export const PRAYERS: Prayer[] = [
     language: 'Hindi',
     verses: 4,
     era: '19th century CE',
+  },
+  {
+    id: 'maha-mrityunjaya-mantra',
+    name: 'Maha Mrityunjaya Mantra',
+    nameHindi: 'महामृत्युञ्जय मन्त्र',
+    duration: '3:26',
+    deity: 'Lord Shiva',
+    thumbnail: require('@/assets/images/Backgroundmahamrityunjaya.png'),
+    audioFile: getAudioUrl('Maha Mrityunjaya Mantra .mp3'),
+    hindiLyrics: MAHA_MRITYUNJAYA_HINDI,
+    englishLyrics: MAHA_MRITYUNJAYA_ENGLISH,
+    shortDescription: 'The great death-conquering mantra of Lord Shiva from the Rigveda',
+    about:
+      'The Maha Mrityunjaya Mantra is one of the most ancient and powerful mantras in the Vedic tradition, found in the Rigveda (7.59.12) and attributed to the sage Vasishtha. Also known as the Tryambakam Mantra, it is addressed to the three-eyed Lord Shiva — the conqueror of death — and is a prayer for liberation from the fear of death and the cycle of rebirth. Tradition holds that the sage Markandeya was blessed with this mantra and used it to overcome his destined death, becoming immortal through Shiva\'s grace.',
+    whenToChant: [
+      'On Mondays and during Maha Shivaratri — the most sacred times for Shiva worship',
+      'During Shravan month, especially on Mondays',
+      'At Pradosh time (dusk on the 13th lunar day of each fortnight)',
+      'When facing illness, danger, grief, or the fear of death',
+      'During times of healing — for oneself or as a prayer for others',
+      'Daily at sunrise, as part of personal Shiva puja or meditation',
+    ],
+    significance:
+      'This mantra addresses Shiva as Tryambaka — the Three-eyed One — whose third eye sees beyond the illusions of birth and death. The central metaphor is profound: just as a ripened cucumber naturally falls free from the vine without effort or violence, the sincere devotee is gently liberated from the bondage of mortality. The mantra does not simply ask for longer life — it asks for liberation from the cycle of death and rebirth into the amrit, the immortal divine essence.',
+    benefits: [
+      'Protects from premature death and severe illness',
+      'Brings healing and restoration of health and vitality',
+      'Removes deep-seated fear and grief',
+      'Liberates the mind from attachment to the body and mortality',
+      'Said to grant moksha — freedom from the cycle of rebirth',
+      'Bestows Shiva\'s grace upon both the chanter and those prayed for',
+    ],
+    composer: 'Rishi Vasishtha / Vedic tradition',
+    language: 'Vedic Sanskrit',
+    verses: 1,
+    era: 'Vedic (~1500 BCE)',
   },
   {
     id: 'shiva-tandava-stotram',

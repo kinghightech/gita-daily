@@ -6,6 +6,7 @@ import { VERSE_BACKGROUND_URLS } from '@/lib/storageAssets';
 import { stripHindiVerseRef } from '@/lib/verses';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Sharing from 'expo-sharing';
 import * as Speech from 'expo-speech';
 import {
   Heart,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   DeviceEventEmitter,
   Dimensions,
@@ -29,6 +31,7 @@ import {
   View,
   type GestureResponderEvent,
 } from 'react-native';
+import { captureRef } from 'react-native-view-shot';
 
 function getTodaysBgIndex(): number {
   const epoch = new Date(2024, 0, 1);
@@ -70,6 +73,8 @@ export default function QuoteCard({
   const lastTapRef = useRef(0);
   const cardRef = useRef<View>(null);
   const fullscreenCardRef = useRef<View>(null);
+  const captureViewRef = useRef<View>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
   const tapHeartScale = useRef(new Animated.Value(0.35)).current;
   const tapHeartOpacity = useRef(new Animated.Value(0)).current;
   const hideTapHeartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -129,23 +134,51 @@ export default function QuoteCard({
     }
   }, [onFavoriteToggle, verse, isFavorite, user?.id]);
 
-  const handleShare = useCallback(async () => {
-    if (!verse) return;
-    const shareText =
+  const buildShareText = useCallback(() => {
+    if (!verse) return '';
+    return (
       `"${verse.english ?? verse.hindi ?? ''}"\n\n` +
       `— Bhagavad Gita, Chapter ${verse.chapter}, Verse ${verse.verse}` +
       `${verse.speaker ? ` (${verse.speaker})` : ''}` +
-      (activeLanguage === 'hindi' && verse.hindi ? `\n\n${verse.hindi}` : '');
+      (activeLanguage === 'hindi' && verse.hindi ? `\n\n${verse.hindi}` : '') +
+      '\n\nShared via Gita Daily'
+    );
+  }, [verse, activeLanguage]);
 
+  const shareAsText = useCallback(async () => {
+    if (!verse) return;
     try {
-      await Share.share({ title: 'Gita Daily Wisdom', message: shareText });
-      if (user?.id) {
-        await incrementSharesCount(user.id);
+      await Share.share({ title: 'Gita Daily Wisdom', message: buildShareText() });
+      if (user?.id) await incrementSharesCount(user.id);
+    } catch {}
+  }, [verse, user, buildShareText]);
+
+  const shareAsImage = useCallback(async () => {
+    if (!verse) return;
+    try {
+      setIsCapturing(true);
+      await new Promise(r => setTimeout(r, 80));
+      const uri = await captureRef(captureViewRef, { format: 'jpg', quality: 0.93 });
+      setIsCapturing(false);
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, { mimeType: 'image/jpeg', dialogTitle: 'Share Verse' });
+        if (user?.id) await incrementSharesCount(user.id);
       }
     } catch {
-      // canceled
+      setIsCapturing(false);
+      await shareAsText();
     }
-  }, [verse, user]);
+  }, [verse, user, shareAsText]);
+
+  const handleShare = useCallback(() => {
+    if (!verse) return;
+    Alert.alert('Share Verse', 'How would you like to share?', [
+      { text: 'Share as Image', onPress: shareAsImage },
+      { text: 'Share as Text', onPress: shareAsText },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [verse, shareAsText, shareAsImage]);
 
   const showTapHeart = useCallback((x: number, y: number) => {
     if (hideTapHeartTimeoutRef.current) {
@@ -270,7 +303,11 @@ export default function QuoteCard({
 
   const cardContent = (isFullscreen: boolean) => (
     <View style={isFullscreen ? styles.fullscreenCard : styles.cardOuter}>
-      <View style={isFullscreen ? styles.fullscreenCardInner : styles.cardInner}>
+      <View
+        ref={!isFullscreen ? captureViewRef : undefined}
+        collapsable={false}
+        style={isFullscreen ? styles.fullscreenCardInner : styles.cardInner}
+      >
         <Image
           source={VERSE_BACKGROUND_URLS[bgIndex]}
           style={StyleSheet.absoluteFill}
@@ -351,7 +388,7 @@ export default function QuoteCard({
         )}
 
         {/* Actions — spread evenly */}
-        <View style={styles.actionBar}>
+        <View style={[styles.actionBar, isCapturing && { opacity: 0 }]}>
           <TouchableOpacity
             activeOpacity={0.7}
             style={styles.actionBtn}

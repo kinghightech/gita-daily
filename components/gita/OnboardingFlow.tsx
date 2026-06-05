@@ -1,8 +1,10 @@
 import BackgroundLayout from '@/components/BackgroundLayout';
+import DharmaCoinEarnMethods from '@/components/gita/DharmaCoinEarnMethods';
 import DiyaStreak from '@/components/ui/DiyaStreak';
 import { HapticButton } from '@/components/ui/HapticButton';
 import { Fonts } from '@/constants/theme';
 import { ONBOARDING_VIDEO_URL } from '@/lib/storageAssets';
+import { Image } from 'expo-image';
 import { useVideoPlayer } from 'expo-video';
 import {
     Bell,
@@ -671,14 +673,28 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
 
           <View style={styles.cardList}>
             {FEATURES_LIST.map((feature, index) => (
-              <AnimatedFeatureCard 
-                key={feature.id} 
-                feature={feature} 
-                index={index} 
-                progress={stepTwoCardsProgress} 
-                totalCards={FEATURES_LIST.length} 
+              <AnimatedFeatureCard
+                key={feature.id}
+                feature={feature}
+                index={index}
+                progress={stepTwoCardsProgress}
+                totalCards={FEATURES_LIST.length}
               />
             ))}
+          </View>
+
+          <View style={styles.coinsSection}>
+            <Image
+              source={require('@/assets/images/coin.png')}
+              style={styles.coinsHeroImage}
+              contentFit="contain"
+              transition={0}
+            />
+            <Text style={styles.coinsTitle}>Dharma Coins</Text>
+            <Text style={styles.coinsSubtitle}>
+              Earn these coins to unlock rewards (coming soon) by:
+            </Text>
+            <DharmaCoinEarnMethods tone="dark" />
           </View>
         </ScrollView>
       );
@@ -1361,6 +1377,35 @@ const styles = StyleSheet.create({
   },
   cardList: {
     gap: 12,
+  },
+  coinsSection: {
+    marginTop: 28,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+  },
+  coinsHeroImage: {
+    width: 92,
+    height: 92,
+    alignSelf: 'center',
+    marginBottom: 10,
+  },
+  coinsTitle: {
+    color: '#FBBF24',
+    fontSize: 24,
+    fontWeight: '900',
+    textAlign: 'center',
+    fontFamily: Fonts.serif,
+    letterSpacing: 0.3,
+  },
+  coinsSubtitle: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 13.5,
+    lineHeight: 19,
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 18,
+    paddingHorizontal: 12,
   },
   infoCard: {
     borderWidth: 1,

@@ -9,6 +9,7 @@ import {
     fetchUserFestivalFavorites,
 } from '@/lib/favorites';
 import { NOTES_UPDATED_EVENT, fetchUserNotes } from '@/lib/notes';
+import { PRAYER_VERSES_UPDATED_EVENT, fetchUserPrayerVerses } from '@/lib/prayerFavorites';
 import {
     PREFERRED_LANGUAGE_CHANGED_EVENT,
     loadPreferredLanguageForCurrentUser,
@@ -26,6 +27,7 @@ import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import {
+    BookOpen,
     Bookmark,
     Check,
     ChevronRight,
@@ -92,6 +94,7 @@ export default function ProfileScreen() {
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [favoriteVerseIds, setFavoriteVerseIds] = useState<string[]>([]);
   const [favoriteFestivalIds, setFavoriteFestivalIds] = useState<string[]>([]);
+  const [prayerVersesCount, setPrayerVersesCount] = useState(0);
   const [notesCount, setNotesCount] = useState(0);
   const [earnedBadgeIds, setEarnedBadgeIds] = useState<string[]>([]);
   const [isOnboardingVideoVisible, setIsOnboardingVideoVisible] = useState(false);
@@ -126,15 +129,17 @@ export default function ProfileScreen() {
 
       const preferredLanguage = await loadPreferredLanguageForCurrentUser();
 
-      const [favIds, favFestIds, medalIds, notes] = await Promise.all([
+      const [favIds, favFestIds, medalIds, notes, prayerVerses] = await Promise.all([
         fetchUserFavorites(user.id),
         fetchUserFestivalFavorites(user.id),
         fetchUserBadges(user.id),
         fetchUserNotes(user.id),
+        fetchUserPrayerVerses(user.id),
       ]);
 
       setFavoriteVerseIds(favIds);
       setFavoriteFestivalIds(favFestIds);
+      setPrayerVersesCount(prayerVerses.length);
       setNotesCount(notes.length);
 
       const stats: UserStats = {
@@ -177,6 +182,7 @@ export default function ProfileScreen() {
       DeviceEventEmitter.addListener(STREAK_UPDATED_EVENT, refreshProfileIdentity),
       DeviceEventEmitter.addListener(FAVORITES_UPDATED_EVENT, refreshProfileIdentity),
       DeviceEventEmitter.addListener(FESTIVALS_UPDATED_EVENT, refreshProfileIdentity),
+      DeviceEventEmitter.addListener(PRAYER_VERSES_UPDATED_EVENT, refreshProfileIdentity),
       DeviceEventEmitter.addListener(NOTES_UPDATED_EVENT, refreshProfileIdentity),
     ];
     return () => subs.forEach((s) => s.remove());
@@ -348,7 +354,7 @@ export default function ProfileScreen() {
                       <Text style={styles.savedTitle}>Saved Library</Text>
                     </View>
                     <Text style={styles.savedSub}>
-                      Verses, festivals, and reflections in one place.
+                      Verses, prayers, festivals, and reflections in one place.
                     </Text>
                   </View>
                   <ChevronRight size={20} color={theme.subtext} strokeWidth={1.8} />
@@ -359,6 +365,12 @@ export default function ProfileScreen() {
                     icon={<Heart size={15} color="#f87171" fill="#f87171" strokeWidth={0} />}
                     value={favoriteVerseIds.length}
                     label="Verses"
+                  />
+                  <View style={styles.savedMetricDivider} />
+                  <SavedMetric
+                    icon={<BookOpen size={15} color="#c4b5fd" strokeWidth={2} />}
+                    value={prayerVersesCount}
+                    label="Prayers"
                   />
                   <View style={styles.savedMetricDivider} />
                   <SavedMetric
@@ -640,7 +652,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   savedMetricIcon: { height: 18, alignItems: 'center', justifyContent: 'center' },
   savedMetricValue: { color: theme.text, fontSize: 21, fontWeight: '700', lineHeight: 25 },
   savedMetricLabel: { color: theme.subtextMuted, fontSize: 11, fontWeight: '700', letterSpacing: 0, textAlign: 'center' },
-  savedMetricDivider: { width: 1, backgroundColor: theme.border, marginHorizontal: 8 },
+  savedMetricDivider: { width: 1, backgroundColor: theme.border, marginHorizontal: 5 },
 
   section: { marginBottom: 6 },
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4, marginBottom: 12 },
