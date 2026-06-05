@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface BackgroundLayoutProps {
   children: React.ReactNode;
-  backgroundPlayer?: VideoPlayer | null;
+  backgroundPlayer?:VideoPlayer | null;
   /** Fired once the background video is ready (or a fallback timeout elapses). */
   onReady?: () => void;
 }

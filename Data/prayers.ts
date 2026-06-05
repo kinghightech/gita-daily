@@ -2,6 +2,10 @@ import {
     ENGLISH_LYRICS as GAYATRI_ENGLISH,
     HINDI_LYRICS as GAYATRI_HINDI,
 } from './gayatriMantraLyrics';
+import {
+    ENGLISH_LYRICS as GANESHA_ENGLISH,
+    HINDI_LYRICS as GANESHA_HINDI,
+} from './jaiGaneshaDevaLyrics';
 import type { LyricBlock } from './hanumanChalisaLyrics';
 import {
     ENGLISH_LYRICS as HANUMAN_ENGLISH,
@@ -114,6 +118,42 @@ export const PRAYERS: Prayer[] = [
     language: 'Vedic Sanskrit',
     verses: 1,
     era: 'Vedic (~1500 BCE)',
+  },
+  {
+    id: 'jai-ganesha-deva',
+    name: 'Jai Ganesha Deva',
+    nameHindi: 'जय गणेश देवा',
+    duration: '3:36',
+    deity: 'Lord Ganesha',
+    thumbnail: require('@/assets/images/bavckgroundganesha.jpg'),
+    audioFile: getAudioUrl('ganeshadeva.mp3'),
+    hindiLyrics: GANESHA_HINDI,
+    englishLyrics: GANESHA_ENGLISH,
+    shortDescription: 'The beloved aarti of Lord Ganesha, sung in homes and temples across India',
+    about:
+      'Jai Ganesh Deva is the most cherished aarti dedicated to Lord Ganesha, the remover of obstacles and the deity invoked before every beginning. Sung at the close of worship in homes and temples across India, it praises Ganesha as the one-tusked, compassionate, four-armed lord — son of Parvati and Mahadeva (Shiva) — and lovingly recounts the offerings and miracles associated with him.',
+    whenToChant: [
+      'At the very start of any new venture, journey, or undertaking',
+      'During the closing aarti of daily puja',
+      'On Wednesdays — the day devoted to Lord Ganesha',
+      'During Ganesh Chaturthi — the grand festival of his birth',
+      'On Sankashti and Vinayaka Chaturthi each month',
+      'Whenever you seek to clear obstacles and begin with an auspicious mind',
+    ],
+    significance:
+      'Lord Ganesha is honored first among all deities — no worship is considered complete without invoking him at the outset. This aarti celebrates him as Vighnaharta, the remover of obstacles, and as the giver of wisdom and success. Its simple, melodic verses make it one of the first devotional songs many Hindus learn, binding families together in shared worship.',
+    benefits: [
+      'Invokes Ganesha to clear obstacles from your path',
+      'Blesses new beginnings with success and good fortune',
+      'Bestows wisdom, focus, and clarity of intellect',
+      'Brings auspiciousness and positive energy into the home',
+      'Calms the mind and steadies the heart before important work',
+      'Deepens family devotion through shared, joyful chanting',
+    ],
+    composer: 'Pandit Shyamlal Sharma',
+    language: 'Hindi',
+    verses: 4,
+    era: '19th century CE',
   },
   {
     id: 'shiva-tandava-stotram',
