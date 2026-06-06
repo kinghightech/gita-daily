@@ -1,6 +1,7 @@
 import AnimatedSplash from '@/components/gita/AnimatedSplash';
 import DharmaCoinEarnedOverlay from '@/components/gita/DharmaCoinEarnedOverlay';
 import OnboardingFlow from '@/components/gita/OnboardingFlow';
+import { loadAppearancePreference } from '@/lib/appearance';
 import { cancelDailyWisdomNotification, setupDailyWisdomNotification } from '@/lib/notifications';
 import { PREFERRED_LANGUAGE_CHANGED_EVENT } from '@/lib/preferredLanguage';
 import { completeOnboardingProfile, getCurrentAuthUserWithRetry, syncProfileFromAuthUser, updateUserStreak } from '@/lib/profile';
@@ -96,6 +97,10 @@ export default function RootLayout() {
 
     (async () => {
       try {
+        // Hydrate the saved appearance (dark/light) preference before the themed
+        // tree renders so there is no flash of the wrong theme.
+        await loadAppearancePreference();
+
         const {
           data: { session },
         } = await supabase.auth.getSession();
@@ -359,6 +364,7 @@ export default function RootLayout() {
             <Stack.Screen name="mountain-level/[id]" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
             <Stack.Screen name="garden-level/[id]" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
             <Stack.Screen name="guide" options={{ headerShown: false, animation: 'slide_from_bottom', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
+            <Stack.Screen name="gita-intro" options={{ headerShown: false, animation: 'slide_from_bottom', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
           </Stack>
           <DharmaCoinEarnedOverlay />
           {Platform.OS === 'web' && <Toaster richColors position="top-center" />}

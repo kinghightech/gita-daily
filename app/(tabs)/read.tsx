@@ -11,6 +11,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 import {
+    BookOpen,
     Bookmark,
     ChevronLeft,
     ChevronRight,
@@ -612,6 +613,26 @@ export default function ReadScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.scriptCard} ref={contentRef}>
+            {currentChapter === 1 && (
+              <Pressable
+                style={styles.introBtn}
+                onPress={() => router.push('/gita-intro')}
+              >
+                <View style={styles.introIconCircle}>
+                  <BookOpen size={22} color={GitaColors.gold} />
+                </View>
+                <View style={styles.introTextWrap}>
+                  <View style={styles.introLabelRow}>
+                    <Text style={styles.introLabel}>CONTEXT</Text>
+                  </View>
+                  <Text style={styles.introTitle}>New to the Gita? Start here</Text>
+                  <Text style={styles.introSubtitle}>
+                    A simple guide to what the Bhagavad Gita is — before you begin reading.
+                  </Text>
+                </View>
+                <ChevronRight size={22} color={GitaColors.gold} />
+              </Pressable>
+            )}
             {groupedVerses.map((group, groupIdx) => {
               return (
                 <View key={groupIdx} style={styles.speakerBlock}>
@@ -969,6 +990,54 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 24,
     gap: 28,
+  },
+
+  /* ── Chapter 1 Intro ("Context") Button ── */
+  introBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: 'rgba(251,191,36,0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.25)',
+    borderRadius: 18,
+    padding: 16,
+  },
+  introIconCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(251,191,36,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  introTextWrap: {
+    flex: 1,
+    gap: 3,
+  },
+  introLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  introLabel: {
+    color: theme.primary,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+  },
+  introTitle: {
+    color: theme.textWarm,
+    fontSize: 17,
+    fontWeight: '700',
+    fontFamily: Fonts.serif,
+  },
+  introSubtitle: {
+    color: theme.subtext,
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: Fonts.serif,
   },
 
   /* ── Script Format ── */

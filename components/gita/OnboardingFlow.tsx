@@ -3,27 +3,34 @@ import DharmaCoinEarnMethods from '@/components/gita/DharmaCoinEarnMethods';
 import DiyaStreak from '@/components/ui/DiyaStreak';
 import { HapticButton } from '@/components/ui/HapticButton';
 import { Fonts } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { setAppearancePreference } from '@/lib/appearance';
 import { ONBOARDING_VIDEO_URL } from '@/lib/storageAssets';
 import { Image } from 'expo-image';
 import { useVideoPlayer } from 'expo-video';
 import {
     Bell,
-    Book,
     BookOpen,
+    Calendar,
     Check,
     ChevronLeft,
     ChevronRight,
+    ChevronUp,
+    FileText,
     Flame,
-    Globe,
+    Flower2,
     Heart,
-    Maximize2,
     Medal,
-    Mic,
+    Moon,
+    Music,
     PlayCircle,
     Share,
-    Shield
+    Shield,
+    StickyNote,
+    Sun,
+    Volume2
 } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 
@@ -49,7 +56,7 @@ interface OnboardingFlowProps {
 }
 
 type ReminderChoice = 'yes' | 'no' | null;
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 12;
 const INTRO_HEADLINE = "Did you know connecting back to your roots doesn't have to feel...";
 const INTRO_WORDS = ['hard?', 'stressful?', 'complicated?'] as const;
 const WELCOME_TOP = 'Welcome to';
@@ -198,55 +205,68 @@ function OnboardingIntroHero({ startTyping }: { startTyping: boolean }) {
   );
 }
 
-const FEATURES_LIST = [
-  { id: 'verses', title: 'Daily verses', desc: 'When you first open the app you will be met with the verse of the day', Icon: BookOpen },
-  { id: 'streaks', title: 'Streaks', desc: 'Open the app once a day to view your verse to upgrade your streak', Icon: Flame },
-  { id: 'likes', title: 'Likes', desc: 'Each day you can like a verse by clicking the heart button or simply double tapping.', Icon: Heart },
-  { id: 'listening', title: 'Listening', desc: 'Click the microphone button to hear the verse.', Icon: Mic },
-  { id: 'expand', title: 'Expand', desc: 'Click the quote card box to expand and have it take up your whole screen', Icon: Maximize2 },
-  { id: 'share', title: 'Share', desc: 'Tap the share button to share the verses with anyone!', Icon: Share },
-  { id: 'read', title: 'Read', desc: 'Click the read section to read the whole Gita, you can even tap on a verse to like it, share, note, bookmark, copy.', Icon: Book },
-  { id: 'listenBook', title: 'Listen to the book', desc: 'Tap the play button on the read section to listen to it', Icon: PlayCircle },
-  { id: 'badges', title: 'Unlock badges', desc: 'The more you use the app the more badges you unlock and rewards that are commign soon!', Icon: Medal },
+type SlideFeature = { id: string; title: string; desc: string; Icon: typeof BookOpen };
+
+// "Read" slide — what you can do with the full scripture.
+const READ_FEATURES: SlideFeature[] = [
+  { id: 'read', title: 'Read every verse', desc: 'Move through all 18 chapters and 700 verses at your own pace.', Icon: BookOpen },
+  { id: 'context', title: 'Understand with context', desc: 'Short notes set the scene so each moment makes sense.', Icon: FileText },
+  { id: 'listen', title: 'Listen to it', desc: 'Press play to hear a whole chapter read aloud, verse by verse.', Icon: PlayCircle },
+  { id: 'notes', title: 'Make it yours', desc: 'Write notes, and bookmark, like, copy, or share any verse you love.', Icon: StickyNote },
 ];
 
-function AnimatedFeatureCard({ feature, index, progress, totalCards }: { feature: any, index: number, progress: any, totalCards: number }) {
-  const cardAnimStyle = useAnimatedStyle(() => {
-    const chunk = 1 / totalCards;
-    const val = Math.max(0, Math.min(1, (progress.value - index * chunk * 0.5) * 4));
-    return {
-      opacity: val,
-      transform: [
-        { translateY: (1 - val) * 15 },
-        { scale: 0.98 + val * 0.02 }
-      ],
-    };
-  });
+// "Festivals" slide — the Hindu festival calendar.
+const FESTIVAL_FEATURES: SlideFeature[] = [
+  { id: 'learn', title: 'Learn the stories', desc: 'Discover the meaning and history behind each festival.', Icon: BookOpen },
+  { id: 'savefest', title: 'Save & share', desc: 'Keep the festivals you love and share them with friends.', Icon: Heart },
+  { id: 'upcoming', title: 'Never miss one', desc: 'Upcoming festivals appear right on your home screen.', Icon: Calendar },
+];
 
+// "Prayers" slide — everything you can do with the prayers & chants.
+const PRAYER_FEATURES: SlideFeature[] = [
+  { id: 'choose', title: 'Choose your prayer', desc: 'Pick from a growing collection of sacred prayers and chants.', Icon: Music },
+  { id: 'listenpray', title: 'Listen & follow along', desc: 'Press play and watch each line light up in time with the audio.', Icon: PlayCircle },
+  { id: 'meaning', title: 'Tap any verse', desc: 'Tap a line to see what it means — and save the meaning to revisit anytime.', Icon: FileText },
+  { id: 'learnpray', title: 'Learn about the prayer', desc: 'Discover what each prayer means, why it matters, and when to chant it.', Icon: BookOpen },
+];
+
+// "Begin your journey" slide — the 10 paths of the World of Hinduism, in walk order.
+// Lotus → Temple are playable today; the rest are marked "Coming soon".
+type JourneyPath = { title: string; blurb: string; accent: string; playable: boolean };
+const JOURNEY_PATHS: JourneyPath[] = [
+  { title: 'Lotus Path', accent: '#F9A8D4', playable: true, blurb: 'Start here — what Hinduism is and the big ideas behind it.' },
+  { title: 'Mountain Path', accent: '#BAE6FD', playable: true, blurb: 'The soul and the truth behind everything (Brahman and Atman).' },
+  { title: 'Garden Path', accent: '#86EFAC', playable: true, blurb: 'Karma, dharma, rebirth, and freedom (moksha) — made simple.' },
+  { title: 'Forest Path', accent: '#4ADE80', playable: true, blurb: 'Meet the gods and goddesses and the stories about them.' },
+  { title: 'Temple Path', accent: '#FBBF24', playable: true, blurb: 'Worship, puja, and what happens inside a mandir (temple).' },
+  { title: 'City Path', accent: '#60A5FA', playable: false, blurb: 'Living as a Hindu today — at school, work, and in the world.' },
+  { title: 'Village Path', accent: '#FDE68A', playable: false, blurb: 'Everyday faith — family customs, food, and festivals at home.' },
+  { title: 'Sky Path', accent: '#E0F2FE', playable: false, blurb: 'Time, the universe, and the heavenly worlds above.' },
+  { title: 'Library Path', accent: '#93C5FD', playable: false, blurb: 'The holy books — the Vedas, the great epics, and the Gita.' },
+  { title: 'River Path', accent: '#38BDF8', playable: false, blurb: 'Sacred rivers like the Ganga, and the idea of pilgrimage.' },
+];
+
+// Static info card (icon + title + description) reused across the feature slides.
+function FeatureCard({ Icon, title, desc }: { Icon: typeof BookOpen; title: string; desc: string }) {
   return (
-    <Animated.View style={[styles.infoCard, cardAnimStyle]}>
-      <feature.Icon size={20} color="#fbbf24" style={{ marginTop: 2 }} />
+    <View style={styles.infoCard}>
+      <Icon size={20} color="#fbbf24" style={{ marginTop: 2 }} />
       <View style={styles.infoCopy}>
-        <Text style={styles.infoTitle}>{feature.title}</Text>
-        <Text style={styles.infoDesc}>{feature.desc}</Text>
+        <Text style={styles.infoTitle}>{title}</Text>
+        <Text style={styles.infoDesc}>{desc}</Text>
       </View>
-    </Animated.View>
+    </View>
   );
 }
 
-function StepTwoDescription({ descOpacity }: { descOpacity: any }) {
-  const descAnimStyle = useAnimatedStyle(() => ({
-    opacity: descOpacity.value,
-    transform: [{ translateY: (1 - descOpacity.value) * 10 }],
+// Fades + lifts the Daily Verse content in once the headline finishes typing.
+function StepTwoReveal({ opacity, progress, children }: { opacity: any; progress: any; children: ReactNode }) {
+  const revealStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: (1 - progress.value) * 16 }],
   }));
 
-  return (
-    <Animated.View style={descAnimStyle}>
-      <Text style={[styles.subtitle, { marginTop: 12, marginBottom: 24 }]}>
-        Dharma Daily gives daily quotes of the Bhagavad Gita that you can read anytime. Here&apos;s a breakdown of the many features:
-      </Text>
-    </Animated.View>
-  );
+  return <Animated.View style={revealStyle}>{children}</Animated.View>;
 }
 
 function StreakCelebration() {
@@ -355,6 +375,7 @@ function StreakCelebration() {
 
 export default function OnboardingFlow({ onComplete, onReminderPreferenceChange }: OnboardingFlowProps) {
   const onboardingScrollRef = useRef<ScrollView>(null);
+  const colorScheme = useColorScheme();
   const [step, setStep] = useState(0);
   const [previousStep, setPreviousStep] = useState<number | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -485,7 +506,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
       return;
     }
 
-    const promptText = `Welcome ${fullName}, Meet the app.`;
+    const promptText = `Welcome ${fullName}, meet the app.`;
 
     if (stepTwoPhase === 'typing') {
       if (stepTwoPromptLength >= promptText.length) {
@@ -509,10 +530,10 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
   const canContinue = useMemo(() => {
     if (step === 0) return true;
     if (step === 1) return fullName.trim().length > 0;
-    if (step === 4) return reminderChoice !== null;
-    if (step === 5) return preferredLanguage !== null;
+    if (step === 9) return reminderChoice !== null;
+    if (step === 10) return preferredLanguage !== null;
 
-    if (step === 6) {
+    if (step === 11) {
       if (authMode === 'signup') {
         return fullName.trim().length > 0 && email.trim().length > 0 && password.trim().length >= 6;
       }
@@ -658,44 +679,51 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     }
 
     if (currentStep === 2) {
-      const stepTwoPromptText = `Welcome ${fullName}, Meet the app.`;
+      const stepTwoPromptText = `Welcome ${fullName}, meet the app.`;
       const displayedStepTwoPrompt = stepTwoPromptText.slice(0, stepTwoPromptLength);
       const isTypingTwo = stepTwoPhase === 'typing' && stepTwoPromptLength < stepTwoPromptText.length;
 
       return (
-        <ScrollView style={styles.stepTwoScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+        <ScrollView style={styles.slideScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
           <Text style={styles.stepOnePromptLine}>
             {displayedStepTwoPrompt}
             {isTypingTwo ? <Animated.Text style={[styles.heroBodyCursor, stepOneCursorStyle]}>|</Animated.Text> : null}
           </Text>
 
-          <StepTwoDescription descOpacity={stepTwoDescOpacity} />
-
-          <View style={styles.cardList}>
-            {FEATURES_LIST.map((feature, index) => (
-              <AnimatedFeatureCard
-                key={feature.id}
-                feature={feature}
-                index={index}
-                progress={stepTwoCardsProgress}
-                totalCards={FEATURES_LIST.length}
-              />
-            ))}
-          </View>
-
-          <View style={styles.coinsSection}>
-            <Image
-              source={require('@/assets/images/coin.png')}
-              style={styles.coinsHeroImage}
-              contentFit="contain"
-              transition={0}
-            />
-            <Text style={styles.coinsTitle}>Dharma Coins</Text>
-            <Text style={styles.coinsSubtitle}>
-              Earn these coins to unlock rewards (coming soon) by:
+          <StepTwoReveal opacity={stepTwoDescOpacity} progress={stepTwoCardsProgress}>
+            <Text style={styles.verseIntro}>
+              Each day opens with your Verse of the Day — a fresh piece of Gita wisdom.
             </Text>
-            <DharmaCoinEarnMethods tone="dark" />
-          </View>
+
+            <View style={styles.verseImageFrame}>
+              <Image
+                source={require('@/assets/images/onboarding.jpg')}
+                style={styles.verseImage}
+                contentFit="cover"
+                transition={200}
+              />
+            </View>
+
+            <View style={styles.verseHintRow}>
+              {[
+                { Icon: Heart, label: 'Double-tap to like' },
+                { Icon: Volume2, label: 'Tap to listen' },
+                { Icon: Share, label: 'Tap to share' },
+              ].map(({ Icon, label }) => (
+                <View key={label} style={styles.verseHintChip}>
+                  <ChevronUp size={16} color="rgba(251,191,36,0.7)" />
+                  <View style={styles.verseHintIcon}>
+                    <Icon size={18} color="#fbbf24" />
+                  </View>
+                  <Text style={styles.verseHintLabel}>{label}</Text>
+                </View>
+              ))}
+            </View>
+
+            <Text style={styles.verseHintCaption}>
+              Share it as a beautiful image or as plain text.
+            </Text>
+          </StepTwoReveal>
         </ScrollView>
       );
     }
@@ -705,6 +733,168 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     }
 
     if (currentStep === 4) {
+      return (
+        <ScrollView style={styles.slideScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+          <Text style={styles.title}>Read the whole Gita</Text>
+          <Text style={styles.subtitle}>All 18 chapters — to read, hear, and reflect on.</Text>
+          <View style={styles.cardList}>
+            {READ_FEATURES.map((f) => (
+              <FeatureCard key={f.id} Icon={f.Icon} title={f.title} desc={f.desc} />
+            ))}
+          </View>
+        </ScrollView>
+      );
+    }
+
+    if (currentStep === 5) {
+      return (
+        <ScrollView style={styles.slideScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+          <Text style={styles.title}>Celebrate every festival</Text>
+          <Text style={styles.subtitle}>Discover the sacred days of the Hindu calendar.</Text>
+          <View style={styles.cardList}>
+            {FESTIVAL_FEATURES.map((f) => (
+              <FeatureCard key={f.id} Icon={f.Icon} title={f.title} desc={f.desc} />
+            ))}
+          </View>
+        </ScrollView>
+      );
+    }
+
+    if (currentStep === 6) {
+      return (
+        <ScrollView style={styles.slideScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+          <View style={styles.pathsTitleRow}>
+            <Flower2 size={24} color="#fbbf24" />
+            <Text
+              style={[styles.title, styles.pathsTitleText]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
+              Begin your learning
+            </Text>
+          </View>
+          <Text style={styles.subtitle}>Learn about Hinduism through the World of Hinduism.</Text>
+
+          <View style={styles.mapFrame}>
+            <Image
+              source={require('@/assets/images/hinduism-planet-map.png')}
+              style={styles.mapImage}
+              contentFit="cover"
+              transition={200}
+            />
+          </View>
+
+          <Text style={styles.pathsLead}>
+            10 paths to explore, starting with the Lotus Path. Each one has 20–40 levels and ends
+            with a Wisdom Gate you must pass to unlock the next.
+          </Text>
+
+          <View style={styles.pathsList}>
+            {JOURNEY_PATHS.map((p, i) => (
+              <View key={p.title} style={[styles.pathRow, !p.playable && styles.pathRowLocked]}>
+                <View style={[styles.pathNum, { borderColor: p.accent }]}>
+                  <Text style={[styles.pathNumText, { color: p.accent }]}>{i + 1}</Text>
+                </View>
+                <View style={styles.pathTextWrap}>
+                  <View style={styles.pathNameRow}>
+                    <Text style={styles.pathName}>{p.title}</Text>
+                    {!p.playable && (
+                      <View style={styles.comingSoonPill}>
+                        <Text style={styles.comingSoonText}>Coming soon</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.pathBlurb}>{p.blurb}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      );
+    }
+
+    if (currentStep === 7) {
+      return (
+        <ScrollView style={styles.slideScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+          <Text style={styles.title}>Pray along, anytime</Text>
+          <Text style={styles.subtitle}>Sacred prayers and chants, with every word in front of you.</Text>
+
+          <View style={styles.prayerImageFrame}>
+            <Image
+              source={require('@/assets/images/prayer.png')}
+              style={styles.prayerImage}
+              contentFit="cover"
+              transition={200}
+            />
+          </View>
+
+          <View style={[styles.cardList, { marginTop: 18 }]}>
+            {PRAYER_FEATURES.map((f) => (
+              <FeatureCard key={f.id} Icon={f.Icon} title={f.title} desc={f.desc} />
+            ))}
+          </View>
+        </ScrollView>
+      );
+    }
+
+    if (currentStep === 8) {
+      return (
+        <ScrollView style={styles.slideScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+          <Image
+            source={require('@/assets/images/coin.png')}
+            style={styles.coinsHeroImage}
+            contentFit="contain"
+            transition={0}
+          />
+          <Text style={styles.coinsTitle}>Unlock Dharma Coins</Text>
+          <Text style={styles.coinsSubtitle}>
+            Earn coins toward rewards — coming soon. Collect them by:
+          </Text>
+
+          <DharmaCoinEarnMethods tone="dark" />
+
+          <View style={styles.streakCoinNote}>
+            <View style={styles.streakCoinNoteHeader}>
+              <Flame size={18} color="#fbbf24" />
+              <Text style={styles.streakCoinNoteTitle}>Longer streaks earn more</Text>
+            </View>
+            <Text style={styles.streakCoinNoteBody}>
+              Your daily streak multiplies every coin you earn — the longer it grows, the more each
+              one is worth.
+            </Text>
+            <View style={styles.streakTierRow}>
+              {[
+                { days: '7 days', mult: '1.25×' },
+                { days: '30 days', mult: '1.5×' },
+                { days: '90 days', mult: '2×' },
+              ].map((t) => (
+                <View key={t.days} style={styles.streakTier}>
+                  <Text style={styles.streakTierMult}>{t.mult}</Text>
+                  <Text style={styles.streakTierDays}>{t.days}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.badgesBottom}>
+            <View style={styles.badgeHero}>
+              <View style={styles.badgeHeroIcon}>
+                <Medal size={28} color="#fbbf24" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.badgeHeroTitle}>Earn badges, too</Text>
+                <Text style={styles.badgeHeroDesc}>
+                  Collect badges for daily streaks, reading, favorites, festivals, and more.
+                </Text>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      );
+    }
+
+    if (currentStep === 9) {
       return (
         <>
           <Text style={styles.title}>Would you want daily reminders?</Text>
@@ -735,9 +925,9 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
       );
     }
 
-    if (currentStep === 5) {
+    if (currentStep === 10) {
       return (
-        <>
+        <ScrollView style={styles.slideScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
           <Text style={styles.title}>Choose your preferred language</Text>
           <Text style={styles.subtitle}>Pick the language you want to read your daily verses in.</Text>
 
@@ -746,7 +936,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
               style={[styles.choiceCard, preferredLanguage === 'english' && styles.choiceCardSelected]}
               onPress={() => setPreferredLanguage('english')}
             >
-              <Globe size={18} color={preferredLanguage === 'english' ? '#0f172a' : '#fbbf24'} />
+              <Text style={[styles.langGlyph, preferredLanguage === 'english' && styles.langGlyphSelected]}>A</Text>
               <Text style={[styles.choiceText, preferredLanguage === 'english' && styles.choiceTextSelected]}>English</Text>
             </HapticButton>
 
@@ -754,11 +944,36 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
               style={[styles.choiceCard, preferredLanguage === 'hindi' && styles.choiceCardSelected]}
               onPress={() => setPreferredLanguage('hindi')}
             >
-              <Globe size={18} color={preferredLanguage === 'hindi' ? '#0f172a' : '#fbbf24'} />
+              <Text style={[styles.langGlyph, preferredLanguage === 'hindi' && styles.langGlyphSelected]}>अ</Text>
               <Text style={[styles.choiceText, preferredLanguage === 'hindi' && styles.choiceTextSelected]}>Hindi</Text>
             </HapticButton>
           </View>
-        </>
+
+          <Text style={styles.comingSoonNote}>More languages coming soon</Text>
+
+          <View style={styles.appearanceSection}>
+            <Text style={styles.sectionTitle}>Make the app yours</Text>
+            <Text style={styles.subtitle}>Choose between Dark and Light mode.</Text>
+
+            <View style={styles.choiceList}>
+              <HapticButton
+                style={[styles.choiceCard, colorScheme === 'dark' && styles.choiceCardSelected]}
+                onPress={() => setAppearancePreference('dark')}
+              >
+                <Moon size={18} color={colorScheme === 'dark' ? '#0f172a' : '#fbbf24'} />
+                <Text style={[styles.choiceText, colorScheme === 'dark' && styles.choiceTextSelected]}>Dark</Text>
+              </HapticButton>
+
+              <HapticButton
+                style={[styles.choiceCard, colorScheme === 'light' && styles.choiceCardSelected]}
+                onPress={() => setAppearancePreference('light')}
+              >
+                <Sun size={18} color={colorScheme === 'light' ? '#0f172a' : '#fbbf24'} />
+                <Text style={[styles.choiceText, colorScheme === 'light' && styles.choiceTextSelected]}>Light</Text>
+              </HapticButton>
+            </View>
+          </View>
+        </ScrollView>
       );
     }
 
@@ -978,7 +1193,7 @@ const styles = StyleSheet.create({
   },
   progressRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 5,
     marginBottom: 20,
     justifyContent: 'center',
   },
@@ -987,11 +1202,11 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   progressDotActive: {
-    width: 26,
+    width: 18,
     backgroundColor: '#fbbf24',
   },
   progressDotInactive: {
-    width: 10,
+    width: 7,
     backgroundColor: 'rgba(100,116,139,0.55)',
   },
   scroll: {
@@ -1155,10 +1370,289 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 14,
   },
-  stepTwoScroll: {
+  slideScroll: {
     flex: 1,
     width: '100%',
-    paddingTop: 30, // Increased top padding
+    paddingTop: 12,
+  },
+
+  /* ── Daily Verse slide ── */
+  verseIntro: {
+    color: 'rgba(251,191,36,0.78)',
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 4,
+    paddingHorizontal: 10,
+  },
+  verseImageFrame: {
+    width: '74%',
+    maxWidth: 280,
+    aspectRatio: 1039 / 1294,
+    alignSelf: 'center',
+    borderRadius: 22,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.28)',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    marginTop: 14,
+  },
+  verseImage: {
+    width: '100%',
+    height: '100%',
+  },
+  verseHintRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 12,
+    paddingHorizontal: 2,
+  },
+  verseHintChip: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(30,41,59,0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.2)',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+  },
+  verseHintIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(251,191,36,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verseHintLabel: {
+    color: '#fef3c7',
+    fontSize: 11.5,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 15,
+  },
+  verseHintCaption: {
+    color: 'rgba(251,191,36,0.55)',
+    fontSize: 12.5,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 14,
+    paddingHorizontal: 10,
+  },
+
+  /* ── Prayers slide ── */
+  prayerImageFrame: {
+    width: '72%',
+    maxWidth: 280,
+    aspectRatio: 1167 / 1289,
+    alignSelf: 'center',
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.28)',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    marginTop: 14,
+  },
+  prayerImage: {
+    width: '100%',
+    height: '100%',
+  },
+
+  /* ── Paths slide ── */
+  pathsTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  pathsTitleText: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  mapFrame: {
+    width: '100%',
+    aspectRatio: 1774 / 887,
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.22)',
+    backgroundColor: 'rgba(15,23,42,0.4)',
+    marginTop: 4,
+    marginBottom: 18,
+  },
+  mapImage: {
+    width: '100%',
+    height: '100%',
+  },
+  pathsLead: {
+    color: '#fef3c7',
+    fontSize: 15,
+    lineHeight: 23,
+    fontFamily: Fonts.serif,
+    paddingHorizontal: 2,
+    marginBottom: 16,
+  },
+  pathsList: {
+    gap: 10,
+  },
+  pathRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(30,41,59,0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.18)',
+    borderRadius: 14,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+  },
+  pathRowLocked: {
+    opacity: 0.6,
+  },
+  pathNum: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pathNumText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  pathTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  pathNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  pathName: {
+    color: '#fef3c7',
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: Fonts.serif,
+  },
+  pathBlurb: {
+    color: 'rgba(251,191,36,0.7)',
+    fontSize: 12.5,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  comingSoonPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: 'rgba(148,163,184,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(148,163,184,0.35)',
+  },
+  comingSoonText: {
+    color: 'rgba(226,232,240,0.85)',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+
+  /* ── Dharma Coins: streak multiplier note ── */
+  streakCoinNote: {
+    marginTop: 16,
+    backgroundColor: 'rgba(251,191,36,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.22)',
+    borderRadius: 16,
+    padding: 16,
+  },
+  streakCoinNoteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  streakCoinNoteTitle: {
+    color: '#fef3c7',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  streakCoinNoteBody: {
+    color: 'rgba(251,191,36,0.72)',
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  streakTierRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  streakTier: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: 'rgba(30,41,59,0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.2)',
+    borderRadius: 12,
+    paddingVertical: 10,
+  },
+  streakTierMult: {
+    color: '#fbbf24',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  streakTierDays: {
+    color: 'rgba(254,243,199,0.7)',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  badgesBottom: {
+    marginTop: 28,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+  },
+
+  /* ── Badges + Coins slide ── */
+  badgeHero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: 'rgba(30,41,59,0.45)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.2)',
+    borderRadius: 16,
+    padding: 16,
+  },
+  badgeHeroIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(251,191,36,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeHeroTitle: {
+    color: '#fef3c7',
+    fontSize: 17,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  badgeHeroDesc: {
+    color: 'rgba(251,191,36,0.72)',
+    fontSize: 13,
+    lineHeight: 19,
   },
   streakCelebration: {
     flex: 1,
@@ -1378,12 +1872,6 @@ const styles = StyleSheet.create({
   cardList: {
     gap: 12,
   },
-  coinsSection: {
-    marginTop: 28,
-    paddingTop: 24,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.12)',
-  },
   coinsHeroImage: {
     width: 92,
     height: 92,
@@ -1457,6 +1945,36 @@ const styles = StyleSheet.create({
   },
   choiceTextSelected: {
     color: '#0f172a',
+  },
+  langGlyph: {
+    width: 22,
+    textAlign: 'center',
+    color: '#fbbf24',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  langGlyphSelected: {
+    color: '#0f172a',
+  },
+  comingSoonNote: {
+    color: 'rgba(251,191,36,0.55)',
+    fontSize: 13,
+    fontStyle: 'italic',
+    marginTop: 12,
+  },
+  appearanceSection: {
+    marginTop: 28,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+  },
+  sectionTitle: {
+    color: '#fef3c7',
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '700',
+    fontFamily: Fonts.serif,
+    marginBottom: 8,
   },
   authButtons: {
     gap: 10,
