@@ -1,4 +1,6 @@
 import HinduismPlanet from '@/components/HinduismPlanet';
+import { showAppToast } from '@/lib/appToast';
+import { isPlayablePath } from '@/lib/pathProgress';
 import { WORLD_PATHS, type WorldPath } from '@/lib/worldPaths';
 import { Orbitron_900Black, useFonts } from '@expo-google-fonts/orbitron';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -56,7 +58,12 @@ const DISTANT_PLANETS = [
 export default function WorldScreen() {
   const [orbitronLoaded] = useFonts({ Orbitron_900Black });
 
-  const openPath = (path: Pick<WorldPath, 'slug'>) => {
+  const openPath = (path: Pick<WorldPath, 'slug' | 'title'>) => {
+    // Only the fully-built paths open. The rest of the world is still being made.
+    if (!isPlayablePath(path.slug)) {
+      showAppToast({ title: `${path.title} — coming soon`, message: 'This path is still being built.' });
+      return;
+    }
     router.push({ pathname: '/world-path/[slug]', params: { slug: path.slug } });
   };
 

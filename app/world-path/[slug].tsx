@@ -8,6 +8,11 @@ import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import {
+  fetchCurrentForestLevel,
+  fetchForestLevels,
+  type ForestLevelData,
+} from '@/lib/forestPath';
+import {
   fetchCurrentGardenLevel,
   fetchGardenLevels,
   GARDEN_PATH_TOTAL,
@@ -18,6 +23,11 @@ import {
   fetchMountainLevels,
   type MountainLevelData,
 } from '@/lib/mountainPath';
+import {
+  buildPathLockMessage,
+  fetchPathGateStatus,
+  type PathGateStatus,
+} from '@/lib/pathProgress';
 import { STREAK_UPDATED_EVENT } from '@/lib/profile';
 import {
   fetchCurrentWorldLotusLevel,
@@ -151,8 +161,7 @@ const GP_FLOWER_PATCHES = [
   { top: 2260, left: 296, color: '#FDBA74', accent: '#FEF3C7', flip: true },
 ] as const;
 
-const FP_TOTAL = 24;
-const FP_CURRENT_LEVEL = 1;
+const FP_TOTAL = 36;
 const FP_ROW_H = 124;
 const FP_PATH_W = 360;
 const FP_NODE_R = 48;
@@ -182,7 +191,6 @@ function buildFpPathD(count = FP_TOTAL) {
 }
 
 const FP_PATH_D = buildFpPathD();
-const FP_COMPLETED_PATH_D = buildFpPathD(FP_CURRENT_LEVEL);
 
 const FP_BACKGROUND_TREES = [
   { top: 48, left: -28, scale: 1.1, opacity: 0.5, tone: 'deep' },
@@ -892,11 +900,20 @@ function GardenPathContent() {
   const [allLevels, setAllLevels] = useState<GardenLevelData[]>([]);
   const [lockedMessage, setLockedMessage] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [gateStatus, setGateStatus] = useState<PathGateStatus>({
+    unlocked: true,
+    prerequisite: null,
+    prerequisiteTitle: null,
+  });
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refreshProgress = useCallback(async () => {
-    const next = await fetchCurrentGardenLevel();
+    const [next, status] = await Promise.all([
+      fetchCurrentGardenLevel(),
+      fetchPathGateStatus('garden'),
+    ]);
     setCurrentLevel(next);
+    setGateStatus(status);
   }, []);
 
   useEffect(() => {
@@ -933,7 +950,15 @@ function GardenPathContent() {
     messageTimerRef.current = setTimeout(() => setLockedMessage(null), 1600);
   }, []);
 
+  // Whole-path lock: Garden stays closed until the Mountain Path's Wisdom Gate is
+  // cleared. The screen is still browsable; every bloom just reads as locked.
+  const gated = !gateStatus.unlocked;
+
   const handleLevelPress = useCallback((level: number) => {
+    if (gated) {
+      showLockedMessage(buildPathLockMessage(gateStatus, 'garden'));
+      return;
+    }
     if (level > currentLevel) {
       showLockedMessage('Complete previous levels first!');
       return;
@@ -944,15 +969,15 @@ function GardenPathContent() {
       return;
     }
     router.push({ pathname: '/garden-level/[id]', params: { id: level } });
-  }, [currentLevel, allLevels, showLockedMessage]);
+  }, [gated, gateStatus, currentLevel, allLevels, showLockedMessage]);
 
   const sunflowerNodes = useMemo(() => {
     if (!ready || allLevels.length === 0) return null;
     return Array.from({ length: GP_TOTAL }, (_, index) => {
       const level = index + 1;
       const { cx, cy } = gpPos(index);
-      const isCompleted = level < currentLevel;
-      const isUnlocked = level <= currentLevel;
+      const isCompleted = !gated && level < currentLevel;
+      const isUnlocked = !gated && level <= currentLevel;
       const available = allLevels.some((item) => item.level_number === level);
       return (
         <View
@@ -965,14 +990,15 @@ function GardenPathContent() {
           <SunflowerLevel
             level={level}
             isCompleted={isCompleted}
-            isLocked={!isUnlocked || !available}
-            isActive={isUnlocked && available && !isCompleted}
+            isLocked={gated || !isUnlocked || !available}
+            isActive={!gated && isUnlocked && available && !isCompleted}
+            allowPressWhenLocked={gated}
             onPress={handleLevelPress}
           />
         </View>
       );
     });
-  }, [currentLevel, allLevels, handleLevelPress, ready]);
+  }, [gated, currentLevel, allLevels, handleLevelPress, ready]);
 
   if (!ready || allLevels.length === 0) {
     return (
@@ -1473,15 +1499,50 @@ function ForestPathScreen() {
 }
 
 function ForestPathContent() {
+  const [currentLevel, setCurrentLevel] = useState(1);
+  const [allLevels, setAllLevels] = useState<ForestLevelData[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+  const [gateStatus, setGateStatus] = useState<PathGateStatus>({
+    unlocked: true,
+    prerequisite: null,
+    prerequisiteTitle: null,
+  });
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const refreshProgress = useCallback(async () => {
+    const [next, status] = await Promise.all([
+      fetchCurrentForestLevel(),
+      fetchPathGateStatus('forest'),
+    ]);
+    setCurrentLevel(next);
+    setGateStatus(status);
+  }, []);
+
   useEffect(() => {
+    (async () => {
+      try {
+        const levels = await fetchForestLevels();
+        setAllLevels(levels);
+      } catch (err) {
+        console.error('Failed to fetch forest levels:', err);
+      }
+    })();
+    refreshProgress();
+    const sub = DeviceEventEmitter.addListener(STREAK_UPDATED_EVENT, refreshProgress);
     return () => {
       if (messageTimerRef.current) {
         clearTimeout(messageTimerRef.current);
       }
+      sub.remove();
     };
+  }, [refreshProgress]);
+
+  useFocusEffect(useCallback(() => { refreshProgress(); }, [refreshProgress]));
+
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => setReady(true));
+    return () => task.cancel();
   }, []);
 
   const showMessage = useCallback((nextMessage: string) => {
@@ -1489,27 +1550,46 @@ function ForestPathContent() {
       clearTimeout(messageTimerRef.current);
     }
     setMessage(nextMessage);
-    messageTimerRef.current = setTimeout(() => setMessage(null), 1500);
+    messageTimerRef.current = setTimeout(() => setMessage(null), 1600);
   }, []);
+
+  // Whole-path lock: Forest stays closed until the Garden Path's Wisdom Gate is
+  // cleared. The screen is still browsable; every ring just reads as locked.
+  const gated = !gateStatus.unlocked;
 
   const handleLevelPress = useCallback(
     (level: number) => {
-      if (level > FP_CURRENT_LEVEL) {
-        showMessage('Complete previous forest rings first.');
+      if (gated) {
+        showMessage(buildPathLockMessage(gateStatus, 'forest'));
         return;
       }
-      showMessage('Forest lessons coming soon.');
+      if (level > currentLevel) {
+        showMessage('Complete previous levels first!');
+        return;
+      }
+      const found = allLevels.some((item) => item.level_number === level);
+      if (!found) {
+        showMessage('Level coming soon!');
+        return;
+      }
+      router.push({ pathname: '/forest-level/[id]', params: { id: level } });
     },
-    [showMessage],
+    [gated, gateStatus, currentLevel, allLevels, showMessage],
   );
 
-  const woodSliceNodes = useMemo(() => (
-    Array.from({ length: FP_TOTAL }, (_, index) => {
+  const completedPathD = useMemo(
+    () => buildFpPathD(gated ? 0 : Math.min(currentLevel, FP_TOTAL)),
+    [gated, currentLevel],
+  );
+
+  const woodSliceNodes = useMemo(() => {
+    if (!ready || allLevels.length === 0) return null;
+    return Array.from({ length: FP_TOTAL }, (_, index) => {
       const level = index + 1;
       const { cx, cy } = fpPos(index);
-      const isCompleted = level < FP_CURRENT_LEVEL;
-      const isActive = level === FP_CURRENT_LEVEL;
-      const isLocked = level > FP_CURRENT_LEVEL;
+      const isCompleted = !gated && level < currentLevel;
+      const isUnlocked = !gated && level <= currentLevel;
+      const available = allLevels.some((item) => item.level_number === level);
       return (
         <View
           key={level}
@@ -1521,15 +1601,24 @@ function ForestPathContent() {
           <WoodSliceLevel
             level={level}
             isCompleted={isCompleted}
-            isLocked={isLocked}
-            isActive={isActive}
-            allowPressWhenLocked
+            isLocked={gated || !isUnlocked || !available}
+            isActive={!gated && isUnlocked && available && !isCompleted}
+            allowPressWhenLocked={gated}
             onPress={handleLevelPress}
           />
         </View>
       );
-    })
-  ), [handleLevelPress]);
+    });
+  }, [gated, currentLevel, allLevels, handleLevelPress, ready]);
+
+  if (!ready || allLevels.length === 0) {
+    return (
+      <View style={fpStyles.loaderCenter}>
+        <LotusLoader size={110} color={GitaColors.gold} />
+        <Text style={fpStyles.loadingTextMain}>Entering the Forest Path...</Text>
+      </View>
+    );
+  }
 
   return (
     <>
@@ -1548,11 +1637,16 @@ function ForestPathContent() {
             <Leaf size={24} color="#FDE68A" />
             <Text style={fpStyles.title}>The Forest Path</Text>
           </View>
-          <Text style={fpStyles.subtitle}>Resilience, rootedness, calm strength</Text>
+          <Text style={fpStyles.subtitle}>Gods, goddesses, and sacred stories</Text>
           <View style={fpStyles.progressContainer}>
-            <Text style={fpStyles.progress}>Ring {FP_CURRENT_LEVEL} of {FP_TOTAL}</Text>
+            <Text style={fpStyles.progress}>Ring {gated ? 1 : Math.min(currentLevel, FP_TOTAL)} of {FP_TOTAL}</Text>
             <View style={fpStyles.progressBarBg}>
-              <View style={[fpStyles.progressBarFill, { width: `${(FP_CURRENT_LEVEL / FP_TOTAL) * 100}%` }]} />
+              <View
+                style={[
+                  fpStyles.progressBarFill,
+                  { width: `${gated ? 0 : (Math.min(currentLevel - 1, FP_TOTAL) / FP_TOTAL) * 100}%` },
+                ]}
+              />
             </View>
           </View>
         </View>
@@ -1626,9 +1720,9 @@ function ForestPathContent() {
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-            {FP_COMPLETED_PATH_D.length > 0 && (
+            {completedPathD.length > 0 && (
               <SvgPath
-                d={FP_COMPLETED_PATH_D}
+                d={completedPathD}
                 stroke="#22C55E"
                 strokeWidth={10}
                 opacity={0.95}
@@ -1826,6 +1920,8 @@ const fpStyles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 10,
   },
+  loaderCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16, zIndex: 2 },
+  loadingTextMain: { color: '#FEF3C7', fontSize: 16, fontFamily: Fonts.serif, opacity: 0.85 },
   subtitle: {
     color: 'rgba(220,252,231,0.8)',
     fontSize: 14,
@@ -2821,10 +2917,19 @@ function MountainPathContent() {
   const [allLevels, setAllLevels] = useState<MountainLevelData[]>([]);
   const [lockedMessage, setLockedMessage] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [gateStatus, setGateStatus] = useState<PathGateStatus>({
+    unlocked: true,
+    prerequisite: null,
+    prerequisiteTitle: null,
+  });
 
   const refreshProgress = useCallback(async () => {
-    const next = await fetchCurrentMountainLevel();
+    const [next, status] = await Promise.all([
+      fetchCurrentMountainLevel(),
+      fetchPathGateStatus('mountain'),
+    ]);
     setCurrentLevel(next);
+    setGateStatus(status);
   }, []);
 
   useEffect(() => {
@@ -2856,8 +2961,17 @@ function MountainPathContent() {
   // Effective unlock cap — TEST_MODE opens everything.
   const effectiveCurrent = MP_TEST_MODE ? MP_TOTAL + 1 : currentLevel;
 
+  // Whole-path lock: Mountain stays closed until the Lotus Path's Wisdom Gate is
+  // cleared. The screen is still browsable — every node just reads as locked and
+  // tapping explains which path to finish first.
+  const gated = !MP_TEST_MODE && !gateStatus.unlocked;
+
   const handleLevelPress = useCallback(
     (level: number) => {
+      if (gated) {
+        showLockedMessage(buildPathLockMessage(gateStatus, 'mountain'));
+        return;
+      }
       if (!MP_TEST_MODE && level > currentLevel) {
         showLockedMessage('Complete previous levels first!');
         return;
@@ -2869,7 +2983,7 @@ function MountainPathContent() {
       }
       router.push({ pathname: '/mountain-level/[id]', params: { id: level } });
     },
-    [currentLevel, allLevels],
+    [gated, gateStatus, currentLevel, allLevels],
   );
 
   const shrineNodes = useMemo(() => {
@@ -2877,11 +2991,11 @@ function MountainPathContent() {
     return Array.from({ length: MP_TOTAL }, (_, index) => {
       const level = index + 1;
       const { cx, cy, side } = mpPos(index);
-      const isCompleted = level < effectiveCurrent && !MP_TEST_MODE;
-      const isUnlocked = level <= effectiveCurrent;
+      const isCompleted = !gated && level < effectiveCurrent && !MP_TEST_MODE;
+      const isUnlocked = !gated && level <= effectiveCurrent;
       const available = allLevels.some((l) => l.level_number === level);
-      const visuallyLocked = MP_TEST_MODE ? level !== 1 : !isUnlocked || !available;
-      const visuallyActive = MP_TEST_MODE ? level === 1 : isUnlocked && available && !isCompleted;
+      const visuallyLocked = gated ? true : MP_TEST_MODE ? level !== 1 : !isUnlocked || !available;
+      const visuallyActive = gated ? false : MP_TEST_MODE ? level === 1 : isUnlocked && available && !isCompleted;
       return (
         <View
           key={level}
@@ -2896,15 +3010,16 @@ function MountainPathContent() {
             isCompleted={isCompleted}
             isLocked={visuallyLocked}
             isActive={visuallyActive}
+            allowPressWhenLocked={gated}
             onPress={handleLevelPress}
           />
         </View>
       );
     });
-  }, [effectiveCurrent, allLevels, handleLevelPress, ready]);
+  }, [gated, effectiveCurrent, allLevels, handleLevelPress, ready]);
 
   const gateAvailable = allLevels.some((l) => l.level_number === 24);
-  const gateUnlocked = MP_TEST_MODE || currentLevel >= MP_TOTAL + 1;
+  const gateUnlocked = !gated && (MP_TEST_MODE || currentLevel >= MP_TOTAL + 1);
 
   const dashOffsetValue = MP_TOTAL_PATH_LENGTH - getMpProgressLength(Math.min(currentLevel, MP_TOTAL + 1));
 
@@ -3105,6 +3220,7 @@ function MountainPathContent() {
                   isLocked={MP_TEST_MODE ? true : !gateUnlocked}
                   isActive={MP_TEST_MODE ? false : gateUnlocked}
                   isWisdomGate
+                  allowPressWhenLocked={gated}
                   onPress={handleLevelPress}
                 />
               </View>
