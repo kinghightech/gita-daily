@@ -3,8 +3,6 @@ import DharmaCoinEarnMethods from '@/components/gita/DharmaCoinEarnMethods';
 import DiyaStreak from '@/components/ui/DiyaStreak';
 import { HapticButton } from '@/components/ui/HapticButton';
 import { Fonts } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { setAppearancePreference } from '@/lib/appearance';
 import { ONBOARDING_VIDEO_URL } from '@/lib/storageAssets';
 import { Image } from 'expo-image';
 import { useVideoPlayer } from 'expo-video';
@@ -21,13 +19,11 @@ import {
     Flower2,
     Heart,
     Medal,
-    Moon,
     Music,
     PlayCircle,
     Share,
     Shield,
     StickyNote,
-    Sun,
     Volume2
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -375,7 +371,6 @@ function StreakCelebration() {
 
 export default function OnboardingFlow({ onComplete, onReminderPreferenceChange }: OnboardingFlowProps) {
   const onboardingScrollRef = useRef<ScrollView>(null);
-  const colorScheme = useColorScheme();
   const [step, setStep] = useState(0);
   const [previousStep, setPreviousStep] = useState<number | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -701,6 +696,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
                 style={styles.verseImage}
                 contentFit="cover"
                 transition={200}
+                recyclingKey="onboarding-verse"
               />
             </View>
 
@@ -782,6 +778,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
               style={styles.mapImage}
               contentFit="cover"
               transition={200}
+              recyclingKey="onboarding-map"
             />
           </View>
 
@@ -822,10 +819,11 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
 
           <View style={styles.prayerImageFrame}>
             <Image
-              source={require('@/assets/images/prayer.png')}
+              source={require('@/assets/images/prayers-floating.png')}
               style={styles.prayerImage}
-              contentFit="cover"
+              contentFit="contain"
               transition={200}
+              recyclingKey="onboarding-prayer"
             />
           </View>
 
@@ -846,6 +844,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
             style={styles.coinsHeroImage}
             contentFit="contain"
             transition={0}
+            recyclingKey="onboarding-coin"
           />
           <Text style={styles.coinsTitle}>Unlock Dharma Coins</Text>
           <Text style={styles.coinsSubtitle}>
@@ -953,25 +952,10 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
 
           <View style={styles.appearanceSection}>
             <Text style={styles.sectionTitle}>Make the app yours</Text>
-            <Text style={styles.subtitle}>Choose between Dark and Light mode.</Text>
-
-            <View style={styles.choiceList}>
-              <HapticButton
-                style={[styles.choiceCard, colorScheme === 'dark' && styles.choiceCardSelected]}
-                onPress={() => setAppearancePreference('dark')}
-              >
-                <Moon size={18} color={colorScheme === 'dark' ? '#0f172a' : '#fbbf24'} />
-                <Text style={[styles.choiceText, colorScheme === 'dark' && styles.choiceTextSelected]}>Dark</Text>
-              </HapticButton>
-
-              <HapticButton
-                style={[styles.choiceCard, colorScheme === 'light' && styles.choiceCardSelected]}
-                onPress={() => setAppearancePreference('light')}
-              >
-                <Sun size={18} color={colorScheme === 'light' ? '#0f172a' : '#fbbf24'} />
-                <Text style={[styles.choiceText, colorScheme === 'light' && styles.choiceTextSelected]}>Light</Text>
-              </HapticButton>
-            </View>
+            <Text style={styles.subtitle}>
+              The app follows your phone&apos;s theme — choose either light or dark mode from your
+              Control Center.
+            </Text>
           </View>
         </ScrollView>
       );
@@ -1447,17 +1431,14 @@ const styles = StyleSheet.create({
   },
 
   /* ── Prayers slide ── */
+  // The cards float on a transparent background with a baked-in glow + shadow,
+  // so no border/box here — just size the area to the (landscape) artwork.
   prayerImageFrame: {
-    width: '72%',
-    maxWidth: 280,
-    aspectRatio: 1167 / 1289,
+    width: '100%',
+    aspectRatio: 1584 / 1125,
     alignSelf: 'center',
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.28)',
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    marginTop: 14,
+    marginTop: 10,
+    marginBottom: 2,
   },
   prayerImage: {
     width: '100%',

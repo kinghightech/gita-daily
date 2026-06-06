@@ -1,7 +1,6 @@
 import AnimatedSplash from '@/components/gita/AnimatedSplash';
 import DharmaCoinEarnedOverlay from '@/components/gita/DharmaCoinEarnedOverlay';
 import OnboardingFlow from '@/components/gita/OnboardingFlow';
-import { loadAppearancePreference } from '@/lib/appearance';
 import { cancelDailyWisdomNotification, setupDailyWisdomNotification } from '@/lib/notifications';
 import { PREFERRED_LANGUAGE_CHANGED_EVENT } from '@/lib/preferredLanguage';
 import { completeOnboardingProfile, getCurrentAuthUserWithRetry, syncProfileFromAuthUser, updateUserStreak } from '@/lib/profile';
@@ -97,10 +96,6 @@ export default function RootLayout() {
 
     (async () => {
       try {
-        // Hydrate the saved appearance (dark/light) preference before the themed
-        // tree renders so there is no flash of the wrong theme.
-        await loadAppearancePreference();
-
         const {
           data: { session },
         } = await supabase.auth.getSession();

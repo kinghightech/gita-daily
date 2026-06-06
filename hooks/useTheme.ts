@@ -1,4 +1,4 @@
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useColorScheme } from 'react-native';
 import { darkTheme, lightTheme } from '@/theme/colors';
 
 export function useTheme() {
