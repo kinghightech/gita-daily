@@ -163,51 +163,63 @@ function projectedMarkersAreEqual(previous: ProjectedMarker[], next: ProjectedMa
   });
 }
 
+// The planet texture's source is downloaded once and cached at module scope, so
+// every remount (toggling tabs, returning to the screen) rebuilds the THREE
+// texture synchronously — no async gap, so the plain fallback sphere never
+// flashes. The expensive part (downloadAsync + getSize) only runs the first time.
+let cachedPlanetAsset: Asset | null = null;
+let cachedPlanetSize: { width: number; height: number } | null = null;
+
+function buildPlanetTexture(): THREE.Texture {
+  const loadedTexture = new THREE.Texture({
+    data: cachedPlanetAsset,
+    width: cachedPlanetSize!.width,
+    height: cachedPlanetSize!.height,
+  });
+
+  // Expo GL uploads this object shape directly.
+  (loadedTexture as THREE.Texture & { isDataTexture: boolean }).isDataTexture = true;
+  loadedTexture.flipY = true;
+  loadedTexture.wrapS = THREE.ClampToEdgeWrapping;
+  loadedTexture.wrapT = THREE.ClampToEdgeWrapping;
+  loadedTexture.generateMipmaps = false;
+  loadedTexture.minFilter = THREE.LinearFilter;
+  loadedTexture.magFilter = THREE.LinearFilter;
+  loadedTexture.colorSpace = THREE.SRGBColorSpace;
+  loadedTexture.needsUpdate = true;
+
+  return loadedTexture;
+}
+
 function PlanetSurface() {
-  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+  // If the source is already cached, build the texture immediately so the first
+  // rendered frame is already textured (no flash on remount).
+  const [texture, setTexture] = useState<THREE.Texture | null>(() =>
+    cachedPlanetAsset && cachedPlanetSize ? buildPlanetTexture() : null,
+  );
 
   useEffect(() => {
+    // Already created from the cache via the lazy initializer above.
+    if (cachedPlanetAsset && cachedPlanetSize) return;
+
     let mounted = true;
 
-    async function loadPlanetTexture() {
+    (async () => {
       const asset = Asset.fromModule(PLANET_TEXTURE);
       await asset.downloadAsync();
       const uri = asset.localUri ?? asset.uri;
       const size = await new Promise<{ width: number; height: number }>((resolve, reject) => {
         Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
       });
-      const loadedTexture = new THREE.Texture({
-        data: asset,
-        width: size.width,
-        height: size.height,
-      });
 
-      // Expo GL uploads this object shape directly.
-      (loadedTexture as THREE.Texture & { isDataTexture: boolean }).isDataTexture = true;
-      loadedTexture.flipY = true;
-      loadedTexture.wrapS = THREE.ClampToEdgeWrapping;
-      loadedTexture.wrapT = THREE.ClampToEdgeWrapping;
-      loadedTexture.generateMipmaps = false;
-      loadedTexture.minFilter = THREE.LinearFilter;
-      loadedTexture.magFilter = THREE.LinearFilter;
-      loadedTexture.colorSpace = THREE.SRGBColorSpace;
-      loadedTexture.needsUpdate = true;
+      cachedPlanetAsset = asset;
+      cachedPlanetSize = size;
 
-      return loadedTexture;
-    }
-
-    loadPlanetTexture()
-      .then((loadedTexture) => {
-        if (!mounted) {
-          loadedTexture.dispose();
-          return;
-        }
-
-        setTexture(loadedTexture);
-      })
-      .catch((error) => {
-        console.warn('Failed to load Hinduism planet texture', error);
-      });
+      if (!mounted) return;
+      setTexture(buildPlanetTexture());
+    })().catch((error) => {
+      console.warn('Failed to load Hinduism planet texture', error);
+    });
 
     return () => {
       mounted = false;
@@ -220,9 +232,11 @@ function PlanetSurface() {
       <meshStandardMaterial
         key={texture ? 'hinduism-planet-textured' : 'hinduism-planet-loading'}
         map={texture ?? undefined}
-        color={texture ? '#ffffff' : '#0757c8'}
-        emissive={texture ? '#00122f' : '#063f9e'}
-        emissiveIntensity={texture ? 0.12 : 0.38}
+        // Until the texture is ready the sphere blends into the dark space
+        // backdrop (instead of a bright blue flash) and quietly reveals the map.
+        color={texture ? '#ffffff' : '#050816'}
+        emissive={texture ? '#00122f' : '#050816'}
+        emissiveIntensity={texture ? 0.12 : 0}
         roughness={0.58}
         metalness={0.02}
       />

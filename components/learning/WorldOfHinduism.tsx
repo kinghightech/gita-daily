@@ -55,7 +55,12 @@ const DISTANT_PLANETS = [
   },
 ] as const;
 
-export default function WorldScreen() {
+/**
+ * The "World of Hinduism" experience — the interactive earth/planet with all the
+ * learning paths (Lotus, Mountain, Garden, Forest, …). Extracted from the former
+ * World tab so it can be hosted inside the Learn screen. UI/logic unchanged.
+ */
+export default function WorldOfHinduism() {
   const [orbitronLoaded] = useFonts({ Orbitron_900Black });
 
   const openPath = (path: Pick<WorldPath, 'slug' | 'title'>) => {
