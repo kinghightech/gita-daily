@@ -245,11 +245,13 @@ function PlanetSurface() {
 }
 
 function PlanetScene({
+  active,
   targetRotationRef,
   isDraggingRef,
   velocityRef,
   displayRotationRef,
 }: {
+  active: boolean;
   targetRotationRef: RotationRef;
   isDraggingRef: DragRef;
   velocityRef: RotationRef;
@@ -274,6 +276,15 @@ function PlanetScene({
   useFrame((_, delta) => {
     const frameDelta = Math.min(delta, 0.033);
     const target = targetRotationRef.current;
+    const current = smoothedRotationRef.current;
+
+    if (!active) {
+      isDraggingRef.current = false;
+      velocityRef.current = { x: 0, y: 0 };
+      targetRotationRef.current = { x: current.x, y: current.y };
+      displayRotationRef.current = { x: current.x, y: current.y };
+      return;
+    }
 
     if (!isDraggingRef.current) {
       target.y += (0.12 + velocityRef.current.y) * frameDelta;
@@ -283,7 +294,6 @@ function PlanetScene({
       velocityRef.current.y *= 0.91;
     }
 
-    const current = smoothedRotationRef.current;
     const ease = 1 - Math.pow(0.0008, frameDelta);
 
     current.x += (target.x - current.x) * ease;
@@ -385,9 +395,11 @@ function PlanetMarkerLayer({
 }
 
 export default function HinduismPlanet({
+  active = true,
   markers = EMPTY_MARKERS,
   onMarkerPress,
 }: {
+  active?: boolean;
   markers?: PlanetMarker[];
   onMarkerPress?: (marker: PlanetMarker) => void;
 }) {
@@ -447,6 +459,7 @@ export default function HinduismPlanet({
           <directionalLight position={[3.5, 2.4, 4.2]} intensity={1.35} color="#dff4ff" />
           <directionalLight position={[-3.0, -1.8, -2.5]} intensity={0.28} color="#2563eb" />
           <PlanetScene
+            active={active}
             targetRotationRef={targetRotationRef}
             isDraggingRef={isDraggingRef}
             velocityRef={velocityRef}

@@ -53,11 +53,16 @@ export default function LearnScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Both views stay mounted and are toggled with display, so switching to
-          Festivals and back never unmounts/reloads the 3D world (no flash). */}
+      {/* Keep the 3D world mounted and laid out while Festivals is open. Detaching
+          the Expo GL canvas with display:none can make it jump when restored. */}
       <View style={styles.tabContentWrap}>
-        <View style={[StyleSheet.absoluteFill, tab !== 'world' && styles.hiddenLayer]}>
-          <WorldOfHinduism />
+        <View
+          accessibilityElementsHidden={tab !== 'world'}
+          importantForAccessibility={tab === 'world' ? 'auto' : 'no-hide-descendants'}
+          pointerEvents={tab === 'world' ? 'auto' : 'none'}
+          style={[StyleSheet.absoluteFill, tab !== 'world' && styles.inactiveWorldLayer]}
+        >
+          <WorldOfHinduism active={tab === 'world'} />
         </View>
         {festivalsMounted && (
           <View style={[StyleSheet.absoluteFill, tab !== 'festivals' && styles.hiddenLayer]}>
@@ -244,6 +249,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   topTabText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
   topTabTextActive: { color: '#FFFFFF' },
   tabContentWrap: { flex: 1 },
+  inactiveWorldLayer: { opacity: 0 },
   hiddenLayer: { display: 'none' },
   // Festivals — content clears the floating toggle.
   festScroll: { flex: 1 },

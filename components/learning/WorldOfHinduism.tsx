@@ -60,7 +60,11 @@ const DISTANT_PLANETS = [
  * learning paths (Lotus, Mountain, Garden, Forest, …). Extracted from the former
  * World tab so it can be hosted inside the Learn screen. UI/logic unchanged.
  */
-export default function WorldOfHinduism() {
+type WorldOfHinduismProps = {
+  active?: boolean;
+};
+
+export default function WorldOfHinduism({ active = true }: WorldOfHinduismProps) {
   const [orbitronLoaded] = useFonts({ Orbitron_900Black });
 
   const openPath = (path: Pick<WorldPath, 'slug' | 'title'>) => {
@@ -165,7 +169,7 @@ export default function WorldOfHinduism() {
         </View>
 
         <View style={styles.planetShell}>
-          <HinduismPlanet markers={WORLD_PATHS} onMarkerPress={openPath} />
+          <HinduismPlanet active={active} markers={WORLD_PATHS} onMarkerPress={openPath} />
         </View>
       </SafeAreaView>
     </View>
