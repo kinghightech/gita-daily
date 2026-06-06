@@ -5,17 +5,22 @@ import DiyaStreak from '@/components/ui/DiyaStreak';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { useTheme } from '@/hooks/useTheme';
 import { FAVORITES_UPDATED_EVENT, fetchUserFavorites } from '@/lib/favorites';
+import { fetchNextUpcomingFestival, type Festival } from '@/lib/festivals';
 import {
     loadPreferredLanguageForCurrentUser,
     PREFERRED_LANGUAGE_CHANGED_EVENT,
     type PreferredLanguage,
 } from '@/lib/preferredLanguage';
 import { fetchCurrentUserAndProfile, getProfileDisplayName, STREAK_UPDATED_EVENT } from '@/lib/profile';
+import { getFestivalImageUrl } from '@/lib/storageAssets';
 import { fetchVerseOfTheDay, type GitaVerse } from '@/lib/verses';
 import type { Theme } from '@/theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
+import { router } from 'expo-router';
+import { Image } from 'expo-image';
+import { ChevronRight } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { DeviceEventEmitter, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { DeviceEventEmitter, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -35,6 +40,7 @@ export default function Home() {
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
   const [lastVisitDate, setLastVisitDate] = useState<string | null>(null);
+  const [upcomingFestival, setUpcomingFestival] = useState<Festival | null>(null);
 
   const refreshPreferredLanguage = useCallback(async () => {
     const language = await loadPreferredLanguageForCurrentUser();
@@ -78,10 +84,14 @@ export default function Home() {
 
     let cancelled = false;
     (async () => {
-      const verse = await fetchVerseOfTheDay();
+      const [verse, festival] = await Promise.all([
+        fetchVerseOfTheDay(),
+        fetchNextUpcomingFestival(),
+      ]);
       if (!cancelled) {
         setVerseOfTheDay(verse);
         setIsLoading(false);
+        setUpcomingFestival(festival);
       }
     })();
 
@@ -192,6 +202,24 @@ export default function Home() {
               </Animated.View>
             )}
 
+            {upcomingFestival && (
+              <Animated.View entering={FadeIn.delay(400)} style={styles.festivalCardWrapper}>
+                <TouchableOpacity
+                  style={styles.festivalCard}
+                  activeOpacity={0.75}
+                  onPress={() => router.push({ pathname: '/festival-detail', params: { id: upcomingFestival.id } })}
+                >
+                  <FestivalImage name={upcomingFestival.name} emoji={upcomingFestival.icon_emoji} />
+                  <View style={styles.festivalTextGroup}>
+                    <Text style={styles.festivalLabel}>UPCOMING FESTIVAL</Text>
+                    <Text style={styles.festivalName} numberOfLines={1}>{upcomingFestival.name}</Text>
+                    <Text style={styles.festivalDate}>{formatFestivalDate(upcomingFestival.main_date)}</Text>
+                  </View>
+                  <ChevronRight size={18} color="rgba(251,191,36,0.5)" />
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+
             <Animated.View entering={FadeIn.delay(600)} style={styles.footerContainer}>
               <Text style={styles.hindiQuote}>
                 &quot;कर्मण्येवाधिकारस्ते मा फलेषु कदाचन&quot;
@@ -216,6 +244,56 @@ export default function Home() {
     </View>
   );
 }
+
+function formatFestivalDate(mainDate: string): string {
+  const [year, month, day] = mainDate.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const monthName = date.toLocaleDateString('en-US', { month: 'long' });
+  const d = date.getDate();
+  const suffix = d === 1 || d === 21 || d === 31 ? 'st' : d === 2 || d === 22 ? 'nd' : d === 3 || d === 23 ? 'rd' : 'th';
+  return `${monthName} ${d}${suffix}`;
+}
+
+function FestivalImage({ name, emoji }: { name: string; emoji: string }) {
+  const [hasError, setHasError] = useState(false);
+  const imageUrl = getFestivalImageUrl(name);
+
+  if (!imageUrl || hasError) {
+    return (
+      <View style={festivalImageStyles.fallback}>
+        <Text style={festivalImageStyles.emoji}>{emoji || '🕉️'}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={{ uri: imageUrl }}
+      style={festivalImageStyles.image}
+      contentFit="cover"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
+const festivalImageStyles = StyleSheet.create({
+  image: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+  },
+  fallback: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: 'rgba(251,191,36,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emoji: {
+    fontSize: 26,
+  },
+});
 
 const createStyles = (theme: Theme) => StyleSheet.create({
   scrollContent: {
@@ -281,6 +359,42 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   },
   emptySubtitle: {
     color: theme.goldText,
+  },
+  festivalCardWrapper: {
+    marginTop: 16,
+    width: '100%',
+  },
+  festivalCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: theme.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.2)',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  festivalTextGroup: {
+    flex: 1,
+    gap: 2,
+  },
+  festivalLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.8,
+    color: theme.goldSubtle,
+  },
+  festivalName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.textWarm,
+    fontFamily: 'Georgia',
+  },
+  festivalDate: {
+    fontSize: 13,
+    color: theme.goldText,
+    fontWeight: '500',
   },
   footerContainer: {
     marginTop: 48,

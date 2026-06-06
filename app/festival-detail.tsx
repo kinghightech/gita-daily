@@ -2,7 +2,9 @@ import { useTheme } from '@/hooks/useTheme';
 import { GitaColors } from '@/constants/theme';
 import { fetchFestivalById, getFestivalSymbol, type Festival } from '@/lib/festivals';
 import { fetchUserFestivalFavorites, toggleFavoriteFestival, FESTIVALS_UPDATED_EVENT } from '@/lib/favorites';
+import { getFestivalImageUrl } from '@/lib/storageAssets';
 import { supabase } from '@/lib/supabase';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Bookmark, Calendar, Check, Info, Map, Share2, Sparkles, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -29,6 +31,7 @@ export default function FestivalDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [heroImageError, setHeroImageError] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -99,6 +102,7 @@ export default function FestivalDetailScreen() {
 
   const symbol = getFestivalSymbol(festival.name, festival.icon_emoji);
   const dayLabel = festival.main_day_info.replace('Main:', '').trim();
+  const heroImageUrl = getFestivalImageUrl(festival.name);
 
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
@@ -132,9 +136,18 @@ export default function FestivalDetailScreen() {
       >
         {/* Hero */}
         <View style={styles.hero}>
-          <View style={styles.emojiCircle}>
-            <Text style={styles.heroEmoji}>{symbol}</Text>
-          </View>
+          {!heroImageUrl || heroImageError ? (
+            <View style={styles.emojiCircle}>
+              <Text style={styles.heroEmoji}>{symbol}</Text>
+            </View>
+          ) : (
+            <Image
+              source={{ uri: heroImageUrl }}
+              style={styles.heroImage}
+              contentFit="cover"
+              onError={() => setHeroImageError(true)}
+            />
+          )}
           <Text style={styles.heroName}>{festival.name.toUpperCase()}</Text>
           <Text style={styles.heroDeity}>{festival.deity}</Text>
           <View style={styles.dateBadge}>
@@ -260,6 +273,12 @@ const createStyles = (theme: Theme) =>
       paddingTop: 8,
       paddingBottom: 32,
       gap: 8,
+    },
+    heroImage: {
+      width: 120,
+      height: 120,
+      borderRadius: 20,
+      marginBottom: 8,
     },
     emojiCircle: {
       width: 100,

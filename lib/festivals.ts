@@ -68,6 +68,26 @@ export async function fetchAllFestivals(): Promise<Festival[]> {
 }
 
 /**
+ * Fetch the nearest upcoming festival on or after today.
+ */
+export async function fetchNextUpcomingFestival(): Promise<Festival | null> {
+  const today = new Date().toISOString().split('T')[0];
+  const { data, error } = await supabase
+    .from('festivals')
+    .select('*')
+    .gte('main_date', today)
+    .order('main_date', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching next festival:', error);
+    return null;
+  }
+  return data;
+}
+
+/**
  * Fetch festivals for a specific month (e.g., 'January').
  */
 export async function fetchFestivalsByMonth(monthName: string): Promise<Festival[]> {

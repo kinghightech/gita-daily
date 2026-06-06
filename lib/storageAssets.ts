@@ -41,3 +41,22 @@ export function getWorldLotusImageUrl(filename: string | undefined | null): stri
   if (!filename) return null;
   return supabase.storage.from('world-lotus-images').getPublicUrl(filename).data.publicUrl;
 }
+
+const FESTIVAL_IMAGE_MAP: Record<string, string> = {
+  'Ganga Dussehra':      'GangaDussehra.png',
+  'Vat Purnima':         'VatPurnima.png',
+  'Jagannath Rath Yatra':'Jagannath Rath Yatra.png',
+  'Guru Purnima':        'Guru Purnima.png',
+  'Nag Panchami':        'Nag Panchami.png',
+  'Raksha Bandhan':      'Raksha Bandhan.png',
+  'Onam':                'Onam.png',
+  'Janmashtami':         'anmashtami.png',
+  'Ganesha Chaturthi':   'Ganesha Chaturthi.png',
+  'Sharad Navratri':     'Sharad Navratri.png',
+};
+
+export function getFestivalImageUrl(festivalName: string): string | null {
+  const filename = FESTIVAL_IMAGE_MAP[festivalName];
+  if (!filename) return null;
+  return supabase.storage.from('Festival Images').getPublicUrl(filename).data.publicUrl;
+}
