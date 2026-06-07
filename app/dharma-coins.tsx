@@ -9,9 +9,9 @@ import {
 import {
     DHARMA_COINS_UPDATED_EVENT,
     DharmaCoinTransaction,
-    sourceDisplayName,
     streakMultiplier,
     streakTierLabel,
+    transactionDisplayName,
 } from '@/lib/dharmaCoins';
 import type { Theme } from '@/theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
@@ -246,7 +246,7 @@ export default function DharmaCoinsScreen() {
             <View style={styles.txRow}>
               <View style={styles.txLeft}>
                 <View>
-                  <Text style={styles.txSource}>{sourceDisplayName(item.source)}</Text>
+                  <Text style={styles.txSource}>{transactionDisplayName(item.source, item.source_ref)}</Text>
                   <Text style={styles.txMeta}>
                     {formatRelative(item.created_at)}
                     {item.multiplier > 1 ? `  •  ${Number(item.multiplier).toFixed(2)}×` : ''}

@@ -200,6 +200,76 @@ export const DHARMA_COIN_EARN_METHODS: DharmaCoinEarnMethod[] = [
 export const DHARMA_COIN_MULTIPLIER_NOTE =
   'Your streak multiplier (up to 2×) boosts every coin you earn.';
 
+// ── Spending: skip a level ────────────────────────────────────────────────────
+// A user can spend a fixed number of coins to skip the level they are currently
+// on. The deduction and the level advance happen atomically in the
+// `skip_level_with_coins` RPC (see scripts/skip_level_with_coins_migration.sql).
+
+export const SKIP_LEVEL_COST = 5;
+
+// The playable paths that support skipping (matches PLAYABLE_PATH_ORDER).
+export type SkipLevelPath = 'lotus' | 'mountain' | 'garden' | 'forest';
+
+export type SkipLevelReason =
+  | 'skipped'
+  | 'insufficient_coins'
+  | 'not_current_level'
+  | 'cannot_skip_gate'
+  | 'unknown_path'
+  | 'no_profile'
+  | 'unauthenticated'
+  | 'error';
+
+export type SkipLevelResult = {
+  ok: boolean;
+  reason: SkipLevelReason;
+  newBalance: number;
+  newLevel: number;
+  cost: number;
+};
+
+export const skipLevelWithCoins = async (
+  path: SkipLevelPath,
+  level: number,
+): Promise<SkipLevelResult> => {
+  const fallback: SkipLevelResult = {
+    ok: false,
+    reason: 'error',
+    newBalance: 0,
+    newLevel: level,
+    cost: SKIP_LEVEL_COST,
+  };
+
+  const { data, error } = await supabase.rpc('skip_level_with_coins', {
+    p_path: path,
+    p_level: level,
+    p_user_timezone: getLocalTimezone(),
+  });
+
+  if (error) {
+    console.warn('skip_level_with_coins failed', error);
+    return fallback;
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return fallback;
+
+  const result: SkipLevelResult = {
+    ok: !!row.ok,
+    reason: (row.reason ?? 'error') as SkipLevelReason,
+    newBalance: Number(row.new_balance ?? 0),
+    newLevel: Number(row.new_level ?? level),
+    cost: Number(row.cost ?? SKIP_LEVEL_COST),
+  };
+
+  // Keep the coin pill (and anything else listening) in sync after a spend.
+  if (result.ok) {
+    DeviceEventEmitter.emit(DHARMA_COINS_UPDATED_EVENT, result.newBalance);
+  }
+
+  return result;
+};
+
 export const sourceDisplayName = (source: DharmaCoinSource): string => {
   switch (source) {
     case 'streak':
@@ -207,7 +277,10 @@ export const sourceDisplayName = (source: DharmaCoinSource): string => {
     case 'prayer':
       return 'Prayer Completion';
     case 'lotus_level':
-      return 'Lotus Path Level';
+    case 'world_level':
+      return 'Level Completion';
+    case 'wisdom_gate':
+      return 'Wisdom Gate';
     case 'redemption':
       return 'Redemption';
     case 'bonus':
@@ -215,4 +288,17 @@ export const sourceDisplayName = (source: DharmaCoinSource): string => {
     default:
       return source;
   }
+};
+
+// Label for a single history row. Spends are named by what they bought
+// (via source_ref) — e.g. a skip-level redemption reads "Level Skip" — and
+// everything else falls back to the source's display name.
+export const transactionDisplayName = (
+  source: DharmaCoinSource,
+  sourceRef?: string | null,
+): string => {
+  if (source === 'redemption' && sourceRef?.startsWith('skip:')) {
+    return 'Level Skip';
+  }
+  return sourceDisplayName(source);
 };

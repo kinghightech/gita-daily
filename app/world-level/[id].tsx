@@ -1,3 +1,4 @@
+import SkipLevelButton from '@/components/learning/SkipLevelButton';
 import WorldLotusBlockView from '@/components/learning/WorldLotusBlock';
 import { HapticButton } from '@/components/ui/HapticButton';
 import LotusLoader from '@/components/ui/LotusLoader';
@@ -237,15 +238,21 @@ export default function WorldLevelScreen() {
           <HapticButton onPress={() => router.back()} style={styles.iconBtn}>
             <ArrowLeft size={20} color={theme.text} />
           </HapticButton>
-          <View style={styles.levelChip}>
-            <Text style={styles.levelChipText}>LEVEL {levelNumber}</Text>
+          <View style={styles.levelChipCenter} pointerEvents="none">
+            <View style={styles.levelChip}>
+              <Text style={styles.levelChipText}>LEVEL {levelNumber}</Text>
+            </View>
           </View>
           {levelData.is_wisdom_gate ? (
             <View style={styles.wisdomGateChip}>
               <Text style={styles.wisdomGateChipText}>GATE</Text>
             </View>
           ) : (
-            <View style={{ width: 44 }} />
+            <SkipLevelButton
+              path="lotus"
+              level={levelNumber}
+              onSkipped={() => router.back()}
+            />
           )}
         </View>
         <Text style={styles.headerTitle} numberOfLines={2}>
@@ -374,6 +381,15 @@ const createStyles = (theme: Theme) =>
       justifyContent: 'center',
       borderRadius: 12,
       backgroundColor: theme.surface,
+    },
+    levelChipCenter: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     levelChip: {
       backgroundColor: 'rgba(251,191,36,0.1)',
