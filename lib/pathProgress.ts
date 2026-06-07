@@ -67,6 +67,16 @@ export type PathGateStatus = {
   prerequisiteTitle: string | null;
 };
 
+export type ActiveJourneyProgress = {
+  slug: PlayablePathSlug;
+  title: string;
+  currentLevel: number;
+  targetLevel: number;
+  gateLevel: number;
+  isFirstLotusLevel: boolean;
+  isComplete: boolean;
+};
+
 // Resolve whether `slug` is unlocked by checking the prerequisite path's gate.
 export async function fetchPathGateStatus(
   slug: PlayablePathSlug,
@@ -97,4 +107,50 @@ export function buildPathLockMessage(status: PathGateStatus, ownSlug: PlayablePa
     return 'Complete previous levels first!';
   }
   return `Complete the ${status.prerequisiteTitle} first to unlock the ${PATH_TITLE[ownSlug]}.`;
+}
+
+function normalizeCurrentLevel(value: number): number {
+  if (!Number.isFinite(value)) return 1;
+  return Math.max(1, Math.floor(value));
+}
+
+function buildActiveJourneyProgress(
+  slug: PlayablePathSlug,
+  currentLevel: number,
+): ActiveJourneyProgress {
+  const gateLevel = PATH_WISDOM_GATE_LEVEL[slug];
+  const normalizedCurrentLevel = normalizeCurrentLevel(currentLevel);
+  return {
+    slug,
+    title: PATH_TITLE[slug],
+    currentLevel: normalizedCurrentLevel,
+    targetLevel: Math.min(normalizedCurrentLevel, gateLevel),
+    gateLevel,
+    isFirstLotusLevel: slug === 'lotus' && normalizedCurrentLevel <= 1,
+    isComplete: normalizedCurrentLevel > gateLevel,
+  };
+}
+
+export async function fetchActiveJourneyProgress(): Promise<ActiveJourneyProgress> {
+  const progressByPath = await Promise.all(
+    PLAYABLE_PATH_ORDER.map(async (slug) => {
+      try {
+        return [slug, normalizeCurrentLevel(await CURRENT_LEVEL_FETCHERS[slug]())] as const;
+      } catch (err) {
+        console.warn(`Failed to fetch ${PATH_TITLE[slug]} progress`, err);
+        return [slug, 1] as const;
+      }
+    }),
+  );
+
+  const firstIncomplete = progressByPath.find(
+    ([slug, currentLevel]) => currentLevel <= PATH_WISDOM_GATE_LEVEL[slug],
+  );
+
+  if (firstIncomplete) {
+    return buildActiveJourneyProgress(firstIncomplete[0], firstIncomplete[1]);
+  }
+
+  const lastPath = progressByPath[progressByPath.length - 1];
+  return buildActiveJourneyProgress(lastPath[0], lastPath[1]);
 }

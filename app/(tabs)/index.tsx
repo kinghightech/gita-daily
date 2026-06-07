@@ -1,11 +1,20 @@
 import DharmaCoinPill from '@/components/gita/DharmaCoinPill';
 import QuoteCard from '@/components/gita/QuoteCard';
 import StreakModal from '@/components/gita/StreakModal';
+import LotusLevel from '@/components/learning/LotusLevel';
+import MountainShrine from '@/components/learning/MountainShrine';
+import SunflowerLevel from '@/components/learning/SunflowerLevel';
+import WoodSliceLevel from '@/components/learning/WoodSliceLevel';
 import DiyaStreak from '@/components/ui/DiyaStreak';
 import LotusLoader from '@/components/ui/LotusLoader';
+import { PRAYERS } from '@/Data/prayers';
 import { useTheme } from '@/hooks/useTheme';
 import { FAVORITES_UPDATED_EVENT, fetchUserFavorites } from '@/lib/favorites';
 import { fetchNextUpcomingFestival, type Festival } from '@/lib/festivals';
+import {
+  fetchActiveJourneyProgress,
+  type ActiveJourneyProgress,
+} from '@/lib/pathProgress';
 import {
     loadPreferredLanguageForCurrentUser,
     PREFERRED_LANGUAGE_CHANGED_EVENT,
@@ -24,6 +33,23 @@ import { DeviceEventEmitter, ScrollView, StyleSheet, Text, TouchableOpacity, Vie
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+const DEFAULT_JOURNEY_PROGRESS: ActiveJourneyProgress = {
+  slug: 'lotus',
+  title: 'Lotus Path',
+  currentLevel: 1,
+  targetLevel: 1,
+  gateLevel: 21,
+  isFirstLotusLevel: true,
+  isComplete: false,
+};
+
+function getDailyPrayerForDate(date: Date) {
+  const calendarDay = Math.floor(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000,
+  );
+  return PRAYERS[calendarDay % PRAYERS.length] ?? PRAYERS[0];
+}
+
 export default function Home() {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -41,10 +67,16 @@ export default function Home() {
   const [longestStreak, setLongestStreak] = useState(0);
   const [lastVisitDate, setLastVisitDate] = useState<string | null>(null);
   const [upcomingFestival, setUpcomingFestival] = useState<Festival | null>(null);
+  const [journeyProgress, setJourneyProgress] = useState<ActiveJourneyProgress>(DEFAULT_JOURNEY_PROGRESS);
 
   const refreshPreferredLanguage = useCallback(async () => {
     const language = await loadPreferredLanguageForCurrentUser();
     setPreferredLanguage(language);
+  }, []);
+
+  const refreshJourneyProgress = useCallback(async () => {
+    const progress = await fetchActiveJourneyProgress();
+    setJourneyProgress(progress);
   }, []);
 
   const refreshIdentity = useCallback(async () => {
@@ -94,9 +126,10 @@ export default function Home() {
         setUpcomingFestival(festival);
       }
     })();
+    void refreshJourneyProgress();
 
     return () => { cancelled = true; };
-  }, []);
+  }, [refreshJourneyProgress]);
 
   useEffect(() => {
     let mounted = true;
@@ -111,8 +144,9 @@ export default function Home() {
     useCallback(() => {
       void refreshPreferredLanguage();
       void refreshIdentity();
+      void refreshJourneyProgress();
       return () => {};
-    }, [refreshIdentity, refreshPreferredLanguage])
+    }, [refreshIdentity, refreshJourneyProgress, refreshPreferredLanguage])
   );
 
   useEffect(() => {
@@ -149,6 +183,47 @@ export default function Home() {
     speaker: verseOfTheDay.speaker ?? undefined,
     meaning: verseOfTheDay.context ?? undefined,
   } : null;
+  const dailyPrayer = getDailyPrayerForDate(new Date());
+  const journeyTitle = journeyProgress.isFirstLotusLevel ? 'Start your journey' : 'Continue journey';
+  const journeyDetail = `${journeyProgress.title} level ${journeyProgress.targetLevel}`;
+
+  const openJourneyLevel = () => {
+    if (journeyProgress.slug === 'lotus') {
+      router.push({
+        pathname: '/world-level/[id]',
+        params: { id: String(journeyProgress.targetLevel), returnToPath: 'lotus' },
+      });
+      return;
+    }
+
+    if (journeyProgress.slug === 'mountain') {
+      router.push({
+        pathname: '/mountain-level/[id]',
+        params: { id: String(journeyProgress.targetLevel), returnToPath: 'mountain' },
+      });
+      return;
+    }
+
+    if (journeyProgress.slug === 'garden') {
+      router.push({
+        pathname: '/garden-level/[id]',
+        params: { id: String(journeyProgress.targetLevel), returnToPath: 'garden' },
+      });
+      return;
+    }
+
+    router.push({
+      pathname: '/forest-level/[id]',
+      params: { id: String(journeyProgress.targetLevel), returnToPath: 'forest' },
+    });
+  };
+
+  const openDailyPrayer = () => {
+    router.push({
+      pathname: '/(tabs)/prayer',
+      params: { id: dailyPrayer.id },
+    });
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
@@ -220,14 +295,60 @@ export default function Home() {
               </Animated.View>
             )}
 
-            <Animated.View entering={FadeIn.delay(600)} style={styles.footerContainer}>
-              <Text style={styles.hindiQuote}>
-                &quot;कर्मण्येवाधिकारस्ते मा फलेषु कदाचन&quot;
-              </Text>
-              <Text style={styles.englishQuote}>
-                You have the right to work, but never to the fruit of work
-              </Text>
+            <Animated.View entering={FadeIn.delay(500)} style={styles.actionCardsRow}>
+              <TouchableOpacity
+                style={styles.homeActionCard}
+                activeOpacity={0.78}
+                onPress={openJourneyLevel}
+              >
+                <View style={styles.homeActionIconSlot} pointerEvents="none">
+                  <JourneyLevelNode progress={journeyProgress} />
+                </View>
+                <View style={styles.homeActionChevron}>
+                  <ChevronRight size={16} color="rgba(251,191,36,0.45)" />
+                </View>
+                <View style={styles.homeActionTextGroup}>
+                  <Text
+                    style={styles.homeActionTitle}
+                    numberOfLines={1}
+                  >
+                    {journeyTitle}
+                  </Text>
+                  <Text style={styles.homeActionDetail} numberOfLines={1}>
+                    {journeyDetail}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.homeActionCard}
+                activeOpacity={0.78}
+                onPress={openDailyPrayer}
+              >
+                <View style={styles.homeActionIconSlot}>
+                  <Image
+                    source={dailyPrayer.thumbnail}
+                    style={styles.prayerThumb}
+                    contentFit="cover"
+                  />
+                </View>
+                <View style={styles.homeActionChevron}>
+                  <ChevronRight size={16} color="rgba(251,191,36,0.45)" />
+                </View>
+                <View style={styles.homeActionTextGroup}>
+                  <Text
+                    style={styles.homeActionTitle}
+                    numberOfLines={1}
+                  >
+                    Daily prayer
+                  </Text>
+                  <Text style={styles.homeActionDetail} numberOfLines={1}>
+                    {dailyPrayer.name}
+                  </Text>
+                </View>
+              </TouchableOpacity>
             </Animated.View>
+
           </View>
         </ScrollView>
 
@@ -244,6 +365,84 @@ export default function Home() {
     </View>
   );
 }
+
+function JourneyLevelNode({ progress }: { progress: ActiveJourneyProgress }) {
+  const noop = useCallback(() => {}, []);
+  const isGate = progress.targetLevel === progress.gateLevel;
+
+  if (progress.slug === 'mountain') {
+    return (
+      <View style={journeyNodeStyles.mountainScale}>
+        <MountainShrine
+          level={progress.targetLevel}
+          side="left"
+          isCompleted={false}
+          isLocked={false}
+          isActive={true}
+          isWisdomGate={isGate}
+          onPress={noop}
+        />
+      </View>
+    );
+  }
+
+  if (progress.slug === 'garden') {
+    return (
+      <View style={journeyNodeStyles.gardenScale}>
+        <SunflowerLevel
+          level={progress.targetLevel}
+          isCompleted={false}
+          isLocked={false}
+          isActive={true}
+          onPress={noop}
+        />
+      </View>
+    );
+  }
+
+  if (progress.slug === 'forest') {
+    return (
+      <View style={journeyNodeStyles.forestScale}>
+        <WoodSliceLevel
+          level={progress.targetLevel}
+          isCompleted={false}
+          isLocked={false}
+          isActive={true}
+          onPress={noop}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View style={journeyNodeStyles.lotusScale}>
+      <LotusLevel
+        level={progress.targetLevel}
+        isCompleted={false}
+        isLocked={false}
+        isActive={true}
+        onPress={noop}
+        size="sm"
+        showEffects={false}
+      />
+    </View>
+  );
+}
+
+const journeyNodeStyles = StyleSheet.create({
+  lotusScale: {
+    transform: [{ scale: 1.04 }],
+  },
+  mountainScale: {
+    transform: [{ scale: 0.58 }],
+  },
+  gardenScale: {
+    transform: [{ scale: 0.58 }],
+  },
+  forestScale: {
+    transform: [{ scale: 0.5 }],
+  },
+});
 
 function formatFestivalDate(mainDate: string): string {
   const [year, month, day] = mainDate.split('-').map(Number);
@@ -396,21 +595,65 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     color: theme.goldText,
     fontWeight: '500',
   },
-  footerContainer: {
-    marginTop: 48,
+  actionCardsRow: {
+    marginTop: 14,
+    width: '100%',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  homeActionCard: {
+    flex: 1,
+    minWidth: 0,
+    height: 122,
+    backgroundColor: theme.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.2)',
+    position: 'relative',
+  },
+  homeActionIconSlot: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    width: 48,
+    height: 48,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  hindiQuote: {
-    fontSize: 14,
-    color: theme.goldSubtle,
-    fontStyle: 'italic',
-    textAlign: 'center',
+  homeActionChevron: {
+    position: 'absolute',
+    top: 28,
+    right: 14,
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  englishQuote: {
-    marginTop: 4,
-    fontSize: 14,
-    color: theme.goldSubtle,
-    textAlign: 'center',
-    fontWeight: '300',
+  prayerThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(251,191,36,0.1)',
+  },
+  homeActionTextGroup: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    top: 70,
+    height: 40,
+  },
+  homeActionTitle: {
+    color: theme.textWarm,
+    fontSize: 15,
+    lineHeight: 18,
+    fontWeight: '800',
+    fontFamily: 'Georgia',
+  },
+  homeActionDetail: {
+    marginTop: 2,
+    color: theme.goldText,
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: '600',
   },
 });

@@ -12,6 +12,7 @@ interface LotusLevelProps {
   onPress: (level: number) => void;
   allowPressWhenLocked?: boolean;
   size?: 'lg' | 'sm';
+  showEffects?: boolean;
 }
 
 const OUTER_ANGLES = [-40, -25, -10, 10, 25, 40];
@@ -28,6 +29,7 @@ function LotusLevel({
   onPress,
   allowPressWhenLocked = false,
   size = 'lg',
+  showEffects = true,
 }: LotusLevelProps) {
   const rippleAnim1 = useRef(new Animated.Value(1)).current;
   const rippleAnim2 = useRef(new Animated.Value(1)).current;
@@ -99,7 +101,7 @@ function LotusLevel({
       disabled={isLocked && !allowPressWhenLocked}
     >
       {/* Water ripple effect */}
-      {!isLocked && (
+      {showEffects && !isLocked && (
         <>
           <Animated.View
             style={[
@@ -241,10 +243,10 @@ function LotusLevel({
       </View>
 
       {/* Completed glow */}
-      {isCompleted && <View style={styles.completedGlow} />}
+      {showEffects && isCompleted && <View style={styles.completedGlow} />}
 
       {/* Active glow */}
-      {isActive && !isCompleted && (
+      {showEffects && isActive && !isCompleted && (
         <Animated.View
           style={[
             styles.activeGlow,
@@ -270,6 +272,7 @@ function areEqual(prev: LotusLevelProps, next: LotusLevelProps) {
     prev.isActive === next.isActive &&
     prev.allowPressWhenLocked === next.allowPressWhenLocked &&
     prev.size === next.size &&
+    prev.showEffects === next.showEffects &&
     prev.onPress === next.onPress
   );
 }

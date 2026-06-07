@@ -34,7 +34,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 type Phase = 'loading' | 'playing' | 'result';
 
 export default function MountainLevelScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, returnToPath } = useLocalSearchParams<{ id: string; returnToPath?: string }>();
   const levelNumber = parseInt(id ?? '1', 10);
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -49,13 +49,21 @@ export default function MountainLevelScreen() {
   const [substep, setSubstep] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
 
+  const closeLesson = useCallback(() => {
+    if (returnToPath === 'mountain') {
+      router.replace({ pathname: '/world-path/[slug]', params: { slug: 'mountain' } });
+      return;
+    }
+    router.back();
+  }, [returnToPath]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const data = await fetchMountainLevel(levelNumber);
       if (cancelled) return;
       if (!data || data.blocks.length === 0) {
-        router.back();
+        closeLesson();
         return;
       }
       setLevelData(data);
@@ -64,7 +72,7 @@ export default function MountainLevelScreen() {
     return () => {
       cancelled = true;
     };
-  }, [levelNumber]);
+  }, [closeLesson, levelNumber]);
 
   useEffect(() => {
     setSubstep(0);
@@ -72,7 +80,7 @@ export default function MountainLevelScreen() {
     setCurrentCorrect(null);
   }, [currentIdx]);
 
-  const blocks = levelData?.blocks ?? [];
+  const blocks = useMemo(() => levelData?.blocks ?? [], [levelData]);
   const block = blocks[currentIdx];
   const totalBlocks = blocks.length;
   const isWisdomGate = !!levelData?.is_wisdom_gate;
@@ -133,8 +141,8 @@ export default function MountainLevelScreen() {
         console.warn('Mountain level coin award failed', err);
       });
     }
-    router.back();
-  }, [correctCount, isWisdomGate, levelNumber, questionTotal, threshold]);
+    closeLesson();
+  }, [closeLesson, correctCount, isWisdomGate, levelNumber, questionTotal, threshold]);
 
   const retry = useCallback(() => {
     setCurrentIdx(0);
@@ -278,7 +286,7 @@ export default function MountainLevelScreen() {
             <SkipLevelButton
               path="mountain"
               level={levelNumber}
-              onSkipped={() => router.back()}
+              onSkipped={closeLesson}
             />
           )}
         </View>
