@@ -49,6 +49,9 @@ const failureMessage = (reason: SkipLevelReason, cost: number): string => {
 export default function SkipLevelButton({ path, level, onSkipped }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  // High-contrast confirm button: black box + white text in dark mode,
+  // white box + black text in light mode.
+  const confirmFg = theme.blurTint === 'dark' ? '#FFFFFF' : '#1A1A1A';
 
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -170,10 +173,17 @@ export default function SkipLevelButton({ path, level, onSkipped }: Props) {
                 style={[styles.confirmBtn, (busy || !canAfford) && styles.confirmBtnDisabled]}
               >
                 {busy ? (
-                  <ActivityIndicator size="small" color="#0F172A" />
+                  <ActivityIndicator size="small" color={confirmFg} />
                 ) : (
                   <View style={styles.confirmInner}>
-                    <Text style={styles.confirmText}>Skip · {SKIP_LEVEL_COST}</Text>
+                    <Text
+                      style={[
+                        styles.confirmText,
+                        (busy || !canAfford) && styles.confirmTextDisabled,
+                      ]}
+                    >
+                      Skip · {SKIP_LEVEL_COST}
+                    </Text>
                     <Image source={COIN} style={styles.confirmCoin} contentFit="contain" transition={0} />
                   </View>
                 )}
@@ -186,8 +196,9 @@ export default function SkipLevelButton({ path, level, onSkipped }: Props) {
   );
 }
 
-const createStyles = (theme: Theme) =>
-  StyleSheet.create({
+const createStyles = (theme: Theme) => {
+  const isDark = theme.blurTint === 'dark';
+  return StyleSheet.create({
     // ── Header pill (trigger) ────────────────────────────────────────────────
     pill: {
       flexDirection: 'row',
@@ -329,7 +340,9 @@ const createStyles = (theme: Theme) =>
     confirmBtn: {
       flex: 1.4,
       borderRadius: 14,
-      backgroundColor: GitaColors.gold,
+      backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF',
+      borderWidth: 1,
+      borderColor: theme.border,
       paddingVertical: 15,
       alignItems: 'center',
       justifyContent: 'center',
@@ -345,13 +358,17 @@ const createStyles = (theme: Theme) =>
       gap: 6,
     },
     confirmText: {
-      color: '#0F172A',
+      color: isDark ? '#FFFFFF' : '#1A1A1A',
       fontSize: 16,
       fontWeight: '900',
       letterSpacing: 0.2,
+    },
+    confirmTextDisabled: {
+      color: theme.subtextMuted,
     },
     confirmCoin: {
       width: 20,
       height: 20,
     },
   });
+};

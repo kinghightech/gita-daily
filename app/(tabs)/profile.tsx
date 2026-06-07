@@ -18,22 +18,18 @@ import {
     savePreferredLanguageForCurrentUser,
 } from '@/lib/preferredLanguage';
 import { STREAK_UPDATED_EVENT, deleteCurrentUserAccount, fetchCurrentUserAndProfile, getProfileDisplayName } from '@/lib/profile';
-import { ONBOARDING_VIDEO_URL } from '@/lib/storageAssets';
 import { supabase } from '@/lib/supabase';
 import type { Theme } from '@/theme/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
-import { VideoView, useVideoPlayer } from 'expo-video';
 import {
     BookOpen,
     Bookmark,
     Check,
     ChevronRight,
     Feather,
-    Flame,
-    Flower2,
     Heart,
     LogOut,
     Medal,
@@ -47,7 +43,6 @@ import {
     Alert,
     DeviceEventEmitter,
     Linking,
-    Modal,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -97,24 +92,6 @@ export default function ProfileScreen() {
   const [prayerVersesCount, setPrayerVersesCount] = useState(0);
   const [notesCount, setNotesCount] = useState(0);
   const [earnedBadgeIds, setEarnedBadgeIds] = useState<string[]>([]);
-  const [isOnboardingVideoVisible, setIsOnboardingVideoVisible] = useState(false);
-
-  const player = useVideoPlayer(ONBOARDING_VIDEO_URL, player => {
-    player.loop = true;
-    player.bufferOptions = {
-      preferredForwardBufferDuration: 60,
-      maxBufferBytes: 10 * 1024 * 1024,
-    };
-  });
-
-  useEffect(() => {
-    if (isOnboardingVideoVisible) {
-      player.play();
-      return;
-    }
-
-    player.pause();
-  }, [isOnboardingVideoVisible, player]);
 
   const refreshProfileIdentity = async () => {
     try {
@@ -490,100 +467,24 @@ export default function ProfileScreen() {
             </Pressable>
           </View>
 
-          <View style={styles.glass}>
-            <BlurView intensity={20} tint={theme.blurTint} style={StyleSheet.absoluteFill} />
-            <View style={styles.statsRow}>
-              <StatItem
-                icon={<Flame size={18} color="#fbbf24" strokeWidth={1.8} />}
-                value={profile.streak_count}
-                label="Day Streak"
-              />
-              <View style={styles.vDivider} />
-              <StatItem
-                icon={<Flower2 size={18} color="#86efac" strokeWidth={1.8} />}
-                value={profile.current_lotus_level || 1}
-                label="Lotus Level"
-              />
-            </View>
-            <View style={styles.hDivider} />
-            <View style={styles.statsRow}>
-              <StatItem
-                icon={<Heart size={18} color="#f87171" fill="#f87171" strokeWidth={0} />}
-                value={favoriteVerseIds.length}
-                label="Saved Verses"
-              />
-              <View style={styles.vDivider} />
-              <StatItem
-                icon={<Star size={18} color="#93c5fd" fill="#93c5fd" strokeWidth={0} />}
-                value={favoriteFestivalIds.length}
-                label="Festivals"
-              />
-            </View>
+          <View style={styles.footerLinks}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL('https://dharmadailyprivacypolicy.notion.site')}
+            >
+              <Text style={styles.privacyButtonText}>Privacy Policy</Text>
+            </TouchableOpacity>
+            <Text style={styles.footerDot}>·</Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => Linking.openURL('https://dharmadailysupportpage.notion.site/')}
+            >
+              <Text style={styles.privacyButtonText}>Support</Text>
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setIsOnboardingVideoVisible(true)}
-            style={styles.videoButton}
-          >
-            <Text style={styles.videoButtonText}>Watch Onboarding Video</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => Linking.openURL('https://dharmadailyprivacypolicy.notion.site')}
-            style={styles.privacyButton}
-          >
-            <Text style={styles.privacyButtonText}>Privacy Policy</Text>
-          </TouchableOpacity>
 
         </ScrollView>
       </SafeAreaView>
-
-      <Modal
-        visible={isOnboardingVideoVisible}
-        transparent={false}
-        animationType="fade"
-        statusBarTranslucent
-        onRequestClose={() => setIsOnboardingVideoVisible(false)}
-      >
-        <View style={styles.videoModal}>
-          <VideoView
-            player={player}
-            style={styles.video}
-            nativeControls={false}
-          />
-
-          <View style={styles.videoOverlay}>
-            <Pressable
-              onPress={() => setIsOnboardingVideoVisible(false)}
-              style={({ pressed }) => [styles.videoCloseBtn, pressed && styles.videoCloseBtnPressed]}
-            >
-              <Text style={styles.videoCloseText}>Close</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-    </View>
-  );
-}
-
-function StatItem({
-  icon,
-  value,
-  label,
-}: {
-  icon: React.ReactNode;
-  value: number | string;
-  label: string;
-}) {
-  const theme = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
-  return (
-    <View style={styles.statItem}>
-      <View style={styles.statIconRow}>{icon}</View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
@@ -622,14 +523,6 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   email: { color: theme.subtext, fontSize: 14, fontWeight: '400', marginTop: 4 },
 
   glass: { borderRadius: 20, overflow: 'hidden', backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border, marginBottom: 20 },
-
-  statsRow: { flexDirection: 'row', alignItems: 'stretch' },
-  statItem: { flex: 1, paddingVertical: 18, paddingHorizontal: 18, gap: 6 },
-  statIconRow: { height: 22, flexDirection: 'row', alignItems: 'center' },
-  statValue: { color: theme.text, fontSize: 27, fontWeight: '700', lineHeight: 32, letterSpacing: 0 },
-  statLabel: { color: theme.subtext, fontSize: 11, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' },
-  vDivider: { width: 1, backgroundColor: theme.border, marginVertical: 14 },
-  hDivider: { height: 1, backgroundColor: theme.border },
 
   achHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 18, paddingBottom: 14 },
   sectionTitle: { color: theme.text, fontSize: 16, fontWeight: '700', letterSpacing: 0 },
@@ -699,43 +592,9 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   dangerBtnText: { color: 'rgba(248,113,113,0.95)', fontSize: 14, fontWeight: '600' },
   btnPressed: { opacity: 0.65 },
 
-  videoButton: {
-    marginTop: 10,
-    marginBottom: 4,
-    alignSelf: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
-  videoButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase' },
-
-  privacyButton: { marginTop: 12, marginBottom: 4, alignSelf: 'center', paddingHorizontal: 12, paddingVertical: 6 },
+  footerLinks: { marginTop: 12, marginBottom: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  footerDot: { color: theme.subtextMuted, fontSize: 12, fontWeight: '500' },
   privacyButtonText: { color: theme.subtextMuted, fontSize: 12, fontWeight: '500', textDecorationLine: 'underline' },
-
-  videoModal: { flex: 1, backgroundColor: '#000' },
-  video: { flex: 1, width: '100%', height: '100%' },
-  videoOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    paddingTop: 56,
-    paddingHorizontal: 16,
-    alignItems: 'flex-end',
-  },
-  videoCloseBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  videoCloseBtnPressed: { opacity: 0.75 },
-  videoCloseText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
 
   quoteBox: { marginTop: 24 },
   quoteBoxHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingHorizontal: 4 },

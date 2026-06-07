@@ -9,15 +9,13 @@ import {
 import {
     DHARMA_COINS_UPDATED_EVENT,
     DharmaCoinTransaction,
-    streakMultiplier,
-    streakTierLabel,
     transactionDisplayName,
 } from '@/lib/dharmaCoins';
 import type { Theme } from '@/theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
-import { ArrowLeft, Eye, Flame, X } from 'lucide-react-native';
+import { ArrowLeft, Eye, Flame, Gift, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     DeviceEventEmitter,
@@ -118,9 +116,6 @@ export default function DharmaCoinsScreen() {
     return () => sub.remove();
   }, [refresh]);
 
-  const currentMultiplier = streakMultiplier(streak);
-  const currentTierLabel = streakTierLabel(streak);
-
   const nextTier = TIERS.find((t) => t.min > streak);
   const daysToNextTier = nextTier ? nextTier.min - streak : 0;
 
@@ -150,11 +145,11 @@ export default function DharmaCoinsScreen() {
       <Animated.View entering={FadeInDown.delay(80)} style={styles.statsRow}>
         <View style={styles.statCard}>
           <View style={styles.statHeader}>
-            <X size={14} color={GitaColors.gold} />
-            <Text style={styles.statLabel}>MULTIPLIER</Text>
+            <Gift size={14} color={GitaColors.gold} />
+            <Text style={styles.statLabel}>REWARDS</Text>
           </View>
-          <Text style={styles.statValue}>{currentMultiplier.toFixed(2)}×</Text>
-          <Text style={styles.statSub}>{currentTierLabel} tier</Text>
+          <Text style={styles.statValue} numberOfLines={1}>Stay tuned</Text>
+          <Text style={styles.statSub}>Coming soon</Text>
         </View>
         <View style={styles.statCard}>
           <View style={styles.statHeader}>
