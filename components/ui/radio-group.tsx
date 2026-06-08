@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { Circle } from 'lucide-react-native';
 
@@ -55,5 +55,4 @@ const styles = StyleSheet.create({
 });
 
 export { RadioGroup, RadioGroupItem };
-
 

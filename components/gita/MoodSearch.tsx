@@ -11,13 +11,11 @@ import {
     Leaf,
     Moon,
     Shield,
-    Sparkles,
     Sun,
     Zap,
 } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { TouchableOpacity,
-    Pressable,
     StyleSheet,
     Text,
     View,
@@ -29,7 +27,7 @@ interface MoodSearchProps {
   disableInteractions?: boolean;
 }
 
-const MOOD_VERSES: Record<string, Array<{ chapter: number; verse: number }>> = {
+const MOOD_VERSES: Record<string, { chapter: number; verse: number }[]> = {
   anxious: [
     { chapter: 2, verse: 14 },
     { chapter: 2, verse: 70 },

@@ -122,7 +122,7 @@ function LotusLoader({
 }: LotusLoaderProps) {
   const progress = useSharedValue(0);
   const [lengths, setLengths] = useState<number[]>(() => LOTUS_PETALS.map(() => LENGTH_FALLBACK));
-  const measureRefs = useRef<Array<Path | null>>([]);
+  const measureRefs = useRef<(Path | null)[]>([]);
 
   const { step, span } = useMemo(() => {
     const count = LOTUS_PETALS.length;

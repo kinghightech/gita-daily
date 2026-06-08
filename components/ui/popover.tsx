@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React from 'react';
 import { Modal, View, Pressable, StyleSheet } from 'react-native';
 
 const Popover = ({ children, open, onOpenChange }) => {
@@ -41,5 +41,4 @@ const styles = StyleSheet.create({
 });
 
 export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor };
-
 

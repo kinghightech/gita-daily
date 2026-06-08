@@ -20,7 +20,6 @@ import {
   Alert,
   Animated,
   DeviceEventEmitter,
-  Dimensions,
   Modal,
   Pressable,
   Share,
@@ -39,8 +38,6 @@ function getTodaysBgIndex(): number {
   const daysSinceEpoch = Math.floor((now.getTime() - epoch.getTime()) / (1000 * 60 * 60 * 24));
   return daysSinceEpoch % VERSE_BACKGROUND_URLS.length;
 }
-
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 interface QuoteCardProps {
   verse: {
@@ -77,7 +74,6 @@ export default function QuoteCard({
   const [isCapturing, setIsCapturing] = useState(false);
   const tapHeartScale = useRef(new Animated.Value(0.35)).current;
   const tapHeartOpacity = useRef(new Animated.Value(0)).current;
-  const hideTapHeartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isFavorite =
     optimisticFavorite !== null
@@ -98,13 +94,10 @@ export default function QuoteCard({
 
     return () => {
       subscription.remove();
-      if (hideTapHeartTimeoutRef.current) {
-        clearTimeout(hideTapHeartTimeoutRef.current);
-      }
     };
   }, [verse?.id]);
 
-  const getQuoteText = () => {
+  const getQuoteText = useCallback(() => {
     const raw =
       activeLanguage === 'hindi'
         ? (stripHindiVerseRef(verse?.hindi) || verse?.english)
@@ -113,7 +106,7 @@ export default function QuoteCard({
     // Strip all apostrophes / quote-like chars so only the outer wrapping
     // pair is visible — exactly 2 marks total.
     return raw.replace(/['"‘’“”«»`]/g, '');
-  };
+  }, [activeLanguage, verse?.english, verse?.hindi]);
 
   const handleFavorite = useCallback(async () => {
     if (!verse || !user?.id) return;
@@ -181,10 +174,6 @@ export default function QuoteCard({
   }, [verse, shareAsText, shareAsImage]);
 
   const showTapHeart = useCallback((x: number, y: number) => {
-    if (hideTapHeartTimeoutRef.current) {
-      clearTimeout(hideTapHeartTimeoutRef.current);
-    }
-
     setTapHeartPoint({ x, y, nonce: Date.now() });
     tapHeartScale.setValue(0.35);
     tapHeartOpacity.setValue(0);
@@ -293,7 +282,7 @@ export default function QuoteCard({
       onStopped: () => setIsSpeaking(false),
       onError: () => setIsSpeaking(false),
     });
-  }, [isSpeaking, activeLanguage, verse]);
+  }, [isSpeaking, activeLanguage, getQuoteText]);
 
   useEffect(() => {
     return () => { Speech.stop(); };

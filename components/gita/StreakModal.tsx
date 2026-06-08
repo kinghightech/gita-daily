@@ -3,7 +3,7 @@ import type { Theme } from '@/theme/colors';
 import DiyaStreak from '@/components/ui/DiyaStreak';
 import { Calendar, Share2, Trophy, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { TouchableOpacity, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { TouchableOpacity, Modal, ScrollView, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
     Easing,

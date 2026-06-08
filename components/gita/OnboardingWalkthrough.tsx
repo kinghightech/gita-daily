@@ -2,21 +2,21 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import {
-    Bell,
-    BookOpen,
-    ChevronLeft,
-    ChevronRight,
-    Flame,
-    GraduationCap,
-    Heart,
-    List,
-    ScrollText,
-    Shuffle,
-    User,
-    X,
+  Bell,
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  Flame,
+  GraduationCap,
+  Heart,
+  List,
+  ScrollText,
+  Shuffle,
+  User,
+  X,
 } from 'lucide-react-native';
 import { useState } from 'react';
-import { TouchableOpacity,  Modal, Pressable, ScrollView, StyleSheet, View  } from 'react-native';
+import { TouchableOpacity, Modal, ScrollView, StyleSheet, View } from 'react-native';
 
 interface OnboardingWalkthroughProps {
   onComplete: () => void;
@@ -27,7 +27,7 @@ interface Step {
   title: string;
   subtitle: string;
   description: string;
-  features?: Array<{ icon: any; label: string }>;
+  features?: { icon: any; label: string }[];
 }
 
 const STEPS: Step[] = [

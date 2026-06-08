@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState } from 'react';
-import { View, Pressable, Text, StyleSheet, FlatList } from 'react-native';
+import { View, Pressable, Text, StyleSheet } from 'react-native';
 
 const Tabs = ({ children, defaultValue, onValueChange }) => {
   const [activeTab, setActiveTab] = useState(defaultValue);
@@ -101,5 +101,4 @@ const styles = StyleSheet.create({
 });
 
 export { Tabs, TabsList, TabsTrigger, TabsContent };
-
 

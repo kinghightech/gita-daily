@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useState } from 'react';
-import { View, Pressable, StyleSheet, Animated } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
 
 const Switch = React.forwardRef(({ checked, onCheckedChange, disabled, style }, ref) => {
   const [isEnabled, setIsEnabled] = useState(checked || false);
@@ -62,5 +62,4 @@ const styles = StyleSheet.create({
 });
 
 export { Switch };
-
 

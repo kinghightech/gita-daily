@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React from 'react';
 import { Modal, View, Text, Pressable, StyleSheet } from 'react-native';
 import { X } from 'lucide-react-native';
 
@@ -120,5 +120,4 @@ export {
   DialogTitle,
   DialogDescription,
 };
-
 

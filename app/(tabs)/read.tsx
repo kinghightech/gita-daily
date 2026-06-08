@@ -77,7 +77,6 @@ export default function ReadScreen() {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [hasScrolledToBookmark, setHasScrolledToBookmark] = useState(false);
   const verseRefs = useRef<Record<number, View | null>>({});
-  const verseOffsets = useRef<Record<number, number>>({});
   const popupAnim = useRef(new Animated.Value(0)).current;
   const scrollRef = useRef<ScrollView>(null);
   const contentRef = useRef<View>(null);
@@ -98,9 +97,7 @@ export default function ReadScreen() {
         if (profile?.bookmark_chapter && profile?.bookmark_verse) {
           const bookmark = { chapter: profile.bookmark_chapter, verse: profile.bookmark_verse };
           setUserBookmark(bookmark);
-          if (currentChapter !== bookmark.chapter) {
-            setCurrentChapter(bookmark.chapter);
-          }
+          setCurrentChapter((chapter) => chapter === bookmark.chapter ? chapter : bookmark.chapter);
         }
       }
       setIsProfileLoaded(true);
@@ -131,6 +128,28 @@ export default function ReadScreen() {
     };
   }, []);
 
+  // Popup animation
+  const showPopup = useCallback(() => {
+    Animated.spring(popupAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11,
+    }).start();
+  }, [popupAnim]);
+
+  const hidePopup = useCallback(() => {
+    Animated.timing(popupAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setSelectedVerse(null);
+      setPopupTab('actions');
+      setNoteText('');
+    });
+  }, [popupAnim]);
+
   // Load chapter data
   const loadChapter = useCallback(async (num: number) => {
     setIsLoading(true);
@@ -144,7 +163,7 @@ export default function ReadScreen() {
     setChapter(chapterData);
     setVerses(versesData);
     setIsLoading(false);
-  }, []);
+  }, [hidePopup]);
 
   useEffect(() => {
     if (!isProfileLoaded) return;
@@ -268,28 +287,6 @@ export default function ReadScreen() {
 
     return groups;
   }, [verses]);
-
-  // Popup animation
-  const showPopup = useCallback(() => {
-    Animated.spring(popupAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-      tension: 65,
-      friction: 11,
-    }).start();
-  }, [popupAnim]);
-
-  const hidePopup = useCallback(() => {
-    Animated.timing(popupAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => {
-      setSelectedVerse(null);
-      setPopupTab('actions');
-      setNoteText('');
-    });
-  }, [popupAnim]);
 
   const handleVersePress = useCallback(
     (verse: GitaVerse) => {

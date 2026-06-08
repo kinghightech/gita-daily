@@ -34,9 +34,6 @@ function LotusLevel({
   const rippleAnim1 = useRef(new Animated.Value(1)).current;
   const rippleAnim2 = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(1)).current;
-  const rippleLoop1Ref = useRef<Animated.CompositeAnimation | null>(null);
-  const rippleLoop2Ref = useRef<Animated.CompositeAnimation | null>(null);
-  const glowLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     rippleAnim1.setValue(1);

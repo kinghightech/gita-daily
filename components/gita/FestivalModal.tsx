@@ -1,9 +1,9 @@
 import { GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
-import { Festival, getFestivalSymbol } from '@/lib/festivals';
+import { Festival } from '@/lib/festivals';
 import type { Theme } from '@/theme/colors';
 import { Bookmark, Calendar, Check, Info, Map, Share2, Sparkles, X } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, Share, ScrollView, StyleSheet, Text, View, DeviceEventEmitter } from 'react-native';
 import { fetchUserFestivalFavorites, toggleFavoriteFestival, FESTIVALS_UPDATED_EVENT } from '@/lib/favorites';
 import { supabase } from '@/lib/supabase';
