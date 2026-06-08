@@ -1,11 +1,13 @@
 import AnimatedSplash from '@/components/gita/AnimatedSplash';
 import DharmaCoinEarnedOverlay from '@/components/gita/DharmaCoinEarnedOverlay';
 import OnboardingFlow from '@/components/gita/OnboardingFlow';
-import { cancelDailyWisdomNotification, setupDailyWisdomNotification } from '@/lib/notifications';
+import { DAILY_WISDOM_NOTIFICATION_TIME } from '@/lib/notificationConfig';
+import { cancelDailyReminderNotifications, setupDailyReminderNotifications } from '@/lib/notifications';
 import { PREFERRED_LANGUAGE_CHANGED_EVENT } from '@/lib/preferredLanguage';
-import { completeOnboardingProfile, getCurrentAuthUserWithRetry, syncProfileFromAuthUser, updateUserStreak } from '@/lib/profile';
+import { completeOnboardingProfile, fetchProfileByUserId, getCurrentAuthUserWithRetry, syncProfileFromAuthUser, updateUserStreak } from '@/lib/profile';
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { User } from '@supabase/supabase-js';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -46,6 +48,25 @@ type OnboardingPayload = {
   emailUpdatesOptIn: boolean;
 };
 
+const syncReminderScheduleForUser = async (user: User) => {
+  const metadataReminderEnabled =
+    typeof user.user_metadata?.daily_notification_enabled === 'boolean'
+      ? user.user_metadata.daily_notification_enabled
+      : null;
+
+  const reminderEnabled =
+    metadataReminderEnabled ?? (await fetchProfileByUserId(user.id))?.daily_notification_enabled;
+
+  if (reminderEnabled === true) {
+    await setupDailyReminderNotifications();
+    return;
+  }
+
+  if (reminderEnabled === false) {
+    await cancelDailyReminderNotifications();
+  }
+};
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [isBooting, setIsBooting] = useState(true);
@@ -54,9 +75,9 @@ export default function RootLayout() {
 
   const persistReminderPreference = async (enabled: boolean) => {
     if (enabled) {
-      await setupDailyWisdomNotification();
+      await setupDailyReminderNotifications();
     } else {
-      await cancelDailyWisdomNotification();
+      await cancelDailyReminderNotifications();
     }
 
     const authenticatedUser = await getCurrentAuthUserWithRetry();
@@ -69,7 +90,7 @@ export default function RootLayout() {
       await supabase.auth.updateUser({
         data: {
           daily_notification_enabled: enabled,
-          notification_time: '08:00',
+          notification_time: DAILY_WISDOM_NOTIFICATION_TIME,
         },
       });
     } catch (error) {
@@ -81,7 +102,7 @@ export default function RootLayout() {
         id: authenticatedUser.id,
         email: authenticatedUser.email ?? null,
         daily_notification_enabled: enabled,
-        notification_time: '08:00',
+        notification_time: DAILY_WISDOM_NOTIFICATION_TIME,
       },
       { onConflict: 'id' }
     );
@@ -108,6 +129,9 @@ export default function RootLayout() {
         if (session?.user) {
           void syncProfileFromAuthUser(session.user).catch((error) => {
             console.warn('Profile sync from session metadata failed', error);
+          });
+          void syncReminderScheduleForUser(session.user).catch((error) => {
+            console.warn('Reminder notification sync failed', error);
           });
           void updateUserStreak().catch((error) => {
             console.warn('Daily streak update failed', error);
@@ -166,7 +190,7 @@ export default function RootLayout() {
           full_name: payload.fullName,
           preferred_language: payload.preferredLanguage,
           daily_notification_enabled: payload.remindersEnabled,
-          notification_time: '08:00',
+          notification_time: DAILY_WISDOM_NOTIFICATION_TIME,
           onboarding_complete: true,
           email_updates_accepted: payload.emailUpdatesOptIn,
         },
@@ -184,7 +208,7 @@ export default function RootLayout() {
         fullName: payload.fullName,
         preferredLanguage: payload.preferredLanguage,
         remindersEnabled: payload.remindersEnabled,
-        notificationTime: '08:00',
+        notificationTime: DAILY_WISDOM_NOTIFICATION_TIME,
         emailUpdatesAccepted: payload.emailUpdatesOptIn,
       });
       profileSaved = true;
@@ -196,7 +220,7 @@ export default function RootLayout() {
           email: payload.email,
           preferred_language: payload.preferredLanguage,
           daily_notification_enabled: payload.remindersEnabled,
-          notification_time: '08:00',
+          notification_time: DAILY_WISDOM_NOTIFICATION_TIME,
           onboarding_complete: true,
           email_updates_accepted: payload.emailUpdatesOptIn,
         },
@@ -211,7 +235,7 @@ export default function RootLayout() {
             email: payload.email,
             preferred_language: payload.preferredLanguage,
             daily_notification_enabled: payload.remindersEnabled,
-            notification_time: '08:00',
+            notification_time: DAILY_WISDOM_NOTIFICATION_TIME,
             Onboarding_complete: true,
             email_updates_accepted: payload.emailUpdatesOptIn,
           },
@@ -311,7 +335,7 @@ export default function RootLayout() {
           full_name: payload.fullName,
           preferred_language: payload.preferredLanguage,
           daily_notification_enabled: payload.remindersEnabled,
-          notification_time: '08:00',
+          notification_time: DAILY_WISDOM_NOTIFICATION_TIME,
           onboarding_complete: true,
         },
       }).catch((error) => {

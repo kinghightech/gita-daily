@@ -1,4 +1,5 @@
 import { awardDharmaCoins } from '@/lib/dharmaCoins';
+import { DAILY_WISDOM_NOTIFICATION_TIME } from '@/lib/notificationConfig';
 import { PREFERRED_LANGUAGE_CHANGED_EVENT } from '@/lib/preferredLanguage';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
@@ -309,7 +310,7 @@ export const completeOnboardingProfile = async (params: {
 }) => {
   const trimmedName = params.fullName.trim();
   const existingProfile = await fetchProfileByUserId(params.userId);
-  const normalizedNotificationTime = params.notificationTime ?? '08:00';
+  const normalizedNotificationTime = params.notificationTime ?? DAILY_WISDOM_NOTIFICATION_TIME;
 
   if (!existingProfile) {
     const insertPayload = {

@@ -1,8 +1,9 @@
 import { useTheme } from '@/hooks/useTheme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
 import { Tabs } from 'expo-router';
-import { BookOpen, GraduationCap, HandHeart, Home, User } from 'lucide-react-native';
+import { BookOpen, GraduationCap, Home, User } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, useColorScheme, useWindowDimensions, View } from 'react-native';
 import Reanimated, {
@@ -68,7 +69,7 @@ export default function TabLayout() {
         options={{
           title: 'Prayer',
           tabBarIcon: ({ color, focused }) => (
-            <HandHeart size={25} color={color} strokeWidth={focused ? 2.5 : 2} />
+            <MaterialCommunityIcons name="hands-pray" size={focused ? 28 : 27} color={color} />
           ),
         }}
       />

@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import LotusLoader from '@/components/ui/LotusLoader';
+import { DAILY_WISDOM_NOTIFICATION_TIME_LABEL } from '@/lib/notificationConfig';
 import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
@@ -126,7 +127,9 @@ export default function DailyQuoteSettings({ user, onSendTest, onToggle }: Daily
           <View style={styles.row}>
             <View style={styles.info}>
               <ThemedText style={styles.label}>Daily Email Notifications</ThemedText>
-              <ThemedText style={styles.subLabel}>{dailyEnabled ? 'Active — 8:00 AM local time' : 'Inactive'}</ThemedText>
+              <ThemedText style={styles.subLabel}>
+                {dailyEnabled ? `Active - ${DAILY_WISDOM_NOTIFICATION_TIME_LABEL} local time` : 'Inactive'}
+              </ThemedText>
             </View>
 
             <View style={styles.control}>
