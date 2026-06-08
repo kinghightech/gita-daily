@@ -253,7 +253,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   hiddenLayer: { display: 'none' },
   // Festivals — content clears the floating toggle.
   festScroll: { flex: 1 },
-  festContent: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 100 },
+  festContent: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 132 },
   festCard: { backgroundColor: 'rgba(15,25,50,0.65)', borderRadius: 24, padding: 24, borderWidth: 1, borderColor: 'rgba(251,191,36,0.15)' },
   festHeader: { alignItems: 'center', paddingVertical: 18 },
   festTitle: { color: GitaColors.gold, fontSize: 30, fontWeight: '800', fontFamily: Fonts.serif, textAlign: 'center', lineHeight: 36 },

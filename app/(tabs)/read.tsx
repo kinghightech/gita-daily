@@ -608,7 +608,7 @@ export default function ReadScreen() {
           style={styles.readScroll}
           contentContainerStyle={[
             styles.readScrollContent,
-            { paddingBottom: selectedVerse ? 300 : 40 }
+            { paddingBottom: selectedVerse ? 300 : 132 }
           ]}
           showsVerticalScrollIndicator={false}
         >

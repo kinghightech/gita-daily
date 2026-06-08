@@ -1,32 +1,40 @@
-import { HapticTab } from '@/components/haptic-tab';
 import { useTheme } from '@/hooks/useTheme';
 import { FontAwesome5 } from '@expo/vector-icons';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import * as Haptics from 'expo-haptics';
 import { Tabs } from 'expo-router';
 import { BookOpen, GraduationCap, Home, User } from 'lucide-react-native';
+import { Pressable, StyleSheet, Text, useColorScheme, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const VISIBLE_TABS = ['index', 'read', 'learn', 'prayer', 'profile'];
+const BAR_HORIZONTAL_MARGIN = 24;
+const BAR_MAX_WIDTH = 382;
+const BAR_PADDING = 8;
+const TAB_GAP = 4;
 
 export default function TabLayout() {
   const theme = useTheme();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme !== 'light';
+  const inactiveTint = isDark ? 'rgba(254,243,199,0.5)' : 'rgba(61,43,31,0.58)';
+
   return (
     <Tabs
+      tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         tabBarActiveTintColor: theme.primary,
-        tabBarInactiveTintColor: theme.subtext,
+        tabBarInactiveTintColor: inactiveTint,
         headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarStyle: {
-          backgroundColor: 'transparent',
-          borderTopWidth: 0,
-          position: 'absolute',
-          elevation: 0,
-        },
-        tabBarLabelStyle: { fontSize: 11 },
+        tabBarHideOnKeyboard: true,
+        tabBarLabelPosition: 'below-icon',
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <Home size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+            <Home size={25} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),
         }}
       />
@@ -36,7 +44,7 @@ export default function TabLayout() {
         options={{
           title: 'Read',
           tabBarIcon: ({ color, focused }) => (
-            <BookOpen size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+            <BookOpen size={25} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),
         }}
       />
@@ -45,7 +53,7 @@ export default function TabLayout() {
         options={{
           title: 'Learn',
           tabBarIcon: ({ color, focused }) => (
-            <GraduationCap size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+            <GraduationCap size={27} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),
         }}
       />
@@ -54,7 +62,7 @@ export default function TabLayout() {
         options={{
           title: 'Prayer',
           tabBarIcon: ({ color, focused }) => (
-            <FontAwesome5 name="praying-hands" size={22} color={color} />
+            <FontAwesome5 name="praying-hands" size={23} color={color} />
           ),
         }}
       />
@@ -63,7 +71,7 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <User size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
+            <User size={25} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),
         }}
       />
@@ -71,3 +79,126 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const theme = useTheme();
+  const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isDark = colorScheme !== 'light';
+  const visibleRoutes = state.routes.filter((route) => VISIBLE_TABS.includes(route.name));
+  const activeRouteKey = state.routes[state.index]?.key;
+  const inactiveTint = isDark ? 'rgba(254,243,199,0.58)' : 'rgba(61,43,31,0.62)';
+  const barWidth = Math.min(width - BAR_HORIZONTAL_MARGIN * 2, BAR_MAX_WIDTH);
+  const tabWidth =
+    (barWidth - BAR_PADDING * 2 - TAB_GAP * (visibleRoutes.length - 1)) / visibleRoutes.length;
+  const styles = createTabBarStyles(
+    isDark,
+    Math.max(insets.bottom - 5, 12),
+    barWidth,
+    Math.max((width - barWidth) / 2, 16),
+    tabWidth,
+  );
+
+  return (
+    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+      <View style={styles.tabBar}>
+        {visibleRoutes.map((route) => {
+          const options = descriptors[route.key]?.options ?? {};
+          const isFocused = route.key === activeRouteKey;
+          const label =
+            typeof options.tabBarLabel === 'string'
+              ? options.tabBarLabel
+              : options.title ?? route.name;
+          const color = isFocused ? theme.primary : inactiveTint;
+
+          const onPress = () => {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name, route.params);
+            }
+          };
+
+          return (
+            <Pressable
+              key={route.key}
+              accessibilityRole="button"
+              accessibilityState={isFocused ? { selected: true } : {}}
+              accessibilityLabel={options.tabBarAccessibilityLabel}
+              testID={options.tabBarButtonTestID}
+              onPress={onPress}
+              style={[styles.tabItem, isFocused && styles.tabItemActive]}
+            >
+              <View style={styles.iconSlot}>
+                {options.tabBarIcon?.({ focused: isFocused, color, size: isFocused ? 25 : 24 })}
+              </View>
+              <Text numberOfLines={1} style={[styles.tabLabel, { color }]}>
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const createTabBarStyles = (
+  isDark: boolean,
+  bottom: number,
+  width: number,
+  left: number,
+  tabWidth: number,
+) => StyleSheet.create({
+  tabBar: {
+    position: 'absolute',
+    left,
+    bottom,
+    width,
+    height: 64,
+    paddingHorizontal: BAR_PADDING,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: TAB_GAP,
+    borderWidth: 1,
+    borderTopWidth: 1,
+    borderColor: isDark ? 'rgba(251,191,36,0.18)' : 'rgba(217,119,6,0.24)',
+    borderRadius: 32,
+    overflow: 'hidden',
+    backgroundColor: isDark ? 'rgba(18,18,18,0.88)' : 'rgba(255,252,244,0.96)',
+    shadowColor: isDark ? '#000000' : '#7C4A03',
+    shadowOpacity: isDark ? 0.34 : 0.13,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
+  },
+  tabItem: {
+    width: tabWidth,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
+  },
+  tabItemActive: {
+    backgroundColor: isDark ? 'rgba(251,191,36,0.08)' : 'rgba(251,191,36,0.14)',
+  },
+  iconSlot: {
+    height: 27,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabLabel: {
+    fontSize: 9,
+    lineHeight: 12,
+    fontWeight: '800',
+  },
+});

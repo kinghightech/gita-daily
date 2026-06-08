@@ -497,7 +497,8 @@ const festivalImageStyles = StyleSheet.create({
 const createStyles = (theme: Theme) => StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingTop: 8,
+    paddingBottom: 144,
     alignItems: 'center',
   },
   container: {
