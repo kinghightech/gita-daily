@@ -1,10 +1,16 @@
 import { useTheme } from '@/hooks/useTheme';
-import { FontAwesome5 } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
 import { Tabs } from 'expo-router';
-import { BookOpen, GraduationCap, Home, User } from 'lucide-react-native';
+import { BookOpen, GraduationCap, HandHeart, Home, User } from 'lucide-react-native';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, useColorScheme, useWindowDimensions, View } from 'react-native';
+import Reanimated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const VISIBLE_TABS = ['index', 'read', 'learn', 'prayer', 'profile'];
@@ -62,7 +68,7 @@ export default function TabLayout() {
         options={{
           title: 'Prayer',
           tabBarIcon: ({ color, focused }) => (
-            <FontAwesome5 name="praying-hands" size={23} color={color} />
+            <HandHeart size={25} color={color} strokeWidth={focused ? 2.5 : 2} />
           ),
         }}
       />
@@ -88,6 +94,7 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const isDark = colorScheme !== 'light';
   const visibleRoutes = state.routes.filter((route) => VISIBLE_TABS.includes(route.name));
   const activeRouteKey = state.routes[state.index]?.key;
+  const activeIndex = Math.max(visibleRoutes.findIndex((route) => route.key === activeRouteKey), 0);
   const inactiveTint = isDark ? 'rgba(254,243,199,0.58)' : 'rgba(61,43,31,0.62)';
   const barWidth = Math.min(width - BAR_HORIZONTAL_MARGIN * 2, BAR_MAX_WIDTH);
   const tabWidth =
@@ -99,51 +106,75 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     Math.max((width - barWidth) / 2, 16),
     tabWidth,
   );
+  const reduceMotion = useReducedMotion();
+  const highlightX = useSharedValue(activeIndex * (tabWidth + TAB_GAP));
+
+  useEffect(() => {
+    const nextX = activeIndex * (tabWidth + TAB_GAP);
+
+    if (reduceMotion) {
+      highlightX.value = nextX;
+      return;
+    }
+
+    highlightX.value = withSpring(nextX, {
+      damping: 30,
+      mass: 0.62,
+      stiffness: 420,
+    });
+  }, [activeIndex, highlightX, reduceMotion, tabWidth]);
+
+  const highlightStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: highlightX.value }],
+  }));
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       <View style={styles.tabBar}>
-        {visibleRoutes.map((route) => {
-          const options = descriptors[route.key]?.options ?? {};
-          const isFocused = route.key === activeRouteKey;
-          const label =
-            typeof options.tabBarLabel === 'string'
-              ? options.tabBarLabel
-              : options.title ?? route.name;
-          const color = isFocused ? theme.primary : inactiveTint;
+        <View style={styles.tabsTrack}>
+          <Reanimated.View pointerEvents="none" style={[styles.activeHighlight, highlightStyle]} />
+          {visibleRoutes.map((route) => {
+            const options = descriptors[route.key]?.options ?? {};
+            const isFocused = route.key === activeRouteKey;
+            const label =
+              typeof options.tabBarLabel === 'string'
+                ? options.tabBarLabel
+                : options.title ?? route.name;
+            const color = isFocused ? theme.primary : inactiveTint;
 
-          const onPress = () => {
-            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
+            const onPress = () => {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
 
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name, route.params);
-            }
-          };
+              if (!isFocused && !event.defaultPrevented) {
+                navigation.navigate(route.name, route.params);
+              }
+            };
 
-          return (
-            <Pressable
-              key={route.key}
-              accessibilityRole="button"
-              accessibilityState={isFocused ? { selected: true } : {}}
-              accessibilityLabel={options.tabBarAccessibilityLabel}
-              testID={options.tabBarButtonTestID}
-              onPress={onPress}
-              style={[styles.tabItem, isFocused && styles.tabItemActive]}
-            >
-              <View style={styles.iconSlot}>
-                {options.tabBarIcon?.({ focused: isFocused, color, size: isFocused ? 25 : 24 })}
-              </View>
-              <Text numberOfLines={1} style={[styles.tabLabel, { color }]}>
-                {label}
-              </Text>
-            </Pressable>
-          );
-        })}
+            return (
+              <Pressable
+                key={route.key}
+                accessibilityRole="button"
+                accessibilityState={isFocused ? { selected: true } : {}}
+                accessibilityLabel={options.tabBarAccessibilityLabel}
+                testID={options.tabBarButtonTestID}
+                onPress={onPress}
+                style={styles.tabItem}
+              >
+                <View style={styles.iconSlot}>
+                  {options.tabBarIcon?.({ focused: isFocused, color, size: isFocused ? 25 : 24 })}
+                </View>
+                <Text numberOfLines={1} style={[styles.tabLabel, { color }]}>
+                  {label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
@@ -164,10 +195,8 @@ const createTabBarStyles = (
     height: 64,
     paddingHorizontal: BAR_PADDING,
     paddingVertical: 6,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: TAB_GAP,
     borderWidth: 1,
     borderTopWidth: 1,
     borderColor: isDark ? 'rgba(251,191,36,0.18)' : 'rgba(217,119,6,0.24)',
@@ -180,6 +209,15 @@ const createTabBarStyles = (
     shadowOffset: { width: 0, height: 8 },
     elevation: 12,
   },
+  tabsTrack: {
+    width: width - BAR_PADDING * 2,
+    height: 52,
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: TAB_GAP,
+  },
   tabItem: {
     width: tabWidth,
     height: 52,
@@ -188,7 +226,13 @@ const createTabBarStyles = (
     justifyContent: 'center',
     gap: 1,
   },
-  tabItemActive: {
+  activeHighlight: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: tabWidth,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: isDark ? 'rgba(251,191,36,0.08)' : 'rgba(251,191,36,0.14)',
   },
   iconSlot: {
