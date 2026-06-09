@@ -56,7 +56,7 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
   // Extension point for config-plugins
 
   override func sourceURL(for bridge: RCTBridge) -> URL? {
-    // needed to return the correct URL for expo-dev-client.
+    // Prefer the bridge-provided URL in debug, then fall back to the bundled app JS.
     bridge.bundleURL ?? bundleURL()
   }
 

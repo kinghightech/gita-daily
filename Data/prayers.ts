@@ -165,7 +165,7 @@ export const PRAYERS: Prayer[] = [
     nameHindi: 'महामृत्युञ्जय मन्त्र',
     duration: '3:26',
     deity: 'Lord Shiva',
-    thumbnail: require('@/assets/images/Backgroundmahamrityunjaya.png'),
+    thumbnail: require('@/assets/images/backgroundmahamrityunjaya.jpg'),
     audioFile: getAudioUrl('Maha Mrityunjaya Mantra .mp3'),
     hindiLyrics: MAHA_MRITYUNJAYA_HINDI,
     englishLyrics: MAHA_MRITYUNJAYA_ENGLISH,

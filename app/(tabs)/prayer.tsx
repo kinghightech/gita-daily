@@ -2,7 +2,8 @@ import { showAppToast } from '@/lib/appToast';
 import PrayerVerseSheet from '@/components/gita/PrayerVerseSheet';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
-import { PRAYERS } from '@/Data/prayers';
+import { PRAYERS, type Prayer } from '@/Data/prayers';
+import { useTheme } from '@/hooks/useTheme';
 import { awardDharmaCoins } from '@/lib/dharmaCoins';
 import {
     PRAYER_VERSES_UPDATED_EVENT,
@@ -24,7 +25,7 @@ import { BookmarkCheck, BookmarkPlus, Menu, Pause, Play, RotateCcw } from 'lucid
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     DeviceEventEmitter,
-    ImageBackground,
+    Image,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -32,6 +33,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Set before any player is created so audio plays through the ringer/silent switch
 void setAudioModeAsync({ playsInSilentMode: true });
@@ -53,10 +55,77 @@ const getActiveIndex = (lyrics: { timeMs: number; text: string }[], posMs: numbe
 const FORWARD_SEEK_TOLERANCE_MS = 1200;
 
 export default function PrayerScreen() {
-  const { id: prayerId = 'hanuman-chalisa', verse: verseParam } =
-    useLocalSearchParams<{ id: string; verse?: string }>();
-  const prayer = PRAYERS.find((p) => p.id === prayerId) ?? PRAYERS[0];
+  const { id: prayerId, verse: verseParam } =
+    useLocalSearchParams<{ id?: string; verse?: string }>();
+  const prayer = prayerId ? PRAYERS.find((p) => p.id === prayerId) : null;
 
+  if (!prayer) {
+    return <PrayerMenu />;
+  }
+
+  return <PrayerPlayer prayer={prayer} verseParam={verseParam} />;
+}
+
+function PrayerMenu() {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+
+  const openPrayerDetails = (prayer: Prayer) => {
+    router.push(`/prayer-detail?id=${prayer.id}`);
+  };
+
+  return (
+    <View
+      style={[
+        styles.menuScreen,
+        { backgroundColor: theme.background, paddingTop: insets.top + 8 },
+      ]}
+    >
+      <View style={styles.menuHeader}>
+        <Text style={[styles.menuTitle, { color: theme.text }]}>Prayers</Text>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={[styles.menuList, { paddingBottom: insets.bottom + 118 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {PRAYERS.map((prayer) => (
+          <TouchableOpacity
+            key={prayer.id}
+            style={[styles.menuItem, { borderBottomColor: theme.border }]}
+            activeOpacity={0.65}
+            onPress={() => openPrayerDetails(prayer)}
+          >
+            <Image source={prayer.thumbnail} style={styles.menuThumbnail} resizeMode="cover" />
+            <View style={styles.menuMeta}>
+              <Text style={[styles.menuPrayerName, { color: theme.text }]} numberOfLines={1}>
+                {prayer.name}
+              </Text>
+              <Text style={[styles.menuPrayerSub, { color: theme.subtext }]} numberOfLines={1}>
+                {prayer.duration} - {prayer.deity}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        <View style={styles.menuComingSoon}>
+          <Text style={[styles.menuComingSoonText, { color: theme.subtextMuted }]}>
+            More prayers coming soon
+          </Text>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+function PrayerPlayer({
+  prayer,
+  verseParam,
+}: {
+  prayer: Prayer;
+  verseParam?: string;
+}) {
+  const theme = useTheme();
   const [language, setLanguage] = useState<PreferredLanguage>('english');
   const [trackWidth, setTrackWidth] = useState(1);
 
@@ -331,17 +400,20 @@ export default function PrayerScreen() {
 
   return (
     <>
-    <ImageBackground source={prayer.thumbnail} style={styles.bg} resizeMode="cover">
-      <View style={styles.overlay} />
-
+    <View style={[styles.bg, { backgroundColor: theme.background }]}>
       <View style={styles.container}>
         {/* Title */}
         <View style={styles.header}>
-          <Text style={styles.titleHindi}>{prayer.nameHindi}</Text>
-          <Text style={styles.titleEn}>{prayer.name.toUpperCase()}</Text>
-          <View style={styles.hintRow}>
-            <BookmarkPlus size={11} color="rgba(251,191,36,0.6)" strokeWidth={2} />
-            <Text style={styles.hint}>Long-press a line for its meaning</Text>
+          <View style={styles.prayerArtworkFrame}>
+            <Image source={prayer.thumbnail} style={styles.prayerArtwork} resizeMode="cover" />
+          </View>
+          <View style={styles.titleGroup}>
+            <Text style={styles.titleHindi} numberOfLines={1}>{prayer.nameHindi}</Text>
+            <Text style={styles.titleEn} numberOfLines={1}>{prayer.name.toUpperCase()}</Text>
+            <View style={styles.hintRow}>
+              <BookmarkPlus size={11} color="rgba(251,191,36,0.6)" strokeWidth={2} />
+              <Text style={styles.hint}>Long-press a line for its meaning</Text>
+            </View>
           </View>
           <TouchableOpacity
             style={styles.menuBtn}
@@ -375,7 +447,11 @@ export default function PrayerScreen() {
                 onPress={() => seekToPosition(block.timeMs)}
                 onLongPress={isInstrumental ? undefined : () => openVerseSheet(index)}
                 delayLongPress={280}
-                style={[styles.lyricBlock, isHighlighted && styles.lyricBlockHighlight]}
+                style={[
+                  styles.lyricBlock,
+                  isActive && styles.lyricBlockActive,
+                  isHighlighted && styles.lyricBlockHighlight,
+                ]}
               >
                 <Text
                   style={[
@@ -451,7 +527,7 @@ export default function PrayerScreen() {
           </View>
         </View>
       </View>
-    </ImageBackground>
+    </View>
 
     <PrayerVerseSheet
       visible={sheetVisible}
@@ -467,31 +543,96 @@ export default function PrayerScreen() {
 }
 
 const styles = StyleSheet.create({
-  bg: {
+  menuScreen: {
     flex: 1,
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10,14,33,0.72)',
-  },
-  container: {
-    flex: 1,
-    paddingTop: 60,
-    paddingBottom: 132,
-  },
-  header: {
-    alignItems: 'center',
+  menuHeader: {
     paddingHorizontal: 24,
     paddingBottom: 16,
   },
+  menuTitle: {
+    fontSize: 27,
+    fontWeight: '800',
+    fontFamily: Fonts.serif,
+    letterSpacing: 0.2,
+  },
+  menuList: {
+    paddingHorizontal: 24,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  menuThumbnail: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+  },
+  menuMeta: {
+    flex: 1,
+    gap: 5,
+  },
+  menuPrayerName: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: Fonts.serif,
+  },
+  menuPrayerSub: {
+    fontSize: 14,
+  },
+  menuComingSoon: {
+    paddingTop: 32,
+    alignItems: 'center',
+  },
+  menuComingSoonText: {
+    fontSize: 13,
+    fontStyle: 'italic',
+  },
+  bg: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+    paddingTop: 56,
+    paddingBottom: 96,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+  },
+  prayerArtworkFrame: {
+    width: 58,
+    height: 58,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.22)',
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  prayerArtwork: {
+    width: '100%',
+    height: '100%',
+  },
+  titleGroup: {
+    flex: 1,
+    alignItems: 'center',
+    minWidth: 0,
+  },
   menuBtn: {
-    position: 'absolute',
-    top: 0,
-    right: 24,
+    width: 58,
+    height: 58,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
     padding: 8,
   },
   titleHindi: {
-    fontSize: 28,
+    fontSize: 25,
     color: GitaColors.gold,
     fontFamily: Fonts.serif,
     fontWeight: '700',
@@ -502,7 +643,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(251,191,36,0.5)',
     marginTop: 5,
-    letterSpacing: 4,
+    letterSpacing: 2.5,
     fontWeight: '700',
   },
   hintRow: {
@@ -521,13 +662,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingHorizontal: 18,
+    paddingTop: 6,
+    paddingBottom: 20,
   },
   lyricBlock: {
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+    paddingVertical: 18,
+    paddingHorizontal: 12,
     alignItems: 'center',
+  },
+  lyricBlockActive: {
+    backgroundColor: 'rgba(251,191,36,0.06)',
+    borderRadius: 18,
   },
   lyricBlockHighlight: {
     backgroundColor: 'rgba(251,191,36,0.14)',
@@ -540,32 +686,38 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   lyricText: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.45)',
+    fontSize: 22,
+    color: 'rgba(254,243,199,0.72)',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 36,
     fontFamily: Fonts.serif,
+    fontStyle: 'italic',
   },
   lyricActive: {
-    fontSize: 18,
+    fontSize: 27,
     color: GitaColors.gold,
     fontWeight: '700',
-    lineHeight: 30,
-    textShadowColor: 'rgba(251,191,36,0.55)',
+    lineHeight: 42,
+    textShadowColor: 'rgba(251,191,36,0.24)',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 16,
+    textShadowRadius: 4,
   },
   lyricPast: {
-    color: 'rgba(255,255,255,0.2)',
+    color: 'rgba(254,243,199,0.32)',
   },
   player: {
     marginHorizontal: 20,
-    marginTop: 10,
-    backgroundColor: 'rgba(15,23,42,0.88)',
+    marginTop: 16,
+    backgroundColor: 'rgba(18,18,18,0.88)',
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
     borderColor: 'rgba(251,191,36,0.18)',
+    shadowColor: '#000000',
+    shadowOpacity: 0.34,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
   },
   timeRow: {
     flexDirection: 'row',

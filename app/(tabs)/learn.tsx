@@ -7,7 +7,7 @@ import { fetchAllFestivals, getFestivalSymbol } from '@/lib/festivals';
 import type { Theme } from '@/theme/colors';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { Calendar, ChevronRight, Globe } from 'lucide-react-native';
+import { Calendar, ChevronDown, ChevronRight, Globe } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Reanimated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -20,6 +20,7 @@ export default function LearnScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<LearnTab>('world');
+  const [showUpcomingWorlds, setShowUpcomingWorlds] = useState(false);
   // Festivals mounts lazily on first open and then stays mounted. It must never
   // mount while hidden — its loader measures SVG paths, which throws if the
   // node is detached (display:none).
@@ -41,6 +42,7 @@ export default function LearnScreen() {
       // Mount Festivals in the same render that makes it active, so it is never
       // mounted while hidden.
       if (nextTab === 'festivals') setFestivalsMounted(true);
+      if (nextTab !== 'world') setShowUpcomingWorlds(false);
       setTab(nextTab);
       Animated.timing(pillAnim, {
         toValue: target,
@@ -50,6 +52,11 @@ export default function LearnScreen() {
       }).start();
     });
   }, [pillAnim]);
+
+  const toggleUpcomingWorlds = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowUpcomingWorlds((current) => !current);
+  };
 
   return (
     <View style={styles.root}>
@@ -102,6 +109,38 @@ export default function LearnScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {tab === 'world' && (
+        <View style={[styles.upcomingWorldsWrap, { bottom: Math.max(insets.bottom + 78, 92) }]} pointerEvents="box-none">
+          {showUpcomingWorlds && (
+            <View style={styles.upcomingWorldCard}>
+              <View style={styles.upcomingIcon}>
+                <Globe size={18} color={GitaColors.gold} />
+              </View>
+              <View style={styles.upcomingTextGroup}>
+                <Text style={styles.upcomingEyebrow}>UPCOMING WORLD</Text>
+                <Text style={styles.upcomingTitle}>World of Jainism</Text>
+                <Text style={styles.upcomingBody}>
+                  The World of Jainism is coming soon.
+                </Text>
+              </View>
+            </View>
+          )}
+
+          <TouchableOpacity
+            activeOpacity={0.78}
+            style={styles.upcomingWorldButton}
+            onPress={toggleUpcomingWorlds}
+            accessibilityLabel="Upcoming Worlds"
+          >
+            <ChevronDown
+              size={24}
+              color={GitaColors.gold}
+              style={showUpcomingWorlds ? styles.upcomingChevronOpen : undefined}
+            />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -251,6 +290,67 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   tabContentWrap: { flex: 1 },
   inactiveWorldLayer: { opacity: 0 },
   hiddenLayer: { display: 'none' },
+  upcomingWorldsWrap: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    zIndex: 45,
+    alignItems: 'center',
+    gap: 10,
+  },
+  upcomingWorldButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 40,
+    height: 28,
+  },
+  upcomingChevronOpen: {
+    transform: [{ rotate: '180deg' }],
+  },
+  upcomingWorldCard: {
+    width: '100%',
+    maxWidth: 420,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    borderRadius: 20,
+    backgroundColor: 'rgba(18,18,18,0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.18)',
+  },
+  upcomingIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(251,191,36,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.18)',
+  },
+  upcomingTextGroup: {
+    flex: 1,
+  },
+  upcomingEyebrow: {
+    color: 'rgba(251,191,36,0.55)',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
+  upcomingTitle: {
+    color: '#F4ECDA',
+    fontSize: 21,
+    fontWeight: '800',
+    fontFamily: Fonts.serif,
+    marginTop: 2,
+  },
+  upcomingBody: {
+    color: 'rgba(254,243,199,0.62)',
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
+  },
   // Festivals — content clears the floating toggle.
   festScroll: { flex: 1 },
   festContent: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 132 },

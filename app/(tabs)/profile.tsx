@@ -33,7 +33,6 @@ import {
     Heart,
     LogOut,
     Medal,
-    RotateCcw,
     Settings,
     Star,
     Trash2,
@@ -176,16 +175,6 @@ export default function ProfileScreen() {
     () => BADGE_DEFINITIONS.filter((b) => earnedBadgeIds.includes(b.id)),
     [earnedBadgeIds]
   );
-
-  const replayOnboarding = async () => {
-    try {
-      await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
-      await AsyncStorage.removeItem(ONBOARDING_PROFILE_KEY);
-      DeviceEventEmitter.emit(ONBOARDING_REPLAY_EVENT);
-    } catch {
-      Alert.alert('Error', 'Could not reset onboarding.');
-    }
-  };
 
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -429,23 +418,6 @@ export default function ProfileScreen() {
                   })}
                 </View>
               )}
-
-              <View style={styles.rowDivider} />
-
-              <Pressable
-                onPress={replayOnboarding}
-                style={({ pressed }) => [
-                  styles.settingRow,
-                  styles.settingRowLast,
-                  pressed && styles.settingRowPressed,
-                ]}
-              >
-                <View style={styles.settingLeft}>
-                  <RotateCcw size={16} color={theme.subtext} strokeWidth={1.8} />
-                  <Text style={styles.settingLabel}>Replay Onboarding</Text>
-                </View>
-                <ChevronRight size={18} color={theme.subtext} strokeWidth={1.8} />
-              </Pressable>
             </View>
           </View>
 
@@ -573,7 +545,6 @@ const createStyles = (theme: Theme) => StyleSheet.create({
 
   settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 16 },
   settingRowFirst: { paddingTop: 18 },
-  settingRowLast: { paddingBottom: 18 },
   settingRowPressed: { backgroundColor: theme.surface },
   settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   settingLabel: { color: theme.text, fontSize: 15, fontWeight: '500' },
@@ -583,7 +554,6 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   langOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 10, paddingVertical: 12, borderRadius: 10 },
   langOptionText: { color: theme.subtext, fontSize: 14, fontWeight: '500' },
   langOptionTextActive: { color: '#fbbf24', fontWeight: '600' },
-  rowDivider: { height: 1, backgroundColor: theme.border, marginHorizontal: 18 },
 
   dangerRow: { flexDirection: 'row', gap: 12, marginTop: 8, marginBottom: 12 },
   outlineBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16, borderRadius: 14, backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border },
