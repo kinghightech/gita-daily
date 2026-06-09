@@ -4,6 +4,7 @@ import { HapticButton } from '@/components/ui/HapticButton';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { refreshAndAwardUserBadges } from '@/lib/badges';
 import { awardDharmaCoins } from '@/lib/dharmaCoins';
 import {
   fetchGardenLevel,
@@ -138,6 +139,9 @@ export default function GardenLevelScreen() {
       const coinSource = isWisdomGate ? 'wisdom_gate' : 'world_level';
       void awardDharmaCoins(coinSource, `garden-${levelNumber}`).catch((err) => {
         console.warn('Garden level coin award failed', err);
+      });
+      void refreshAndAwardUserBadges().catch((err) => {
+        console.warn('Badge refresh after Garden Path level failed', err);
       });
     }
     closeLesson();

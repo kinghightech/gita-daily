@@ -4,6 +4,7 @@ import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { PRAYERS, type Prayer } from '@/Data/prayers';
 import { useTheme } from '@/hooks/useTheme';
+import { refreshAndAwardUserBadges } from '@/lib/badges';
 import { awardDharmaCoins } from '@/lib/dharmaCoins';
 import {
     PRAYER_VERSES_UPDATED_EVENT,
@@ -16,10 +17,12 @@ import {
     PREFERRED_LANGUAGE_CHANGED_EVENT,
     type PreferredLanguage,
 } from '@/lib/preferredLanguage';
+import { PRAYER_PLAYBACK_TAB_BAR_EVENT } from '@/lib/prayerPlaybackEvents';
 import { getCurrentAuthUserWithRetry } from '@/lib/profile';
 import { useFocusEffect } from '@react-navigation/native';
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { BookmarkCheck, BookmarkPlus, Menu, Pause, Play, RotateCcw } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -126,6 +129,23 @@ function PrayerPlayer({
   verseParam?: string;
 }) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const isDarkMode = theme.blurTint === 'dark';
+  const menuIconColor = isDarkMode ? 'rgba(255,255,255,0.82)' : 'rgba(26,26,26,0.76)';
+  const hintIconColor = isDarkMode ? 'rgba(251,191,36,0.62)' : 'rgba(217,119,6,0.75)';
+  const lyricColor = isDarkMode ? '#FFFFFF' : '#1A1A1A';
+  const lyricPastColor = isDarkMode ? 'rgba(255,255,255,0.48)' : 'rgba(26,26,26,0.55)';
+  const lyricActiveShadowColor = isDarkMode ? 'rgba(251,191,36,0.24)' : 'rgba(217,119,6,0.16)';
+  const lyricHighlightBg = isDarkMode ? 'rgba(251,191,36,0.14)' : 'rgba(251,191,36,0.2)';
+  const timeTextColor = isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(26,26,26,0.54)';
+  const progressTrackBg = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(26,26,26,0.12)';
+  const sideIconColor = isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(26,26,26,0.62)';
+  const playerBg = isDarkMode ? 'rgba(18,18,18,0.88)' : 'rgba(255,252,244,0.96)';
+  const playerBorder = isDarkMode ? 'rgba(251,191,36,0.18)' : 'rgba(217,119,6,0.24)';
+  const playerShadow = isDarkMode ? '#000000' : '#7C4A03';
+  const playerFadeColors: [string, string, string] = isDarkMode
+    ? ['rgba(18,18,18,0)', 'rgba(18,18,18,0.58)', theme.background]
+    : ['rgba(253,252,247,0)', 'rgba(253,252,247,0.72)', theme.background];
   const [language, setLanguage] = useState<PreferredLanguage>('english');
   const [trackWidth, setTrackWidth] = useState(1);
 
@@ -152,10 +172,19 @@ function PrayerPlayer({
   const durationMs = (status.duration ?? 0) * 1000;
   const isPlaying = status.playing;
   const isLoaded = status.isLoaded;
+  const playerBottom = isPlaying ? Math.max(insets.bottom + 20, 28) : Math.max(insets.bottom + 92, 108);
+  const lyricBottomPadding = playerBottom + 178;
 
   const lyrics = language === 'hindi' ? prayer.hindiLyrics : prayer.englishLyrics;
   const activeIndex = useMemo(() => getActiveIndex(lyrics, positionMs), [lyrics, positionMs]);
   const progress = durationMs > 0 ? positionMs / durationMs : 0;
+
+  useEffect(() => {
+    DeviceEventEmitter.emit(PRAYER_PLAYBACK_TAB_BAR_EVENT, { hidden: isPlaying });
+    return () => {
+      DeviceEventEmitter.emit(PRAYER_PLAYBACK_TAB_BAR_EVENT, { hidden: false });
+    };
+  }, [isPlaying]);
 
   // Replace audio when prayer changes (tab persists across navigations)
   useEffect(() => {
@@ -319,6 +348,9 @@ function PrayerPlayer({
       });
       if (newState && !currentlySaved) {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        void refreshAndAwardUserBadges(uid).catch((error) => {
+          console.warn('Badge refresh after prayer verse save failed:', error);
+        });
       }
     } catch (error) {
       console.warn('Toggle prayer verse save failed', error);
@@ -411,8 +443,8 @@ function PrayerPlayer({
             <Text style={styles.titleHindi} numberOfLines={1}>{prayer.nameHindi}</Text>
             <Text style={styles.titleEn} numberOfLines={1}>{prayer.name.toUpperCase()}</Text>
             <View style={styles.hintRow}>
-              <BookmarkPlus size={11} color="rgba(251,191,36,0.6)" strokeWidth={2} />
-              <Text style={styles.hint}>Long-press a line for its meaning</Text>
+              <BookmarkPlus size={11} color={hintIconColor} strokeWidth={2} />
+              <Text style={[styles.hint, { color: theme.subtext }]}>Long-press a line for its meaning</Text>
             </View>
           </View>
           <TouchableOpacity
@@ -420,7 +452,7 @@ function PrayerPlayer({
             onPress={() => router.push('/prayer-list')}
             activeOpacity={0.7}
           >
-            <Menu size={22} color="rgba(255,255,255,0.8)" />
+            <Menu size={22} color={menuIconColor} />
           </TouchableOpacity>
         </View>
 
@@ -428,7 +460,7 @@ function PrayerPlayer({
         <ScrollView
           ref={scrollRef}
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: lyricBottomPadding }]}
           showsVerticalScrollIndicator={false}
         >
           {lyrics.map((block, index) => {
@@ -449,15 +481,21 @@ function PrayerPlayer({
                 delayLongPress={280}
                 style={[
                   styles.lyricBlock,
-                  isActive && styles.lyricBlockActive,
-                  isHighlighted && styles.lyricBlockHighlight,
+                  isHighlighted && [styles.lyricBlockHighlight, { backgroundColor: lyricHighlightBg }],
                 ]}
               >
                 <Text
                   style={[
                     styles.lyricText,
-                    isPast && styles.lyricPast,
-                    isActive && styles.lyricActive,
+                    { color: lyricColor },
+                    isPast && { color: lyricPastColor },
+                    isActive && [
+                      styles.lyricActive,
+                      {
+                        color: GitaColors.gold,
+                        textShadowColor: lyricActiveShadowColor,
+                      },
+                    ],
                   ]}
                 >
                   {block.text}
@@ -472,16 +510,34 @@ function PrayerPlayer({
           })}
         </ScrollView>
 
+        <LinearGradient
+          pointerEvents="none"
+          colors={playerFadeColors}
+          locations={[0, 0.44, 1]}
+          style={[styles.playerFade, { height: playerBottom + 210 }]}
+        />
+
         {/* Player controls */}
-        <View style={styles.player}>
+        <View
+          style={[
+            styles.player,
+            {
+              bottom: playerBottom,
+              backgroundColor: playerBg,
+              borderColor: playerBorder,
+              shadowColor: playerShadow,
+              shadowOpacity: isDarkMode ? 0.34 : 0.13,
+            },
+          ]}
+        >
           <View style={styles.timeRow}>
-            <Text style={styles.timeText}>{isLoaded ? formatTime(positionMs) : '–:––'}</Text>
-            <Text style={styles.timeText}>{isLoaded ? formatTime(durationMs) : 'Loading…'}</Text>
+            <Text style={[styles.timeText, { color: timeTextColor }]}>{isLoaded ? formatTime(positionMs) : '–:––'}</Text>
+            <Text style={[styles.timeText, { color: timeTextColor }]}>{isLoaded ? formatTime(durationMs) : 'Loading…'}</Text>
           </View>
 
           {/* Progress bar — tap to seek */}
           <View
-            style={styles.progressTrack}
+            style={[styles.progressTrack, { backgroundColor: progressTrackBg }]}
             onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
             onStartShouldSetResponder={() => isLoaded}
             onResponderGrant={(e) => onProgressPress(e.nativeEvent.locationX)}
@@ -501,7 +557,7 @@ function PrayerPlayer({
               style={[styles.sideBtn, !isLoaded && { opacity: 0.3 }]}
               disabled={!isLoaded}
             >
-              <RotateCcw size={22} color="rgba(255,255,255,0.6)" />
+              <RotateCcw size={22} color={sideIconColor} />
             </TouchableOpacity>
 
             {isLoaded ? (
@@ -597,7 +653,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 56,
-    paddingBottom: 96,
   },
   header: {
     flexDirection: 'row',
@@ -672,11 +727,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   lyricBlockActive: {
-    backgroundColor: 'rgba(251,191,36,0.06)',
     borderRadius: 18,
   },
   lyricBlockHighlight: {
-    backgroundColor: 'rgba(251,191,36,0.14)',
     borderRadius: 14,
   },
   savedDot: {
@@ -687,7 +740,6 @@ const styles = StyleSheet.create({
   },
   lyricText: {
     fontSize: 22,
-    color: 'rgba(254,243,199,0.72)',
     textAlign: 'center',
     lineHeight: 36,
     fontFamily: Fonts.serif,
@@ -695,29 +747,29 @@ const styles = StyleSheet.create({
   },
   lyricActive: {
     fontSize: 27,
-    color: GitaColors.gold,
     fontWeight: '700',
     lineHeight: 42,
-    textShadowColor: 'rgba(251,191,36,0.24)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 4,
   },
-  lyricPast: {
-    color: 'rgba(254,243,199,0.32)',
-  },
   player: {
-    marginHorizontal: 20,
-    marginTop: 16,
-    backgroundColor: 'rgba(18,18,18,0.88)',
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    zIndex: 20,
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.18)',
-    shadowColor: '#000000',
-    shadowOpacity: 0.34,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 12,
+  },
+  playerFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 10,
   },
   timeRow: {
     flexDirection: 'row',
@@ -725,13 +777,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   timeText: {
-    color: 'rgba(255,255,255,0.4)',
     fontSize: 12,
     fontWeight: '600',
   },
   progressTrack: {
     height: 4,
-    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 2,
     overflow: 'hidden',
   },

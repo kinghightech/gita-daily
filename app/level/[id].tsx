@@ -3,6 +3,7 @@ import LotusLoader from '@/components/ui/LotusLoader';
 import * as Haptics from 'expo-haptics';
 import { GitaColors, Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { refreshAndAwardUserBadges } from '@/lib/badges';
 import { awardDharmaCoins } from '@/lib/dharmaCoins';
 import {
   fetchLotusLevel,
@@ -190,6 +191,9 @@ export default function LevelScreen() {
       // The RPC enforces both the per-level lifetime dedupe and the 3-levels-per-day cap.
       void awardDharmaCoins('lotus_level', String(levelId)).catch((error) => {
         console.warn('Lotus level coin award failed', error);
+      });
+      void refreshAndAwardUserBadges().catch((error) => {
+        console.warn('Badge refresh after Lotus level failed', error);
       });
     }
     router.back();

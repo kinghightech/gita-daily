@@ -1,16 +1,22 @@
 import { useTheme } from '@/hooks/useTheme';
+import {
+  PRAYER_PLAYBACK_TAB_BAR_EVENT,
+  type PrayerPlaybackTabBarPayload,
+} from '@/lib/prayerPlaybackEvents';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
 import { Tabs } from 'expo-router';
 import { BookOpen, GraduationCap, Home, User } from 'lucide-react-native';
-import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, useColorScheme, useWindowDimensions, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { DeviceEventEmitter, Pressable, StyleSheet, Text, useColorScheme, useWindowDimensions, View } from 'react-native';
 import Reanimated, {
+  Easing,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -95,6 +101,7 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const isDark = colorScheme !== 'light';
   const visibleRoutes = state.routes.filter((route) => VISIBLE_TABS.includes(route.name));
   const activeRouteKey = state.routes[state.index]?.key;
+  const activeRouteName = state.routes[state.index]?.name;
   const activeIndex = Math.max(visibleRoutes.findIndex((route) => route.key === activeRouteKey), 0);
   const inactiveTint = isDark ? 'rgba(254,243,199,0.58)' : 'rgba(61,43,31,0.62)';
   const barWidth = Math.min(width - BAR_HORIZONTAL_MARGIN * 2, BAR_MAX_WIDTH);
@@ -108,7 +115,28 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     tabWidth,
   );
   const reduceMotion = useReducedMotion();
+  const [hideForPrayerPlayback, setHideForPrayerPlayback] = useState(false);
+  const shouldHideTabBar = activeRouteName === 'prayer' && hideForPrayerPlayback;
   const highlightX = useSharedValue(activeIndex * (tabWidth + TAB_GAP));
+  const tabBarOffset = useSharedValue(0);
+  const tabBarOpacity = useSharedValue(1);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(
+      PRAYER_PLAYBACK_TAB_BAR_EVENT,
+      (payload: PrayerPlaybackTabBarPayload) => {
+        setHideForPrayerPlayback(payload.hidden === true);
+      },
+    );
+
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
+    if (activeRouteName !== 'prayer' && hideForPrayerPlayback) {
+      setHideForPrayerPlayback(false);
+    }
+  }, [activeRouteName, hideForPrayerPlayback]);
 
   useEffect(() => {
     const nextX = activeIndex * (tabWidth + TAB_GAP);
@@ -125,13 +153,40 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     });
   }, [activeIndex, highlightX, reduceMotion, tabWidth]);
 
+  useEffect(() => {
+    const hiddenOffset = 96 + insets.bottom;
+
+    if (reduceMotion) {
+      tabBarOffset.value = shouldHideTabBar ? hiddenOffset : 0;
+      tabBarOpacity.value = shouldHideTabBar ? 0 : 1;
+      return;
+    }
+
+    tabBarOffset.value = withTiming(shouldHideTabBar ? hiddenOffset : 0, {
+      duration: shouldHideTabBar ? 240 : 280,
+      easing: Easing.out(Easing.cubic),
+    });
+    tabBarOpacity.value = withTiming(shouldHideTabBar ? 0 : 1, {
+      duration: shouldHideTabBar ? 180 : 220,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [insets.bottom, reduceMotion, shouldHideTabBar, tabBarOffset, tabBarOpacity]);
+
   const highlightStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: highlightX.value }],
   }));
 
+  const tabBarAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: tabBarOpacity.value,
+    transform: [{ translateY: tabBarOffset.value }],
+  }));
+
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-      <View style={styles.tabBar}>
+      <Reanimated.View
+        pointerEvents={shouldHideTabBar ? 'none' : 'auto'}
+        style={[styles.tabBar, tabBarAnimatedStyle]}
+      >
         <View style={styles.tabsTrack}>
           <Reanimated.View pointerEvents="none" style={[styles.activeHighlight, highlightStyle]} />
           {visibleRoutes.map((route) => {
@@ -176,7 +231,7 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             );
           })}
         </View>
-      </View>
+      </Reanimated.View>
     </View>
   );
 }

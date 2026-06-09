@@ -4,6 +4,7 @@ import { HapticButton } from '@/components/ui/HapticButton';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { refreshAndAwardUserBadges } from '@/lib/badges';
 import { awardDharmaCoins } from '@/lib/dharmaCoins';
 import {
   countQuestionBlocks,
@@ -140,6 +141,9 @@ export default function WorldLevelScreen() {
           console.warn('Marking wisdom gate as passed failed', err);
         });
       }
+      void refreshAndAwardUserBadges().catch((err) => {
+        console.warn('Badge refresh after Lotus Path level failed', err);
+      });
     }
     closeLesson();
   }, [closeLesson, correctCount, isWisdomGate, levelNumber, questionTotal, threshold]);

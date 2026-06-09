@@ -1,5 +1,6 @@
 import { useTheme } from '@/hooks/useTheme';
 import { GitaColors } from '@/constants/theme';
+import { refreshAndAwardUserBadges } from '@/lib/badges';
 import { fetchFestivalById, getFestivalSymbol, type Festival } from '@/lib/festivals';
 import { fetchUserFestivalFavorites, toggleFavoriteFestival, FESTIVALS_UPDATED_EVENT } from '@/lib/favorites';
 import { getFestivalImageUrl } from '@/lib/storageAssets';
@@ -66,6 +67,11 @@ export default function FestivalDetailScreen() {
     setIsFavorite(next);
     const ok = await toggleFavoriteFestival(userId, festival.id, isFavorite);
     if (!ok) setIsFavorite(isFavorite);
+    if (ok && next) {
+      void refreshAndAwardUserBadges(userId).catch((error) => {
+        console.warn('Badge refresh after festival favorite failed:', error);
+      });
+    }
   }, [userId, festival, isFavorite]);
 
   const handleShare = useCallback(async () => {

@@ -24,6 +24,10 @@ export type ProfileRow = {
   previous_login_date: string | null;
   onboarding_complete_legacy: boolean | null;
   current_lotus_level: number;
+  current_world_lotus_level: number;
+  current_mountain_path_level: number;
+  current_garden_path_level: number;
+  current_forest_path_level: number;
   shares_count: number;
   bookmark_chapter: number | null;
   bookmark_verse: number | null;
@@ -46,6 +50,10 @@ type RawProfileRow = {
   current_login_date?: string | null;
   previous_login_date?: string | null;
   current_lotus_level?: number;
+  current_world_lotus_level?: number;
+  current_mountain_path_level?: number;
+  current_garden_path_level?: number;
+  current_forest_path_level?: number;
   shares_count?: number;
   bookmark_chapter?: number | null;
   bookmark_verse?: number | null;
@@ -216,6 +224,10 @@ export const fetchProfileByUserId = async (userId: string): Promise<ProfileRow |
       previous_login_date: row.previous_login_date ?? null,
       onboarding_complete_legacy: row.Onboarding_complete ?? null,
       current_lotus_level: row.current_lotus_level ?? 1,
+      current_world_lotus_level: row.current_world_lotus_level ?? 1,
+      current_mountain_path_level: row.current_mountain_path_level ?? 1,
+      current_garden_path_level: row.current_garden_path_level ?? 1,
+      current_forest_path_level: row.current_forest_path_level ?? 1,
       shares_count: row.shares_count ?? 0,
       bookmark_chapter: row.bookmark_chapter ?? null,
       bookmark_verse: row.bookmark_verse ?? null,
@@ -224,7 +236,7 @@ export const fetchProfileByUserId = async (userId: string): Promise<ProfileRow |
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, full_name, email, preferred_language, daily_notification_enabled, notification_time, onboarding_complete, Onboarding_complete, profile_picture, streak_count, longest_streak, last_opened_at, created_at, current_login_date, previous_login_date, current_lotus_level, shares_count, bookmark_chapter, bookmark_verse')
+    .select('id, full_name, email, preferred_language, daily_notification_enabled, notification_time, onboarding_complete, Onboarding_complete, profile_picture, streak_count, longest_streak, last_opened_at, created_at, current_login_date, previous_login_date, current_lotus_level, current_world_lotus_level, current_mountain_path_level, current_garden_path_level, current_forest_path_level, shares_count, bookmark_chapter, bookmark_verse')
     .eq('id', userId)
     .maybeSingle();
 

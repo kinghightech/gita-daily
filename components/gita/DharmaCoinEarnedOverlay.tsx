@@ -1,3 +1,4 @@
+import { useTheme } from '@/hooks/useTheme';
 import { APP_TOAST_EVENT, type AppToastPayload } from '@/lib/appToast';
 import {
   DHARMA_COINS_EARNED_EVENT,
@@ -21,6 +22,8 @@ type MessageToastState = AppToastPayload & { id: number; kind: 'message' };
 type ToastState = CoinToastState | MessageToastState | null;
 
 export default function DharmaCoinEarnedOverlay() {
+  const theme = useTheme();
+  const isDarkMode = theme.blurTint === 'dark';
   const [toast, setToast] = useState<ToastState>(null);
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(12);
@@ -82,11 +85,27 @@ export default function DharmaCoinEarnedOverlay() {
   if (!toast) return null;
 
   const showMultiplier = toast.kind === 'coins' && toast.multiplier > 1;
+  const toastBg = isDarkMode ? 'rgba(15,23,42,0.92)' : '#FFFFFF';
+  const toastBorder = isDarkMode ? 'rgba(251,191,36,0.55)' : 'rgba(217,119,6,0.3)';
+  const toastShadow = isDarkMode ? '#FBBF24' : '#92400E';
+  const messageTextColor = isDarkMode ? 'rgba(255,255,255,0.82)' : 'rgba(26,26,26,0.68)';
+  const chipBg = isDarkMode ? 'rgba(251,191,36,0.2)' : 'rgba(251,191,36,0.16)';
 
   return (
     <View pointerEvents="none" style={styles.overlay}>
       <SafeAreaView edges={['top']} style={styles.safe}>
-        <Animated.View style={[styles.toast, animatedStyle]}>
+        <Animated.View
+          style={[
+            styles.toast,
+            {
+              backgroundColor: toastBg,
+              borderColor: toastBorder,
+              shadowColor: toastShadow,
+              shadowOpacity: isDarkMode ? 0.35 : 0.16,
+            },
+            animatedStyle,
+          ]}
+        >
           {toast.kind === 'coins' ? (
             <>
               <Image
@@ -99,11 +118,11 @@ export default function DharmaCoinEarnedOverlay() {
           ) : (
             <View style={styles.messageWrap}>
               <Text style={styles.messageTitle}>{toast.title}</Text>
-              {toast.message ? <Text style={styles.messageText}>{toast.message}</Text> : null}
+              {toast.message ? <Text style={[styles.messageText, { color: messageTextColor }]}>{toast.message}</Text> : null}
             </View>
           )}
           {showMultiplier && (
-            <View style={styles.multiplierChip}>
+            <View style={[styles.multiplierChip, { backgroundColor: chipBg }]}>
               <Text style={styles.multiplierText}>{toast.multiplier.toFixed(2)}x</Text>
             </View>
           )}
@@ -131,12 +150,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 999,
-    backgroundColor: 'rgba(15,23,42,0.92)',
     borderWidth: 1,
-    borderColor: 'rgba(251,191,36,0.55)',
-    shadowColor: '#FBBF24',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
     shadowRadius: 14,
     elevation: 12,
     maxWidth: '92%',
@@ -161,7 +176,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   messageText: {
-    color: 'rgba(255,255,255,0.82)',
     fontSize: 12,
     lineHeight: 17,
     marginTop: 2,
@@ -171,7 +185,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
-    backgroundColor: 'rgba(251,191,36,0.2)',
     borderWidth: 1,
     borderColor: 'rgba(251,191,36,0.45)',
   },

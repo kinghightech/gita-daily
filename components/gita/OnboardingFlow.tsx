@@ -3,6 +3,7 @@ import DharmaCoinEarnMethods from '@/components/gita/DharmaCoinEarnMethods';
 import DiyaStreak from '@/components/ui/DiyaStreak';
 import { HapticButton } from '@/components/ui/HapticButton';
 import { Fonts } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import { ONBOARDING_VIDEO_URL } from '@/lib/storageAssets';
 import { Image } from 'expo-image';
 import { useVideoPlayer } from 'expo-video';
@@ -27,7 +28,7 @@ import {
     Volume2
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 
 type AuthChoice = 'email';
@@ -371,6 +372,9 @@ function StreakCelebration() {
 
 export default function OnboardingFlow({ onComplete, onReminderPreferenceChange }: OnboardingFlowProps) {
   const onboardingScrollRef = useRef<ScrollView>(null);
+  const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
+  const theme = useTheme();
+  const isLightMode = theme.blurTint === 'light';
   const [step, setStep] = useState(0);
   const [previousStep, setPreviousStep] = useState<number | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -409,6 +413,18 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     };
     player.play();
   });
+  const dailyVerseImageSize = useMemo(() => {
+    const imageRatio = 1039 / 1294;
+    const maxWidth = viewportWidth >= 768 ? 360 : 290;
+    const maxWidthByScreen = Math.max(240, Math.min(viewportWidth - 72, maxWidth));
+    const maxHeightByScreen = Math.max(300, viewportHeight * (viewportWidth >= 768 ? 0.44 : 0.42));
+    const width = Math.max(240, Math.min(maxWidthByScreen, maxHeightByScreen * imageRatio));
+
+    return {
+      width,
+      height: width / imageRatio,
+    };
+  }, [viewportHeight, viewportWidth]);
 
   const outgoingPageAnimatedStyle = useAnimatedStyle(() => ({
     opacity: 1 - pageTransition.value,
@@ -690,11 +706,11 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
               Each day opens with your Verse of the Day — a fresh piece of Gita wisdom.
             </Text>
 
-            <View style={styles.verseImageFrame}>
+            <View style={[styles.verseImageFrame, dailyVerseImageSize]}>
               <Image
                 source={require('@/assets/images/onboarding.jpg')}
                 style={styles.verseImage}
-                contentFit="cover"
+                contentFit="contain"
                 transition={200}
                 recyclingKey="onboarding-verse"
               />
@@ -894,6 +910,9 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     }
 
     if (currentStep === 9) {
+      const reminderCardStyle = isLightMode ? styles.choiceCardLight : styles.choiceCard;
+      const reminderTextStyle = isLightMode ? styles.choiceTextLight : styles.choiceText;
+
       return (
         <>
           <Text style={styles.title}>Would you want daily reminders?</Text>
@@ -901,23 +920,23 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
 
           <View style={styles.choiceList}>
             <HapticButton
-              style={[styles.choiceCard, reminderChoice === 'yes' && styles.choiceCardSelected]}
+              style={[reminderCardStyle, reminderChoice === 'yes' && styles.choiceCardSelected]}
               onPress={() => {
                 void handleReminderChoice('yes');
               }}
             >
               <Bell size={18} color={reminderChoice === 'yes' ? '#0f172a' : '#fbbf24'} />
-              <Text style={[styles.choiceText, reminderChoice === 'yes' && styles.choiceTextSelected]}>Yes, remind me</Text>
+              <Text style={[reminderTextStyle, reminderChoice === 'yes' && styles.choiceTextSelected]}>Yes, remind me</Text>
             </HapticButton>
 
             <HapticButton
-              style={[styles.choiceCard, reminderChoice === 'no' && styles.choiceCardSelected]}
+              style={[reminderCardStyle, reminderChoice === 'no' && styles.choiceCardSelected]}
               onPress={() => {
                 void handleReminderChoice('no');
               }}
             >
               <Shield size={18} color={reminderChoice === 'no' ? '#0f172a' : '#fbbf24'} />
-              <Text style={[styles.choiceText, reminderChoice === 'no' && styles.choiceTextSelected]}>No, maybe later</Text>
+              <Text style={[reminderTextStyle, reminderChoice === 'no' && styles.choiceTextSelected]}>No, maybe later</Text>
             </HapticButton>
           </View>
         </>
@@ -1371,9 +1390,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   verseImageFrame: {
-    width: '74%',
-    maxWidth: 280,
-    aspectRatio: 1039 / 1294,
     alignSelf: 'center',
     borderRadius: 22,
     overflow: 'hidden',
@@ -1915,12 +1931,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  choiceCardLight: {
+    borderWidth: 1,
+    borderColor: 'rgba(217,119,6,0.22)',
+    backgroundColor: 'rgba(255,251,240,0.92)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   choiceCardSelected: {
     backgroundColor: '#fbbf24',
     borderColor: '#fcd34d',
   },
   choiceText: {
     color: '#fef3c7',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  choiceTextLight: {
+    color: '#1A1A1A',
     fontSize: 15,
     fontWeight: '600',
   },

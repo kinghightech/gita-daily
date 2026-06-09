@@ -4,6 +4,7 @@ import { HapticButton } from '@/components/ui/HapticButton';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { refreshAndAwardUserBadges } from '@/lib/badges';
 import { awardDharmaCoins } from '@/lib/dharmaCoins';
 import {
   fetchMountainLevel,
@@ -139,6 +140,9 @@ export default function MountainLevelScreen() {
       const coinSource = isWisdomGate ? 'wisdom_gate' : 'world_level';
       void awardDharmaCoins(coinSource, `mountain-${levelNumber}`).catch((err) => {
         console.warn('Mountain level coin award failed', err);
+      });
+      void refreshAndAwardUserBadges().catch((err) => {
+        console.warn('Badge refresh after Mountain Path level failed', err);
       });
     }
     closeLesson();

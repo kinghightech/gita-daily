@@ -1,10 +1,10 @@
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import LotusLoader from '@/components/ui/LotusLoader';
+import { useTheme } from '@/hooks/useTheme';
 import { DAILY_WISDOM_NOTIFICATION_TIME_LABEL } from '@/lib/notificationConfig';
 import { supabase } from '@/lib/supabase';
-import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
+import type { Theme } from '@/theme/colors';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 
 interface DailyQuoteSettingsProps {
   user: { id: string; full_name?: string; email?: string } | null;
@@ -14,6 +14,9 @@ interface DailyQuoteSettingsProps {
 }
 
 export default function DailyQuoteSettings({ user, onSendTest, onToggle }: DailyQuoteSettingsProps) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const isDarkMode = theme.blurTint === 'dark';
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSendingTest, setIsSendingTest] = useState(false);
@@ -112,24 +115,24 @@ export default function DailyQuoteSettings({ user, onSendTest, onToggle }: Daily
   if (!user) return null;
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.container}>
       {isLoading ? (
         <View style={styles.loadingRow}>
           <LotusLoader size={30} color="#D4AF37" strokeWidth={2.4} duration={1100} />
         </View>
       ) : (
         <>
-          <ThemedText style={styles.title}>Daily Divine Wisdom</ThemedText>
-          <ThemedText style={styles.description}>
+          <Text style={styles.title}>Daily Divine Wisdom</Text>
+          <Text style={styles.description}>
             Receive a verse from the Bhagavad Gita in your inbox. Tap to enable daily email reminders.
-          </ThemedText>
+          </Text>
 
           <View style={styles.row}>
             <View style={styles.info}>
-              <ThemedText style={styles.label}>Daily Email Notifications</ThemedText>
-              <ThemedText style={styles.subLabel}>
+              <Text style={styles.label}>Daily Email Notifications</Text>
+              <Text style={styles.subLabel}>
                 {dailyEnabled ? `Active - ${DAILY_WISDOM_NOTIFICATION_TIME_LABEL} local time` : 'Inactive'}
-              </ThemedText>
+              </Text>
             </View>
 
             <View style={styles.control}>
@@ -137,8 +140,11 @@ export default function DailyQuoteSettings({ user, onSendTest, onToggle }: Daily
                 value={dailyEnabled}
                 onValueChange={toggleDailyQuote}
                 disabled={isSaving}
-                trackColor={{ true: '#f59e0b', false: '#374151' }}
-                thumbColor={dailyEnabled ? '#fef3c7' : '#94a3b8'}
+                trackColor={{
+                  true: '#f59e0b',
+                  false: isDarkMode ? '#374151' : 'rgba(26,26,26,0.18)',
+                }}
+                thumbColor={dailyEnabled ? '#fef3c7' : isDarkMode ? '#94a3b8' : '#FFFFFF'}
               />
             </View>
           </View>
@@ -148,24 +154,24 @@ export default function DailyQuoteSettings({ user, onSendTest, onToggle }: Daily
               {isSendingTest ? (
                 <LotusLoader size={18} color="#111827" strokeWidth={2.2} duration={1000} />
               ) : (
-                <ThemedText style={styles.actionText}>Send Quote Now</ThemedText>
+                <Text style={styles.actionText}>Send Quote Now</Text>
               )}
             </TouchableOpacity>
           )}
         </>
       )}
-    </ThemedView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     borderRadius: 16,
     padding: 16,
     marginVertical: 8,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)'.replace(/'/g, ''),
+    backgroundColor: theme.surface,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.12)'.replace(/'/g, ''),
+    borderColor: theme.border,
   },
   loadingRow: {
     paddingVertical: 12,
@@ -174,12 +180,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#fcd34d',
+    color: theme.goldText,
     marginBottom: 6,
   },
   description: {
     fontSize: 13,
-    color: '#fbbf24',
+    color: theme.subtext,
     marginBottom: 12,
   },
   row: {
@@ -188,9 +194,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 12,
     borderRadius: 12,
-    backgroundColor: 'rgba(30, 41, 59, 0.2)'.replace(/'/g, ''),
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: 'rgba(167, 139, 49, 0.08)'.replace(/'/g, ''),
+    borderColor: theme.border,
   },
   info: {
     flex: 1,
@@ -198,11 +204,11 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#fcd34d',
+    color: theme.text,
   },
   subLabel: {
     fontSize: 12,
-    color: '#fbbf24',
+    color: theme.subtext,
   },
   control: {
     marginLeft: 12,

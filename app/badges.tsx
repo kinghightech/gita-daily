@@ -1,7 +1,7 @@
 import { Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import type { Theme } from '@/theme/colors';
-import { BADGE_DEFINITIONS, BADGE_ICONS, fetchUserBadges, type Badge } from '@/lib/badges';
+import { BADGE_DEFINITIONS, BADGE_ICONS, refreshAndAwardUserBadges, type Badge } from '@/lib/badges';
 import { fetchCurrentUserAndProfile } from '@/lib/profile';
 import { BlurView } from 'expo-blur';
 import { Stack, useRouter } from 'expo-router';
@@ -39,7 +39,7 @@ export default function BadgesScreen() {
     const load = async () => {
       const { user } = await fetchCurrentUserAndProfile();
       if (user) {
-        const ids = await fetchUserBadges(user.id);
+        const ids = await refreshAndAwardUserBadges(user.id);
         setEarnedBadgeIds(ids);
       }
       setLoading(false);

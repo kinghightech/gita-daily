@@ -1,5 +1,6 @@
 import { GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { refreshAndAwardUserBadges } from '@/lib/badges';
 import { Festival } from '@/lib/festivals';
 import type { Theme } from '@/theme/colors';
 import { Bookmark, Calendar, Check, Info, Map, Share2, Sparkles, X } from 'lucide-react-native';
@@ -47,6 +48,11 @@ export default function FestivalModal({ festival, onClose }: FestivalModalProps)
     setIsFavorite(nextState);
     const success = await toggleFavoriteFestival(userId, festival.id, isFavorite);
     if (!success) setIsFavorite(isFavorite);
+    if (success && nextState) {
+      void refreshAndAwardUserBadges(userId).catch((error) => {
+        console.warn('Badge refresh after festival favorite failed:', error);
+      });
+    }
   };
 
   const closeModal = useCallback(() => {

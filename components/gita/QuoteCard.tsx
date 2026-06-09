@@ -1,5 +1,6 @@
 import { Fonts } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
+import { refreshAndAwardUserBadges } from '@/lib/badges';
 import { FAVORITES_UPDATED_EVENT, toggleFavoriteVerse } from '@/lib/favorites';
 import { incrementSharesCount } from '@/lib/profile';
 import { VERSE_BACKGROUND_URLS } from '@/lib/storageAssets';
@@ -121,6 +122,11 @@ export default function QuoteCard({
       if (onFavoriteToggle) {
         onFavoriteToggle(verse.id, successStatus);
       }
+      if (successStatus && !currentlyLiked) {
+        void refreshAndAwardUserBadges(user.id).catch((error) => {
+          console.warn('Badge refresh after favorite failed:', error);
+        });
+      }
     } catch (error) {
       setOptimisticFavorite(currentlyLiked);
       console.error('Favorite toggle failed:', error);
@@ -142,7 +148,12 @@ export default function QuoteCard({
     if (!verse) return;
     try {
       await Share.share({ title: 'Gita Daily Wisdom', message: buildShareText() });
-      if (user?.id) await incrementSharesCount(user.id);
+      if (user?.id) {
+        await incrementSharesCount(user.id);
+        void refreshAndAwardUserBadges(user.id).catch((error) => {
+          console.warn('Badge refresh after share failed:', error);
+        });
+      }
     } catch {}
   }, [verse, user, buildShareText]);
 
@@ -156,7 +167,12 @@ export default function QuoteCard({
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
         await Sharing.shareAsync(uri, { mimeType: 'image/jpeg', dialogTitle: 'Share Verse' });
-        if (user?.id) await incrementSharesCount(user.id);
+        if (user?.id) {
+          await incrementSharesCount(user.id);
+          void refreshAndAwardUserBadges(user.id).catch((error) => {
+            console.warn('Badge refresh after share failed:', error);
+          });
+        }
       }
     } catch {
       setIsCapturing(false);

@@ -4,6 +4,7 @@ import { HapticButton } from '@/components/ui/HapticButton';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { refreshAndAwardUserBadges } from '@/lib/badges';
 import { awardDharmaCoins } from '@/lib/dharmaCoins';
 import {
   fetchForestLevel,
@@ -138,6 +139,9 @@ export default function ForestLevelScreen() {
       const coinSource = isWisdomGate ? 'wisdom_gate' : 'world_level';
       void awardDharmaCoins(coinSource, `forest-${levelNumber}`).catch((err) => {
         console.warn('Forest level coin award failed', err);
+      });
+      void refreshAndAwardUserBadges().catch((err) => {
+        console.warn('Badge refresh after Forest Path level failed', err);
       });
     }
     closeLesson();

@@ -1,6 +1,7 @@
 import { GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { showAppToast } from '@/lib/appToast';
+import { refreshAndAwardUserBadges } from '@/lib/badges';
 import {
   SKIP_LEVEL_COST,
   fetchDharmaCoinBalance,
@@ -81,6 +82,9 @@ export default function SkipLevelButton({ path, level, onSkipped }: Props) {
       setOpen(false);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       showAppToast({ title: 'Level skipped', message: `−${result.cost} Dharma Coins` });
+      void refreshAndAwardUserBadges().catch((error) => {
+        console.warn('Badge refresh after level skip failed', error);
+      });
       onSkipped();
       return;
     }

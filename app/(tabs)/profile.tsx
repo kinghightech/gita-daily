@@ -1,7 +1,7 @@
 import DharmaCoinPill from '@/components/gita/DharmaCoinPill';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { useTheme } from '@/hooks/useTheme';
-import { BADGE_DEFINITIONS, BADGE_ICONS, UserStats, checkAndAwardBadges, fetchUserBadges } from '@/lib/badges';
+import { BADGE_DEFINITIONS, BADGE_ICONS, refreshAndAwardUserBadges } from '@/lib/badges';
 import {
     FAVORITES_UPDATED_EVENT,
     FESTIVALS_UPDATED_EVENT,
@@ -105,10 +105,10 @@ export default function ProfileScreen() {
 
       const preferredLanguage = await loadPreferredLanguageForCurrentUser();
 
-      const [favIds, favFestIds, medalIds, notes, prayerVerses] = await Promise.all([
+      const [favIds, favFestIds, finalBadgeIds, notes, prayerVerses] = await Promise.all([
         fetchUserFavorites(user.id),
         fetchUserFestivalFavorites(user.id),
-        fetchUserBadges(user.id),
+        refreshAndAwardUserBadges(user.id),
         fetchUserNotes(user.id),
         fetchUserPrayerVerses(user.id),
       ]);
@@ -118,16 +118,6 @@ export default function ProfileScreen() {
       setPrayerVersesCount(prayerVerses.length);
       setNotesCount(notes.length);
 
-      const stats: UserStats = {
-        streakCount: currentProfile?.streak_count ?? 0,
-        levelCount: currentProfile?.current_lotus_level ?? 1,
-        favQuotesCount: favIds.length,
-        favFestivalsCount: favFestIds.length,
-        lessonsDoneCount: Math.max(0, (currentProfile?.current_lotus_level ?? 1) - 1),
-        notesCount: notes.length,
-        sharesCount: currentProfile?.shares_count ?? 0,
-      };
-      const finalBadgeIds = await checkAndAwardBadges(user.id, stats, medalIds);
       setEarnedBadgeIds(finalBadgeIds);
 
       setProfile({

@@ -1,6 +1,7 @@
 import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { refreshAndAwardUserBadges } from '@/lib/badges';
 import { FAVORITES_UPDATED_EVENT, fetchUserFavorites, toggleFavoriteVerse } from '@/lib/favorites';
 import { saveNote } from '@/lib/notes';
 import { loadPreferredLanguageForCurrentUser, PREFERRED_LANGUAGE_CHANGED_EVENT } from '@/lib/preferredLanguage';
@@ -347,7 +348,12 @@ export default function ReadScreen() {
   const handleSave = useCallback(async () => {
     if (!selectedVerse || !user?.id) return;
     const isCurrentlyFav = favoriteVerseIds.includes(selectedVerse.id);
-    await toggleFavoriteVerse(user.id, selectedVerse.id, isCurrentlyFav);
+    const newState = await toggleFavoriteVerse(user.id, selectedVerse.id, isCurrentlyFav);
+    if (newState && !isCurrentlyFav) {
+      void refreshAndAwardUserBadges(user.id).catch((error) => {
+        console.warn('Badge refresh after favorite failed:', error);
+      });
+    }
   }, [selectedVerse, user, favoriteVerseIds]);
 
   const handleCopy = useCallback(async () => {
@@ -366,6 +372,9 @@ export default function ReadScreen() {
       await Share.share({ title: 'Gita Daily', message: text });
       if (user?.id) {
         await incrementSharesCount(user.id);
+        void refreshAndAwardUserBadges(user.id).catch((error) => {
+          console.warn('Badge refresh after share failed:', error);
+        });
       }
     } catch {}
   }, [selectedVerse, user, preferredLanguage]);
@@ -380,6 +389,9 @@ export default function ReadScreen() {
       Alert.alert('Saved', 'Your note has been saved.');
       setPopupTab('actions');
       setNoteText('');
+      void refreshAndAwardUserBadges(user.id).catch((error) => {
+        console.warn('Badge refresh after note failed:', error);
+      });
     } else {
       Alert.alert('Error', 'Could not save note. Please try again.');
     }
