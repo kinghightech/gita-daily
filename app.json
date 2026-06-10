@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Dharma Daily",
+    "name": "Dharma",
     "slug": "gita-daily",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "2",
+      "buildNumber": "3",
       "bundleIdentifier": "com.ashishkumarjain.dharmadaily"
     },
     "android": {
