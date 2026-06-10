@@ -151,6 +151,7 @@ export default function FestivalDetailScreen() {
               source={{ uri: heroImageUrl }}
               style={styles.heroImage}
               contentFit="cover"
+              cachePolicy="disk"
               onError={() => setHeroImageError(true)}
             />
           )}

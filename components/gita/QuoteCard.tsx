@@ -317,6 +317,7 @@ export default function QuoteCard({
           source={VERSE_BACKGROUND_URLS[bgIndex]}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          cachePolicy="disk"
           transition={300}
         />
 

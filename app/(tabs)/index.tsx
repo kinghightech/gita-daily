@@ -470,6 +470,7 @@ function FestivalImage({ name, emoji }: { name: string; emoji: string }) {
       source={{ uri: imageUrl }}
       style={festivalImageStyles.image}
       contentFit="cover"
+      cachePolicy="disk"
       onError={() => setHasError(true)}
     />
   );

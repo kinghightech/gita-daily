@@ -434,6 +434,7 @@ function StoryPanelsView({ block, theme }: WorldLotusBlockProps & { block: Story
                 source={url}
                 style={styles.storyPanelImage}
                 contentFit="cover"
+                cachePolicy="disk"
                 transition={180}
               />
             )}
@@ -461,7 +462,13 @@ function InteractiveDiagramView({
     <View>
       {url && (
         <View style={styles.diagramImageWrap}>
-          <Image source={url} style={styles.diagramImage} contentFit="cover" transition={180} />
+          <Image
+            source={url}
+            style={styles.diagramImage}
+            contentFit="cover"
+            cachePolicy="disk"
+            transition={180}
+          />
         </View>
       )}
       <Text style={[styles.sectionHint, { marginTop: url ? 14 : 0 }]}>
@@ -1219,7 +1226,13 @@ function TapCorrectImageView({
               style={[styles.tciCard, { borderColor }]}
             >
               {url ? (
-                <Image source={url} style={styles.tciImage} contentFit="cover" transition={180} />
+                <Image
+                  source={url}
+                  style={styles.tciImage}
+                  contentFit="cover"
+                  cachePolicy="disk"
+                  transition={180}
+                />
               ) : (
                 <View style={[styles.tciImage, styles.tciImageFallback]}>
                   <Text style={styles.tciImageFallbackText}>{opt.label}</Text>

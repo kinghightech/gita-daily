@@ -4,6 +4,7 @@ import DiyaStreak from '@/components/ui/DiyaStreak';
 import { HapticButton } from '@/components/ui/HapticButton';
 import { Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { getCachedMediaUri } from '@/lib/mediaCache';
 import { ONBOARDING_VIDEO_URL } from '@/lib/storageAssets';
 import { Image } from 'expo-image';
 import { useVideoPlayer } from 'expo-video';
@@ -391,6 +392,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
   const [stepOnePromptPhase, setStepOnePromptPhase] = useState<'typingTop' | 'typingBottom' | 'done'>('typingTop');
   // Becomes true once the background video has loaded — gates the intro typewriter.
   const [videoReady, setVideoReady] = useState(false);
+  const [backgroundVideoUri, setBackgroundVideoUri] = useState<string | null>(null);
   const handleVideoReady = useCallback(() => setVideoReady(true), []);
 
   // Step 2 (Features) states
@@ -403,7 +405,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
   const direction = useSharedValue(1); // 1 for forward, -1 for backward
   const stepOneFormProgress = useSharedValue(0);
   const stepOneCursorOpacity = useSharedValue(1);
-  const backgroundVideoPlayer = useVideoPlayer(ONBOARDING_VIDEO_URL, (player) => {
+  const backgroundVideoPlayer = useVideoPlayer(backgroundVideoUri, (player) => {
     player.loop = true;
     player.muted = true;
     // Buffer well past the 24s clip so we never re-fetch mid-loop.
@@ -413,6 +415,19 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     };
     player.play();
   });
+
+  useEffect(() => {
+    let active = true;
+
+    void getCachedMediaUri(ONBOARDING_VIDEO_URL, 'onboarding-lite-video').then((uri) => {
+      if (!active) return;
+      setBackgroundVideoUri(uri);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
   const dailyVerseImageSize = useMemo(() => {
     const imageRatio = 1039 / 1294;
     const maxWidth = viewportWidth >= 768 ? 360 : 290;

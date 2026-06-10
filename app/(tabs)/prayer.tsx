@@ -17,6 +17,7 @@ import {
     PREFERRED_LANGUAGE_CHANGED_EVENT,
     type PreferredLanguage,
 } from '@/lib/preferredLanguage';
+import { getCachedMediaUri } from '@/lib/mediaCache';
 import { PRAYER_PLAYBACK_TAB_BAR_EVENT } from '@/lib/prayerPlaybackEvents';
 import { getCurrentAuthUserWithRetry } from '@/lib/profile';
 import { useFocusEffect } from '@react-navigation/native';
@@ -156,6 +157,8 @@ function PrayerPlayer({
   const [sheetVisible, setSheetVisible] = useState(false);
   const [savingVerse, setSavingVerse] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState<number | null>(null);
+  const [audioSource, setAudioSource] = useState<string | null>(null);
+  const [isPreparingAudio, setIsPreparingAudio] = useState(true);
 
   const scrollRef = useRef<ScrollView>(null);
   const itemYs = useRef<number[]>([]);
@@ -165,13 +168,13 @@ function PrayerPlayer({
   const skipAlertShownThisSessionRef = useRef(false);
 
   // expo-audio hooks — lifecycle managed automatically
-  const player = useAudioPlayer(prayer.audioFile);
+  const player = useAudioPlayer(audioSource);
   const status = useAudioPlayerStatus(player);
 
   const positionMs = (status.currentTime ?? 0) * 1000;
   const durationMs = (status.duration ?? 0) * 1000;
   const isPlaying = status.playing;
-  const isLoaded = status.isLoaded;
+  const isLoaded = Boolean(audioSource) && !isPreparingAudio && status.isLoaded;
   const playerBottom = isPlaying ? Math.max(insets.bottom + 20, 28) : Math.max(insets.bottom + 92, 108);
   const lyricBottomPadding = playerBottom + 178;
 
@@ -186,17 +189,31 @@ function PrayerPlayer({
     };
   }, [isPlaying]);
 
-  // Replace audio when prayer changes (tab persists across navigations)
+  // Cache the remote Supabase Storage MP3 before loading it into the player.
   useEffect(() => {
+    let active = true;
+
     if (loadedPrayerIdRef.current !== prayer.id) {
       loadedPrayerIdRef.current = prayer.id;
       itemYs.current = [];
       completionHandledThisSessionRef.current = null;
       skippedAheadThisSessionRef.current = false;
       skipAlertShownThisSessionRef.current = false;
-      try { player.replace(prayer.audioFile); } catch {}
     }
-  }, [prayer.id, prayer.audioFile, player]);
+
+    setAudioSource(null);
+    setIsPreparingAudio(true);
+
+    void getCachedMediaUri(prayer.audioFile, `prayer-audio-${prayer.id}`).then((uri) => {
+      if (!active) return;
+      setAudioSource(uri);
+      setIsPreparingAudio(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [prayer.id, prayer.audioFile]);
 
   // Award Dharma Coins when the prayer audio reaches the end.
   // The RPC enforces once-per-day; local refs prevent redundant network calls and
@@ -385,17 +402,27 @@ function PrayerPlayer({
   }, [activeIndex]);
 
   const togglePlay = useCallback(() => {
+    if (!isLoaded) {
+      showAppToast({
+        title: 'Preparing audio',
+        message: 'This prayer is being saved for smoother playback.',
+      });
+      return;
+    }
+
     if (isPlaying) player.pause();
     else player.play();
-  }, [isPlaying, player]);
+  }, [isLoaded, isPlaying, player]);
 
   const restart = useCallback(() => {
+    if (!isLoaded) return;
+
     completionHandledThisSessionRef.current = null;
     skippedAheadThisSessionRef.current = false;
     skipAlertShownThisSessionRef.current = false;
     player.seekTo(0);
     player.play();
-  }, [player]);
+  }, [isLoaded, player]);
 
   const markSkippedAhead = useCallback(() => {
     if (skippedAheadThisSessionRef.current) return;
@@ -532,7 +559,9 @@ function PrayerPlayer({
         >
           <View style={styles.timeRow}>
             <Text style={[styles.timeText, { color: timeTextColor }]}>{isLoaded ? formatTime(positionMs) : '–:––'}</Text>
-            <Text style={[styles.timeText, { color: timeTextColor }]}>{isLoaded ? formatTime(durationMs) : 'Loading…'}</Text>
+            <Text style={[styles.timeText, { color: timeTextColor }]}>
+              {isLoaded ? formatTime(durationMs) : isPreparingAudio ? 'Caching...' : 'Loading...'}
+            </Text>
           </View>
 
           {/* Progress bar — tap to seek */}
