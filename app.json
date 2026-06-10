@@ -10,10 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.aahishabbani.dharmadaily"
+      "bundleIdentifier": "com.ashishkumarjain.dharmadaily"
     },
     "android": {
-      "package": "com.aahishabbani.dharmadaily",
+      "package": "com.ashishkumarjain.dharmadaily",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE"
       },
