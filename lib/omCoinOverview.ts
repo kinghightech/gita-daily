@@ -1,25 +1,25 @@
 import {
-  DharmaCoinTransaction,
-  fetchDharmaCoinBalance,
-  fetchDharmaCoinTransactions,
-} from '@/lib/dharmaCoins';
+  OmCoinTransaction,
+  fetchOmCoinBalance,
+  fetchOmCoinTransactions,
+} from '@/lib/omCoins';
 import { fetchCurrentUserAndProfile } from '@/lib/profile';
 
-export type DharmaCoinOverviewSnapshot = {
+export type OmCoinOverviewSnapshot = {
   balance: number;
   streak: number;
-  transactions: DharmaCoinTransaction[];
+  transactions: OmCoinTransaction[];
   cachedAt: number;
   hasFullOverview: boolean;
 };
 
-let cachedOverview: DharmaCoinOverviewSnapshot | null = null;
+let cachedOverview: OmCoinOverviewSnapshot | null = null;
 
-export const getCachedDharmaCoinOverview = (): DharmaCoinOverviewSnapshot | null => cachedOverview;
+export const getCachedOmCoinOverview = (): OmCoinOverviewSnapshot | null => cachedOverview;
 
-export const getCachedDharmaCoinBalance = (): number | null => cachedOverview?.balance ?? null;
+export const getCachedOmCoinBalance = (): number | null => cachedOverview?.balance ?? null;
 
-export const updateCachedDharmaCoinBalance = (balance: number) => {
+export const updateCachedOmCoinBalance = (balance: number) => {
   cachedOverview = {
     balance,
     streak: cachedOverview?.streak ?? 0,
@@ -29,14 +29,14 @@ export const updateCachedDharmaCoinBalance = (balance: number) => {
   };
 };
 
-export const fetchDharmaCoinOverview = async (
+export const fetchOmCoinOverview = async (
   limit = 100
-): Promise<DharmaCoinOverviewSnapshot> => {
+): Promise<OmCoinOverviewSnapshot> => {
   const profileResult = await fetchCurrentUserAndProfile();
   const userId = profileResult.user?.id;
 
   if (!userId) {
-    const emptySnapshot: DharmaCoinOverviewSnapshot = {
+    const emptySnapshot: OmCoinOverviewSnapshot = {
       balance: 0,
       streak: 0,
       transactions: [],
@@ -48,11 +48,11 @@ export const fetchDharmaCoinOverview = async (
   }
 
   const [balance, transactions] = await Promise.all([
-    fetchDharmaCoinBalance(userId),
-    fetchDharmaCoinTransactions(userId, limit),
+    fetchOmCoinBalance(userId),
+    fetchOmCoinTransactions(userId, limit),
   ]);
 
-  const snapshot: DharmaCoinOverviewSnapshot = {
+  const snapshot: OmCoinOverviewSnapshot = {
     balance,
     streak: profileResult.profile?.streak_count ?? 0,
     transactions,

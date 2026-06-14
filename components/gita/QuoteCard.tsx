@@ -140,14 +140,14 @@ export default function QuoteCard({
       `— Bhagavad Gita, Chapter ${verse.chapter}, Verse ${verse.verse}` +
       `${verse.speaker ? ` (${verse.speaker})` : ''}` +
       (activeLanguage === 'hindi' && verse.hindi ? `\n\n${verse.hindi}` : '') +
-      '\n\nShared via Gita Daily'
+      '\n\nShared via Om Daily'
     );
   }, [verse, activeLanguage]);
 
   const shareAsText = useCallback(async () => {
     if (!verse) return;
     try {
-      await Share.share({ title: 'Gita Daily Wisdom', message: buildShareText() });
+      await Share.share({ title: 'Om Daily Wisdom', message: buildShareText() });
       if (user?.id) {
         await incrementSharesCount(user.id);
         void refreshAndAwardUserBadges(user.id).catch((error) => {

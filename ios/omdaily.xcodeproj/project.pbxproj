@@ -9,9 +9,9 @@
 /* Begin PBXBuildFile section */
 		0E6D5E6A2FCC6C4B0069082A /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0E6D5E692FCC6C4A0069082A /* WidgetKit.framework */; };
 		0E6D5E6C2FCC6C4B0069082A /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0E6D5E6B2FCC6C4B0069082A /* SwiftUI.framework */; };
-		0E6D5E7D2FCC6C4C0069082A /* DharmaDailyWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0E6D5E682FCC6C4A0069082A /* DharmaDailyWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		0E6D5E7D2FCC6C4C0069082A /* OmDailyWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0E6D5E682FCC6C4A0069082A /* OmDailyWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		2B56BE8FEAFA778A649135F3 /* libPods-gitadaily.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 171BED21A6D6DCDD598913D3 /* libPods-gitadaily.a */; };
+		2B56BE8FEAFA778A649135F3 /* libPods-omdaily.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 171BED21A6D6DCDD598913D3 /* libPods-omdaily.a */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		722797FE5F39137A75839848 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 36CC3EDDBF5BE02E33241EFC /* PrivacyInfo.xcprivacy */; };
 		9023AC51D9A1170928FCCFF0 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30B52BBF882D3B2FC3207986 /* ExpoModulesProvider.swift */; };
@@ -25,7 +25,7 @@
 			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 0E6D5E672FCC6C4A0069082A;
-			remoteInfo = DharmaDailyWidgetExtension;
+			remoteInfo = OmDailyWidgetExtension;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -36,7 +36,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				0E6D5E7D2FCC6C4C0069082A /* DharmaDailyWidgetExtension.appex in Embed Foundation Extensions */,
+				0E6D5E7D2FCC6C4C0069082A /* OmDailyWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -44,36 +44,47 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		0E6D5E682FCC6C4A0069082A /* DharmaDailyWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DharmaDailyWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		0E6D5E682FCC6C4A0069082A /* OmDailyWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OmDailyWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		0E6D5E692FCC6C4A0069082A /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		0E6D5E6B2FCC6C4B0069082A /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
-		13B07F961A680F5B00A75B9A /* The Dharma Daily.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "The Dharma Daily.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = gitadaily/Images.xcassets; sourceTree = "<group>"; };
-		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = gitadaily/Info.plist; sourceTree = "<group>"; };
-		171BED21A6D6DCDD598913D3 /* libPods-gitadaily.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-gitadaily.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		30B52BBF882D3B2FC3207986 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-gitadaily/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		36CC3EDDBF5BE02E33241EFC /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = gitadaily/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		7D1D4FA101E7ADAA26F2E8AA /* Pods-gitadaily.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-gitadaily.debug.xcconfig"; path = "Target Support Files/Pods-gitadaily/Pods-gitadaily.debug.xcconfig"; sourceTree = "<group>"; };
-		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = gitadaily/SplashScreen.storyboard; sourceTree = "<group>"; };
+		13B07F961A680F5B00A75B9A /* Om Daily.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Om Daily.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = omdaily/Images.xcassets; sourceTree = "<group>"; };
+		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = omdaily/Info.plist; sourceTree = "<group>"; };
+		171BED21A6D6DCDD598913D3 /* libPods-omdaily.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-omdaily.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		30B52BBF882D3B2FC3207986 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-omdaily/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		36CC3EDDBF5BE02E33241EFC /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = omdaily/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		7D1D4FA101E7ADAA26F2E8AA /* Pods-omdaily.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-omdaily.debug.xcconfig"; path = "Target Support Files/Pods-omdaily/Pods-omdaily.debug.xcconfig"; sourceTree = "<group>"; };
+		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = omdaily/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		CB7BF22D5F9288D116281EE7 /* Pods-gitadaily.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-gitadaily.release.xcconfig"; path = "Target Support Files/Pods-gitadaily/Pods-gitadaily.release.xcconfig"; sourceTree = "<group>"; };
+		CB7BF22D5F9288D116281EE7 /* Pods-omdaily.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-omdaily.release.xcconfig"; path = "Target Support Files/Pods-omdaily/Pods-omdaily.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = gitadaily/AppDelegate.swift; sourceTree = "<group>"; };
-		F11748442D0722820044C1D9 /* gitadaily-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "gitadaily-Bridging-Header.h"; path = "gitadaily/gitadaily-Bridging-Header.h"; sourceTree = "<group>"; };
+		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = omdaily/AppDelegate.swift; sourceTree = "<group>"; };
+		F11748442D0722820044C1D9 /* omdaily-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "omdaily-Bridging-Header.h"; path = "omdaily/omdaily-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		0E6D5E812FCC6C4C0069082A /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		0E6D5E812FCC6C4C0069082A /* Exceptions for "OmDailyWidget" folder in "OmDailyWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 0E6D5E672FCC6C4A0069082A /* DharmaDailyWidgetExtension */;
+			target = 0E6D5E672FCC6C4A0069082A /* OmDailyWidgetExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		0E6D5E6D2FCC6C4B0069082A /* DharmaDailyWidget */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (0E6D5E812FCC6C4C0069082A /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = DharmaDailyWidget; sourceTree = "<group>"; };
+		0E6D5E6D2FCC6C4B0069082A /* OmDailyWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				0E6D5E812FCC6C4C0069082A /* Exceptions for "OmDailyWidget" folder in "OmDailyWidgetExtension" target */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = OmDailyWidget;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -90,7 +101,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2B56BE8FEAFA778A649135F3 /* libPods-gitadaily.a in Frameworks */,
+				2B56BE8FEAFA778A649135F3 /* libPods-omdaily.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -100,42 +111,42 @@
 		04842D62A2E6F96C542A23F1 /* ExpoModulesProviders */ = {
 			isa = PBXGroup;
 			children = (
-				75827F3B67D4DE12918C386B /* gitadaily */,
+				75827F3B67D4DE12918C386B /* omdaily */,
 			);
 			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
-		13B07FAE1A68108700A75B9A /* gitadaily */ = {
+		13B07FAE1A68108700A75B9A /* omdaily */ = {
 			isa = PBXGroup;
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
-				F11748442D0722820044C1D9 /* gitadaily-Bridging-Header.h */,
+				F11748442D0722820044C1D9 /* omdaily-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
 				36CC3EDDBF5BE02E33241EFC /* PrivacyInfo.xcprivacy */,
 			);
-			name = gitadaily;
+			name = omdaily;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				171BED21A6D6DCDD598913D3 /* libPods-gitadaily.a */,
+				171BED21A6D6DCDD598913D3 /* libPods-omdaily.a */,
 				0E6D5E692FCC6C4A0069082A /* WidgetKit.framework */,
 				0E6D5E6B2FCC6C4B0069082A /* SwiftUI.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		75827F3B67D4DE12918C386B /* gitadaily */ = {
+		75827F3B67D4DE12918C386B /* omdaily */ = {
 			isa = PBXGroup;
 			children = (
 				30B52BBF882D3B2FC3207986 /* ExpoModulesProvider.swift */,
 			);
-			name = gitadaily;
+			name = omdaily;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -148,9 +159,9 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				13B07FAE1A68108700A75B9A /* gitadaily */,
+				13B07FAE1A68108700A75B9A /* omdaily */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
-				0E6D5E6D2FCC6C4B0069082A /* DharmaDailyWidget */,
+				0E6D5E6D2FCC6C4B0069082A /* OmDailyWidget */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				D34B8D3EAF60C00A6AB9BFAE /* Pods */,
@@ -164,8 +175,8 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				13B07F961A680F5B00A75B9A /* The Dharma Daily.app */,
-				0E6D5E682FCC6C4A0069082A /* DharmaDailyWidgetExtension.appex */,
+				13B07F961A680F5B00A75B9A /* Om Daily.app */,
+				0E6D5E682FCC6C4A0069082A /* OmDailyWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -176,14 +187,14 @@
 				BB2F792C24A3F905000567C9 /* Expo.plist */,
 			);
 			name = Supporting;
-			path = gitadaily/Supporting;
+			path = omdaily/Supporting;
 			sourceTree = "<group>";
 		};
 		D34B8D3EAF60C00A6AB9BFAE /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				7D1D4FA101E7ADAA26F2E8AA /* Pods-gitadaily.debug.xcconfig */,
-				CB7BF22D5F9288D116281EE7 /* Pods-gitadaily.release.xcconfig */,
+				7D1D4FA101E7ADAA26F2E8AA /* Pods-omdaily.debug.xcconfig */,
+				CB7BF22D5F9288D116281EE7 /* Pods-omdaily.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -191,9 +202,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		0E6D5E672FCC6C4A0069082A /* DharmaDailyWidgetExtension */ = {
+		0E6D5E672FCC6C4A0069082A /* OmDailyWidgetExtension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 0E6D5E822FCC6C4C0069082A /* Build configuration list for PBXNativeTarget "DharmaDailyWidgetExtension" */;
+			buildConfigurationList = 0E6D5E822FCC6C4C0069082A /* Build configuration list for PBXNativeTarget "OmDailyWidgetExtension" */;
 			buildPhases = (
 				0E6D5E642FCC6C4A0069082A /* Sources */,
 				0E6D5E652FCC6C4A0069082A /* Frameworks */,
@@ -204,16 +215,16 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				0E6D5E6D2FCC6C4B0069082A /* DharmaDailyWidget */,
+				0E6D5E6D2FCC6C4B0069082A /* OmDailyWidget */,
 			);
-			name = DharmaDailyWidgetExtension;
-			productName = DharmaDailyWidgetExtension;
-			productReference = 0E6D5E682FCC6C4A0069082A /* DharmaDailyWidgetExtension.appex */;
+			name = OmDailyWidgetExtension;
+			productName = OmDailyWidgetExtension;
+			productReference = 0E6D5E682FCC6C4A0069082A /* OmDailyWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		13B07F861A680F5B00A75B9A /* gitadaily */ = {
+		13B07F861A680F5B00A75B9A /* omdaily */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "gitadaily" */;
+			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "omdaily" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
 				C40B411C90EFDCA83CE5315D /* [Expo] Configure project */,
@@ -230,9 +241,9 @@
 			dependencies = (
 				0E6D5E7C2FCC6C4C0069082A /* PBXTargetDependency */,
 			);
-			name = gitadaily;
-			productName = gitadaily;
-			productReference = 13B07F961A680F5B00A75B9A /* The Dharma Daily.app */;
+			name = omdaily;
+			productName = omdaily;
+			productReference = 13B07F961A680F5B00A75B9A /* Om Daily.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -254,7 +265,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "gitadaily" */;
+			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "omdaily" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -267,8 +278,8 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				13B07F861A680F5B00A75B9A /* gitadaily */,
-				0E6D5E672FCC6C4A0069082A /* DharmaDailyWidgetExtension */,
+				13B07F861A680F5B00A75B9A /* omdaily */,
+				0E6D5E672FCC6C4A0069082A /* OmDailyWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -327,7 +338,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-gitadaily-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-omdaily-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -340,7 +351,7 @@
 			files = (
 			);
 			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-gitadaily/Pods-gitadaily-resources.sh",
+				"${PODS_ROOT}/Target Support Files/Pods-omdaily/Pods-omdaily-resources.sh",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXApplication/ExpoApplication_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/ExpoConstants_privacy.bundle",
@@ -369,7 +380,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-gitadaily/Pods-gitadaily-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-omdaily/Pods-omdaily-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		C40B411C90EFDCA83CE5315D /* [Expo] Configure project */ = {
@@ -383,18 +394,18 @@
 			inputPaths = (
 				"$(SRCROOT)/.xcode.env",
 				"$(SRCROOT)/.xcode.env.local",
-				"$(SRCROOT)/gitadaily/gitadaily.entitlements",
-				"$(SRCROOT)/Pods/Target Support Files/Pods-gitadaily/expo-configure-project.sh",
+				"$(SRCROOT)/omdaily/omdaily.entitlements",
+				"$(SRCROOT)/Pods/Target Support Files/Pods-omdaily/expo-configure-project.sh",
 			);
 			name = "[Expo] Configure project";
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(SRCROOT)/Pods/Target Support Files/Pods-gitadaily/ExpoModulesProvider.swift",
+				"$(SRCROOT)/Pods/Target Support Files/Pods-omdaily/ExpoModulesProvider.swift",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-gitadaily/expo-configure-project.sh\"\n";
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-omdaily/expo-configure-project.sh\"\n";
 		};
 		E36E877765DED25032BD57A0 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -402,7 +413,7 @@
 			files = (
 			);
 			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-gitadaily/Pods-gitadaily-frameworks.sh",
+				"${PODS_ROOT}/Target Support Files/Pods-omdaily/Pods-omdaily-frameworks.sh",
 				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
 				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
 				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
@@ -415,7 +426,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-gitadaily/Pods-gitadaily-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-omdaily/Pods-omdaily-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -442,7 +453,7 @@
 /* Begin PBXTargetDependency section */
 		0E6D5E7C2FCC6C4C0069082A /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 0E6D5E672FCC6C4A0069082A /* DharmaDailyWidgetExtension */;
+			target = 0E6D5E672FCC6C4A0069082A /* OmDailyWidgetExtension */;
 			targetProxy = 0E6D5E7B2FCC6C4C0069082A /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -463,14 +474,14 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 5;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = KZRTRUU4S7;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = DharmaDailyWidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = DharmaDailyWidget;
+				INFOPLIST_FILE = OmDailyWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = OmDailyWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -513,14 +524,14 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 5;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = KZRTRUU4S7;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = DharmaDailyWidget/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = DharmaDailyWidget;
+				INFOPLIST_FILE = OmDailyWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = OmDailyWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -547,21 +558,21 @@
 		};
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7D1D4FA101E7ADAA26F2E8AA /* Pods-gitadaily.debug.xcconfig */;
+			baseConfigurationReference = 7D1D4FA101E7ADAA26F2E8AA /* Pods-omdaily.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = gitadaily/gitadaily.entitlements;
+				CODE_SIGN_ENTITLEMENTS = omdaily/omdaily.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = KZRTRUU4S7;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"FB_SONARKIT_ENABLED=1",
 				);
-				INFOPLIST_FILE = gitadaily/Info.plist;
+				INFOPLIST_FILE = omdaily/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -575,9 +586,9 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ashishkumarjain.dharmadaily;
-				PRODUCT_NAME = "The Dharma Daily";
+				PRODUCT_NAME = "Om Daily";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				SWIFT_OBJC_BRIDGING_HEADER = "gitadaily/gitadaily-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "omdaily/omdaily-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -587,16 +598,16 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = CB7BF22D5F9288D116281EE7 /* Pods-gitadaily.release.xcconfig */;
+			baseConfigurationReference = CB7BF22D5F9288D116281EE7 /* Pods-omdaily.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = gitadaily/gitadaily.entitlements;
+				CODE_SIGN_ENTITLEMENTS = omdaily/omdaily.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = KZRTRUU4S7;
-				INFOPLIST_FILE = gitadaily/Info.plist;
+				INFOPLIST_FILE = omdaily/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -610,9 +621,9 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ashishkumarjain.dharmadaily;
-				PRODUCT_NAME = "The Dharma Daily";
+				PRODUCT_NAME = "Om Daily";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				SWIFT_OBJC_BRIDGING_HEADER = "gitadaily/gitadaily-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "omdaily/omdaily-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -747,7 +758,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		0E6D5E822FCC6C4C0069082A /* Build configuration list for PBXNativeTarget "DharmaDailyWidgetExtension" */ = {
+		0E6D5E822FCC6C4C0069082A /* Build configuration list for PBXNativeTarget "OmDailyWidgetExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				0E6D5E7F2FCC6C4C0069082A /* Debug */,
@@ -756,7 +767,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "gitadaily" */ = {
+		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "omdaily" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				13B07F941A680F5B00A75B9A /* Debug */,
@@ -765,7 +776,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "gitadaily" */ = {
+		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "omdaily" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,

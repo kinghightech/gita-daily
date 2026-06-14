@@ -1,6 +1,6 @@
 -- =====================================================================
--- Dharma Coins — schema, RLS, and awarding RPC
--- Run against the same Supabase project as the rest of Gita Daily.
+-- Om Coins — schema, RLS, and awarding RPC
+-- Run against the same Supabase project as the rest of Om Daily.
 -- Idempotent: safe to re-run.
 -- =====================================================================
 

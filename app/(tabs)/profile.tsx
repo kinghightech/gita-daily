@@ -1,4 +1,4 @@
-import DharmaCoinPill from '@/components/gita/DharmaCoinPill';
+import OmCoinPill from '@/components/gita/OmCoinPill';
 import LotusLoader from '@/components/ui/LotusLoader';
 import { useTheme } from '@/hooks/useTheme';
 import { BADGE_DEFINITIONS, BADGE_ICONS, refreshAndAwardUserBadges } from '@/lib/badges';
@@ -64,9 +64,9 @@ type ProfileData = {
   shares_count?: number;
 };
 
-const ONBOARDING_COMPLETE_KEY = 'gitaDaily.onboardingComplete.v1';
-const ONBOARDING_PROFILE_KEY = 'gitaDaily.onboardingProfile.v1';
-const ONBOARDING_REPLAY_EVENT = 'gitaDaily.replayOnboarding';
+const ONBOARDING_COMPLETE_KEY = 'omDaily.onboardingComplete.v1';
+const ONBOARDING_PROFILE_KEY = 'omDaily.onboardingProfile.v1';
+const ONBOARDING_REPLAY_EVENT = 'omDaily.replayOnboarding';
 
 export default function ProfileScreen() {
   const theme = useTheme();
@@ -180,7 +180,7 @@ export default function ProfileScreen() {
   const handleDeleteAccount = () => {
     Alert.alert(
       'Delete Account',
-      'This permanently deletes your account, streak, saved verses, notes, badges, and Dharma Coins. This cannot be undone.',
+      'This permanently deletes your account, streak, saved verses, notes, badges, and Om Coins. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -244,7 +244,7 @@ export default function ProfileScreen() {
                 {profile.email || 'guest@gita.daily'}
               </Text>
             </View>
-            <DharmaCoinPill />
+            <OmCoinPill />
           </View>
 
           {/* ── Achievements ── */}
@@ -432,14 +432,14 @@ export default function ProfileScreen() {
           <View style={styles.footerLinks}>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => Linking.openURL('https://dharmadailyprivacypolicy.notion.site')}
+              onPress={() => Linking.openURL('https://omdailyprivacypolicy.notion.site')}
             >
               <Text style={styles.privacyButtonText}>Privacy Policy</Text>
             </TouchableOpacity>
             <Text style={styles.footerDot}>·</Text>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => Linking.openURL('https://dharmadailysupportpage.notion.site/')}
+              onPress={() => Linking.openURL('https://omdailysupportpage.notion.site/')}
             >
               <Text style={styles.privacyButtonText}>Support</Text>
             </TouchableOpacity>

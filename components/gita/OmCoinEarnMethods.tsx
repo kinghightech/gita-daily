@@ -1,15 +1,15 @@
 import { GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import {
-  DHARMA_COIN_EARN_METHODS,
-  type DharmaCoinEarnMethod,
-} from '@/lib/dharmaCoins';
+  OM_COIN_EARN_METHODS,
+  type OmCoinEarnMethod,
+} from '@/lib/omCoins';
 import { Image } from 'expo-image';
 import { BookOpen, Flame, Music, type LucideIcon } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-const ICONS: Record<DharmaCoinEarnMethod['key'], LucideIcon> = {
+const ICONS: Record<OmCoinEarnMethod['key'], LucideIcon> = {
   streak: Flame,
   prayer: Music,
   lotus_level: BookOpen,
@@ -26,11 +26,11 @@ type Palette = {
 };
 
 /**
- * The list of ways to earn Dharma Coins, rendered as cards. Reused by the
- * Dharma Coins "ways to earn" popup (tone="auto", follows the theme) and the
+ * The list of ways to earn Om Coins, rendered as cards. Reused by the
+ * Om Coins "ways to earn" popup (tone="auto", follows the theme) and the
  * onboarding flow (tone="dark", reads well over the dark video background).
  */
-export default function DharmaCoinEarnMethods({ tone = 'auto' }: { tone?: Tone }) {
+export default function OmCoinEarnMethods({ tone = 'auto' }: { tone?: Tone }) {
   const theme = useTheme();
 
   const palette: Palette = useMemo(() => {
@@ -54,7 +54,7 @@ export default function DharmaCoinEarnMethods({ tone = 'auto' }: { tone?: Tone }
 
   return (
     <View style={styles.wrap}>
-      {DHARMA_COIN_EARN_METHODS.map((method) => {
+      {OM_COIN_EARN_METHODS.map((method) => {
         const Icon = ICONS[method.key];
         return (
           <View

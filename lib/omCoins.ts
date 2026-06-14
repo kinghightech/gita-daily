@@ -1,10 +1,10 @@
 import { supabase } from '@/lib/supabase';
 import { DeviceEventEmitter } from 'react-native';
 
-export const DHARMA_COINS_UPDATED_EVENT = 'gitaDaily.dharmaCoinsUpdated.v1';
-export const DHARMA_COINS_EARNED_EVENT = 'gitaDaily.dharmaCoinsEarned.v1';
+export const OM_COINS_UPDATED_EVENT = 'omDaily.omCoinsUpdated.v1';
+export const OM_COINS_EARNED_EVENT = 'omDaily.omCoinsEarned.v1';
 
-export type DharmaCoinSource =
+export type OmCoinSource =
   | 'streak'
   | 'prayer'
   | 'lotus_level'
@@ -13,10 +13,10 @@ export type DharmaCoinSource =
   | 'world_level'
   | 'wisdom_gate';
 
-export type DharmaCoinTransaction = {
+export type OmCoinTransaction = {
   id: string;
   user_id: string;
-  source: DharmaCoinSource;
+  source: OmCoinSource;
   source_ref: string | null;
   base_amount: number;
   multiplier: number;
@@ -42,11 +42,11 @@ export type AwardResult = {
   streak: number;
 };
 
-export type DharmaCoinEarnedPayload = {
+export type OmCoinEarnedPayload = {
   amount: number;
   base: number;
   multiplier: number;
-  source: DharmaCoinSource;
+  source: OmCoinSource;
 };
 
 const getLocalTimezone = (): string => {
@@ -71,7 +71,7 @@ export const streakTierLabel = (streak: number): string => {
   return 'Beginner';
 };
 
-export const fetchDharmaCoinBalance = async (userId?: string): Promise<number> => {
+export const fetchOmCoinBalance = async (userId?: string): Promise<number> => {
   let uid = userId;
   if (!uid) {
     const { data: { user } } = await supabase.auth.getUser();
@@ -93,10 +93,10 @@ export const fetchDharmaCoinBalance = async (userId?: string): Promise<number> =
   return data?.total_coins ?? 0;
 };
 
-export const fetchDharmaCoinTransactions = async (
+export const fetchOmCoinTransactions = async (
   userId?: string,
   limit = 100
-): Promise<DharmaCoinTransaction[]> => {
+): Promise<OmCoinTransaction[]> => {
   let uid = userId;
   if (!uid) {
     const { data: { user } } = await supabase.auth.getUser();
@@ -116,11 +116,11 @@ export const fetchDharmaCoinTransactions = async (
     return [];
   }
 
-  return (data ?? []) as DharmaCoinTransaction[];
+  return (data ?? []) as OmCoinTransaction[];
 };
 
-export const awardDharmaCoins = async (
-  source: DharmaCoinSource,
+export const awardOmCoins = async (
+  source: OmCoinSource,
   sourceRef?: string | null
 ): Promise<AwardResult | null> => {
   const { data, error } = await supabase.rpc('award_dharma_coins', {
@@ -147,25 +147,25 @@ export const awardDharmaCoins = async (
   };
 
   if (result.awarded > 0) {
-    DeviceEventEmitter.emit(DHARMA_COINS_UPDATED_EVENT, result.total);
-    const payload: DharmaCoinEarnedPayload = {
+    DeviceEventEmitter.emit(OM_COINS_UPDATED_EVENT, result.total);
+    const payload: OmCoinEarnedPayload = {
       amount: result.awarded,
       base: result.base,
       multiplier: result.multiplier,
       source,
     };
-    DeviceEventEmitter.emit(DHARMA_COINS_EARNED_EVENT, payload);
+    DeviceEventEmitter.emit(OM_COINS_EARNED_EVENT, payload);
   }
 
   return result;
 };
 
 /**
- * The user-facing ways to earn Dharma Coins, with the base amounts awarded by
- * the `award_dharma_coins` RPC. Shared by the Dharma Coins "ways to earn" popup
+ * The user-facing ways to earn Om Coins, with the base amounts awarded by
+ * the `award_dharma_coins` RPC. Shared by the Om Coins "ways to earn" popup
  * and the onboarding flow so both stay in sync with the server rules.
  */
-export type DharmaCoinEarnMethod = {
+export type OmCoinEarnMethod = {
   key: 'streak' | 'prayer' | 'lotus_level';
   title: string;
   amount: number;
@@ -173,13 +173,13 @@ export type DharmaCoinEarnMethod = {
   description: string;
 };
 
-export const DHARMA_COIN_EARN_METHODS: DharmaCoinEarnMethod[] = [
+export const OM_COIN_EARN_METHODS: OmCoinEarnMethod[] = [
   {
     key: 'streak',
     title: 'Keep your daily streak',
     amount: 1,
     cadence: 'Once a day',
-    description: 'Open Dharma Daily and read your verse of the day to keep your streak going.',
+    description: 'Open Om Daily and read your verse of the day to keep your streak going.',
   },
   {
     key: 'prayer',
@@ -197,7 +197,7 @@ export const DHARMA_COIN_EARN_METHODS: DharmaCoinEarnMethod[] = [
   },
 ];
 
-export const DHARMA_COIN_MULTIPLIER_NOTE =
+export const OM_COIN_MULTIPLIER_NOTE =
   'Your streak multiplier (up to 2×) boosts every coin you earn.';
 
 // ── Spending: skip a level ────────────────────────────────────────────────────
@@ -264,13 +264,13 @@ export const skipLevelWithCoins = async (
 
   // Keep the coin pill (and anything else listening) in sync after a spend.
   if (result.ok) {
-    DeviceEventEmitter.emit(DHARMA_COINS_UPDATED_EVENT, result.newBalance);
+    DeviceEventEmitter.emit(OM_COINS_UPDATED_EVENT, result.newBalance);
   }
 
   return result;
 };
 
-export const sourceDisplayName = (source: DharmaCoinSource): string => {
+export const sourceDisplayName = (source: OmCoinSource): string => {
   switch (source) {
     case 'streak':
       return 'Daily Streak';
@@ -294,7 +294,7 @@ export const sourceDisplayName = (source: DharmaCoinSource): string => {
 // (via source_ref) — e.g. a skip-level redemption reads "Level Skip" — and
 // everything else falls back to the source's display name.
 export const transactionDisplayName = (
-  source: DharmaCoinSource,
+  source: OmCoinSource,
   sourceRef?: string | null,
 ): string => {
   if (source === 'redemption' && sourceRef?.startsWith('skip:')) {

@@ -367,9 +367,9 @@ export default function ReadScreen() {
   const handleShare = useCallback(async () => {
     if (!selectedVerse) return;
     const verseText = getVerseDisplayText(selectedVerse, preferredLanguage);
-    const text = `"${verseText}"\n\n— Bhagavad Gita, Chapter ${selectedVerse.chapter_number}, Verse ${selectedVerse.verse_number}${selectedVerse.speaker ? ` (${selectedVerse.speaker})` : ''}\n\nShared via Gita Daily`;
+    const text = `"${verseText}"\n\n— Bhagavad Gita, Chapter ${selectedVerse.chapter_number}, Verse ${selectedVerse.verse_number}${selectedVerse.speaker ? ` (${selectedVerse.speaker})` : ''}\n\nShared via Om Daily`;
     try {
-      await Share.share({ title: 'Gita Daily', message: text });
+      await Share.share({ title: 'Om Daily', message: text });
       if (user?.id) {
         await incrementSharesCount(user.id);
         void refreshAndAwardUserBadges(user.id).catch((error) => {
@@ -385,7 +385,7 @@ export default function ReadScreen() {
     const success = await saveNote(user.id, selectedVerse.id, noteText);
     setIsSaving(false);
     if (success) {
-      DeviceEventEmitter.emit('gitaDaily.notesUpdated.v1');
+      DeviceEventEmitter.emit('omDaily.notesUpdated.v1');
       Alert.alert('Saved', 'Your note has been saved.');
       setPopupTab('actions');
       setNoteText('');

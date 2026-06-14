@@ -5,7 +5,7 @@ import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { refreshAndAwardUserBadges } from '@/lib/badges';
-import { awardDharmaCoins } from '@/lib/dharmaCoins';
+import { awardOmCoins } from '@/lib/omCoins';
 import {
   fetchMountainLevel,
   updateCurrentMountainLevel,
@@ -138,7 +138,7 @@ export default function MountainLevelScreen() {
     if (passed) {
       await updateCurrentMountainLevel(levelNumber);
       const coinSource = isWisdomGate ? 'wisdom_gate' : 'world_level';
-      void awardDharmaCoins(coinSource, `mountain-${levelNumber}`).catch((err) => {
+      void awardOmCoins(coinSource, `mountain-${levelNumber}`).catch((err) => {
         console.warn('Mountain level coin award failed', err);
       });
       void refreshAndAwardUserBadges().catch((err) => {

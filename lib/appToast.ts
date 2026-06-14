@@ -1,6 +1,6 @@
 import { DeviceEventEmitter } from 'react-native';
 
-export const APP_TOAST_EVENT = 'gitaDaily.appToast.v1';
+export const APP_TOAST_EVENT = 'omDaily.appToast.v1';
 
 export type AppToastPayload = {
   title: string;

@@ -4,7 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { GitaColors, Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { refreshAndAwardUserBadges } from '@/lib/badges';
-import { awardDharmaCoins } from '@/lib/dharmaCoins';
+import { awardOmCoins } from '@/lib/omCoins';
 import {
   fetchLotusLevel,
   updateCurrentLotusLevel,
@@ -187,9 +187,9 @@ export default function LevelScreen() {
     const passCriteria = Math.ceil((totalQ * 2) / 3);
     if (score >= passCriteria) {
       await updateCurrentLotusLevel(levelId);
-      // Award Dharma Coins for passing the level.
+      // Award Om Coins for passing the level.
       // The RPC enforces both the per-level lifetime dedupe and the 3-levels-per-day cap.
-      void awardDharmaCoins('lotus_level', String(levelId)).catch((error) => {
+      void awardOmCoins('lotus_level', String(levelId)).catch((error) => {
         console.warn('Lotus level coin award failed', error);
       });
       void refreshAndAwardUserBadges().catch((error) => {

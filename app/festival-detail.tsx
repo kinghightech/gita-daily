@@ -85,7 +85,7 @@ export default function FestivalDetailScreen() {
           `📅 Date: ${festival.display_date}\n\n` +
           `✨ What is it?\n${festival.what_is_it}\n\n` +
           `🙏 How to celebrate:\n${festival.how_to_celebrate}\n\n` +
-          `Shared via Gita Daily 🦚`,
+          `Shared via Om Daily 🦚`,
       });
     } catch {}
   }, [festival]);

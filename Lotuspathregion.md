@@ -1,10 +1,10 @@
-You are helping build Dharma Daily, a mobile app that teaches Hinduism through interactive learning paths.
+You are helping build Om Daily, a mobile app that teaches Hinduism through interactive learning paths.
 
 Your job is to implement/rebuild Region 1 of the Hinduism world: the Lotus Path.
 
 
 PROJECT CONTEXT:
-App name: Dharma Daily
+App name: Om Daily
 Current path: Hinduism World → Region 1 → Lotus Path
 Region 1 name: Lotus Path
 Region 1 title: Welcome to Hinduism
@@ -20,7 +20,7 @@ Acharya means “teacher who teaches by example.”
 
 SUPABASE CONTEXT:
 The active Supabase project is:
-Project name: Dharma Daily
+Project name: Om Daily
 Project ID/ref: uteervxxzmmhbzymouin
 Region: us-west-2
 

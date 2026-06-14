@@ -5,7 +5,7 @@ import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { refreshAndAwardUserBadges } from '@/lib/badges';
-import { awardDharmaCoins } from '@/lib/dharmaCoins';
+import { awardOmCoins } from '@/lib/omCoins';
 import {
   fetchForestLevel,
   updateCurrentForestLevel,
@@ -137,7 +137,7 @@ export default function ForestLevelScreen() {
     if (passed) {
       await updateCurrentForestLevel(levelNumber);
       const coinSource = isWisdomGate ? 'wisdom_gate' : 'world_level';
-      void awardDharmaCoins(coinSource, `forest-${levelNumber}`).catch((err) => {
+      void awardOmCoins(coinSource, `forest-${levelNumber}`).catch((err) => {
         console.warn('Forest level coin award failed', err);
       });
       void refreshAndAwardUserBadges().catch((err) => {

@@ -1,6 +1,6 @@
 //
-//  DharmaDailyWidgetControl.swift
-//  DharmaDailyWidget
+//  OmDailyWidgetControl.swift
+//  OmDailyWidget
 //
 //  Created by Aahish Abbani on 5/31/26.
 //
@@ -10,8 +10,8 @@ import SwiftUI
 import WidgetKit
 
 @available(iOS 18.0, *)
-struct DharmaDailyWidgetControl: ControlWidget {
-    static let kind: String = "com.aahishabbani.dharmadaily.DharmaDailyWidget"
+struct OmDailyWidgetControl: ControlWidget {
+    static let kind: String = "com.aahishabbani.omdaily.OmDailyWidget"
 
     var body: some ControlWidgetConfiguration {
         AppIntentControlConfiguration(
@@ -32,7 +32,7 @@ struct DharmaDailyWidgetControl: ControlWidget {
 }
 
 @available(iOS 18.0, *)
-extension DharmaDailyWidgetControl {
+extension OmDailyWidgetControl {
     struct Value {
         var isRunning: Bool
         var name: String
@@ -40,12 +40,12 @@ extension DharmaDailyWidgetControl {
 
     struct Provider: AppIntentControlValueProvider {
         func previewValue(configuration: TimerConfiguration) -> Value {
-            DharmaDailyWidgetControl.Value(isRunning: false, name: configuration.timerName)
+            OmDailyWidgetControl.Value(isRunning: false, name: configuration.timerName)
         }
 
         func currentValue(configuration: TimerConfiguration) async throws -> Value {
             let isRunning = true // Check if the timer is running
-            return DharmaDailyWidgetControl.Value(isRunning: isRunning, name: configuration.timerName)
+            return OmDailyWidgetControl.Value(isRunning: isRunning, name: configuration.timerName)
         }
     }
 }

@@ -69,7 +69,7 @@ export default function FestivalModal({ festival, onClose }: FestivalModalProps)
         `🙏 *How to celebrate:*\n${festival.how_to_celebrate}\n\n` +
         `✅ *Dos:*\n${festival.dos.join('\n')}\n` +
         `❌ *Don'ts:*\n${festival.donts.join('\n')}\n\n` +
-        `Shared via Gita Daily App 🦚`;
+        `Shared via Om Daily App 🦚`;
 
       await Share.share({
         message,

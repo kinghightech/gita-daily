@@ -80,7 +80,7 @@ export default function AnimatedSplash({ active, onHidden }: AnimatedSplashProps
           contentPosition="center"
           priority="high"
           cachePolicy="memory-disk"
-          accessibilityLabel="Dharma Daily"
+          accessibilityLabel="Om Daily"
         />
       </Animated.View>
     </Animated.View>

@@ -1,6 +1,6 @@
 //
-//  DharmaDailyWidget.swift
-//  DharmaDailyWidget
+//  OmDailyWidget.swift
+//  OmDailyWidget
 //
 //  Created by Aahish Abbani on 5/31/26.
 //
@@ -81,27 +81,27 @@ private func fetchVerseOfTheDay() async -> WidgetVerse? {
 
 // MARK: - Timeline provider
 
-struct DharmaDailyProvider: TimelineProvider {
+struct OmDailyProvider: TimelineProvider {
 
-    func placeholder(in context: Context) -> DharmaDailyEntry {
-        DharmaDailyEntry(date: Date(), verse: previewVerse)
+    func placeholder(in context: Context) -> OmDailyEntry {
+        OmDailyEntry(date: Date(), verse: previewVerse)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (DharmaDailyEntry) -> Void) {
+    func getSnapshot(in context: Context, completion: @escaping (OmDailyEntry) -> Void) {
         if context.isPreview {
-            completion(DharmaDailyEntry(date: Date(), verse: previewVerse))
+            completion(OmDailyEntry(date: Date(), verse: previewVerse))
             return
         }
         Task {
             let verse = await fetchVerseOfTheDay()
-            completion(DharmaDailyEntry(date: Date(), verse: verse))
+            completion(OmDailyEntry(date: Date(), verse: verse))
         }
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<DharmaDailyEntry>) -> Void) {
+    func getTimeline(in context: Context, completion: @escaping (Timeline<OmDailyEntry>) -> Void) {
         Task {
             let verse        = await fetchVerseOfTheDay()
-            let entry        = DharmaDailyEntry(date: Date(), verse: verse)
+            let entry        = OmDailyEntry(date: Date(), verse: verse)
             let nextMidnight = Calendar.current.startOfDay(for: Date()).addingTimeInterval(86400)
             completion(Timeline(entries: [entry], policy: .after(nextMidnight)))
         }
@@ -110,7 +110,7 @@ struct DharmaDailyProvider: TimelineProvider {
 
 // MARK: - Entry
 
-struct DharmaDailyEntry: TimelineEntry {
+struct OmDailyEntry: TimelineEntry {
     let date:  Date
     let verse: WidgetVerse?
 }
@@ -150,7 +150,7 @@ private struct LotusSymbol: View {
 // MARK: - Small widget
 
 private struct SmallWidgetView: View {
-    let entry: DharmaDailyEntry
+    let entry: OmDailyEntry
     @Environment(\.colorScheme) private var colorScheme
 
     private var primaryTextColor: Color {
@@ -206,7 +206,7 @@ private struct SmallWidgetView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
             } else {
-                Text("Open Dharma Daily for today\u{2019}s verse")
+                Text("Open Om Daily for today\u{2019}s verse")
                     .font(.custom("Georgia", size: 15))
                     .foregroundColor(fallbackTextColor)
                     .multilineTextAlignment(.center)
@@ -225,7 +225,7 @@ private struct SmallWidgetView: View {
 // MARK: - Medium widget
 
 private struct MediumWidgetView: View {
-    let entry: DharmaDailyEntry
+    let entry: OmDailyEntry
     @Environment(\.colorScheme) private var colorScheme
 
     private var primaryTextColor: Color {
@@ -314,7 +314,7 @@ private struct MediumWidgetView: View {
 // MARK: - Large widget
 
 private struct LargeWidgetView: View {
-    let entry: DharmaDailyEntry
+    let entry: OmDailyEntry
     @Environment(\.colorScheme) private var colorScheme
 
     private var primaryTextColor: Color {
@@ -403,8 +403,8 @@ private struct LargeWidgetView: View {
 
 // MARK: - Entry view
 
-struct DharmaDailyWidgetEntryView: View {
-    var entry: DharmaDailyProvider.Entry
+struct OmDailyWidgetEntryView: View {
+    var entry: OmDailyProvider.Entry
     @Environment(\.widgetFamily) var widgetFamily
     @Environment(\.colorScheme) private var colorScheme
 
@@ -433,14 +433,14 @@ struct DharmaDailyWidgetEntryView: View {
 
 // MARK: - Widget declaration
 
-struct DharmaDailyWidget: Widget {
-    let kind: String = "DharmaDailyWidget"
+struct OmDailyWidget: Widget {
+    let kind: String = "OmDailyWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: DharmaDailyProvider()) { entry in
-            DharmaDailyWidgetEntryView(entry: entry)
+        StaticConfiguration(kind: kind, provider: OmDailyProvider()) { entry in
+            OmDailyWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("Dharma Daily")
+        .configurationDisplayName("Om Daily")
         .description("Daily wisdom from the Bhagavad Gita.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .contentMarginsDisabled()
@@ -450,19 +450,19 @@ struct DharmaDailyWidget: Widget {
 // MARK: - Previews
 
 #Preview("Small", as: .systemSmall) {
-    DharmaDailyWidget()
+    OmDailyWidget()
 } timeline: {
-    DharmaDailyEntry(date: .now, verse: previewVerse)
+    OmDailyEntry(date: .now, verse: previewVerse)
 }
 
 #Preview("Medium", as: .systemMedium) {
-    DharmaDailyWidget()
+    OmDailyWidget()
 } timeline: {
-    DharmaDailyEntry(date: .now, verse: previewVerse)
+    OmDailyEntry(date: .now, verse: previewVerse)
 }
 
 #Preview("Large", as: .systemLarge) {
-    DharmaDailyWidget()
+    OmDailyWidget()
 } timeline: {
-    DharmaDailyEntry(date: .now, verse: previewVerse)
+    OmDailyEntry(date: .now, verse: previewVerse)
 }

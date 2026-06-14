@@ -5,7 +5,7 @@ import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { refreshAndAwardUserBadges } from '@/lib/badges';
-import { awardDharmaCoins } from '@/lib/dharmaCoins';
+import { awardOmCoins } from '@/lib/omCoins';
 import {
   fetchGardenLevel,
   updateCurrentGardenLevel,
@@ -137,7 +137,7 @@ export default function GardenLevelScreen() {
     if (passed) {
       await updateCurrentGardenLevel(levelNumber);
       const coinSource = isWisdomGate ? 'wisdom_gate' : 'world_level';
-      void awardDharmaCoins(coinSource, `garden-${levelNumber}`).catch((err) => {
+      void awardOmCoins(coinSource, `garden-${levelNumber}`).catch((err) => {
         console.warn('Garden level coin award failed', err);
       });
       void refreshAndAwardUserBadges().catch((err) => {

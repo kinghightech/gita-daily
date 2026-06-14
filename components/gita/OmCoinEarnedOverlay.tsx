@@ -1,9 +1,9 @@
 import { useTheme } from '@/hooks/useTheme';
 import { APP_TOAST_EVENT, type AppToastPayload } from '@/lib/appToast';
 import {
-  DHARMA_COINS_EARNED_EVENT,
-  type DharmaCoinEarnedPayload,
-} from '@/lib/dharmaCoins';
+  OM_COINS_EARNED_EVENT,
+  type OmCoinEarnedPayload,
+} from '@/lib/omCoins';
 import { useCallback, useEffect, useState } from 'react';
 import { DeviceEventEmitter, Image, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -17,11 +17,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type CoinToastState = DharmaCoinEarnedPayload & { id: number; kind: 'coins' };
+type CoinToastState = OmCoinEarnedPayload & { id: number; kind: 'coins' };
 type MessageToastState = AppToastPayload & { id: number; kind: 'message' };
 type ToastState = CoinToastState | MessageToastState | null;
 
-export default function DharmaCoinEarnedOverlay() {
+export default function OmCoinEarnedOverlay() {
   const theme = useTheme();
   const isDarkMode = theme.blurTint === 'dark';
   const [toast, setToast] = useState<ToastState>(null);
@@ -55,8 +55,8 @@ export default function DharmaCoinEarnedOverlay() {
 
   useEffect(() => {
     const coinSub = DeviceEventEmitter.addListener(
-      DHARMA_COINS_EARNED_EVENT,
-      (payload: DharmaCoinEarnedPayload) => {
+      OM_COINS_EARNED_EVENT,
+      (payload: OmCoinEarnedPayload) => {
         if (!payload || payload.amount <= 0) return;
 
         showToast({ ...payload, id: Date.now(), kind: 'coins' });
@@ -113,7 +113,7 @@ export default function DharmaCoinEarnedOverlay() {
                 style={styles.coin}
                 resizeMode="contain"
               />
-              <Text style={styles.amountText}>+{toast.amount} Dharma Coins</Text>
+              <Text style={styles.amountText}>+{toast.amount} Om Coins</Text>
             </>
           ) : (
             <View style={styles.messageWrap}>

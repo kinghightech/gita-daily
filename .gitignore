@@ -43,6 +43,9 @@ app-example
 
 # native folders — ios/ is tracked (custom widget + native config);
 # ignore only the generated / heavy / machine-specific bits
+# Xcode build output (DerivedData, archives) at repo root
+/build/
+*.xcarchive
 /ios/Pods/
 /ios/build/
 /ios/DerivedData/

@@ -109,7 +109,7 @@ export const fetchAllGitaVerses = async (): Promise<GitaVerse[]> => {
 };
 
 // Exact row count of gita_verses. MUST stay in sync with `totalVerses` in
-// ios/DharmaDailyWidget/DharmaDailyWidget.swift so the app and the home-screen
+// ios/OmDailyWidget/OmDailyWidget.swift so the app and the home-screen
 // widget resolve to the same verse of the day. (Was 716, which overshot the
 // real count and left ~2% of days with no verse.)
 const TOTAL_VERSES = 701;

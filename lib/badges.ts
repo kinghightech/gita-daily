@@ -67,7 +67,7 @@ export const BADGE_DEFINITIONS: Badge[] = [
   {
     id: 'welcome',
     title: 'Welcome',
-    description: 'Began your Dharma Daily journey.',
+    description: 'Began your Om Daily journey.',
     icon: 'BadgeCheck',
     criteria: () => true,
   },

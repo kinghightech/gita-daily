@@ -33,7 +33,7 @@ interface Step {
 const STEPS: Step[] = [
   {
     icon: BookOpen,
-    title: 'Welcome to Gita Daily',
+    title: 'Welcome to Om Daily',
     subtitle: 'Your daily companion to the Bhagavad Gita',
     description:
       'Every day, a new verse from the Bhagavad Gita awaits you — translated in English and Hindi, with audio, AI explanations, and more. Let us show you around.',

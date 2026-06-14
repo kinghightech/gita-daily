@@ -5,7 +5,7 @@ import { Fonts, GitaColors } from '@/constants/theme';
 import { PRAYERS, type Prayer } from '@/Data/prayers';
 import { useTheme } from '@/hooks/useTheme';
 import { refreshAndAwardUserBadges } from '@/lib/badges';
-import { awardDharmaCoins } from '@/lib/dharmaCoins';
+import { awardOmCoins } from '@/lib/omCoins';
 import {
     PRAYER_VERSES_UPDATED_EVENT,
     fetchUserPrayerVerses,
@@ -215,7 +215,7 @@ function PrayerPlayer({
     };
   }, [prayer.id, prayer.audioFile]);
 
-  // Award Dharma Coins when the prayer audio reaches the end.
+  // Award Om Coins when the prayer audio reaches the end.
   // The RPC enforces once-per-day; local refs prevent redundant network calls and
   // block rewards if the user manually skips ahead during this run.
   useEffect(() => {
@@ -231,7 +231,7 @@ function PrayerPlayer({
       return;
     }
 
-    void awardDharmaCoins('prayer', prayer.id).catch((error) => {
+    void awardOmCoins('prayer', prayer.id).catch((error) => {
       console.warn('Prayer coin award failed', error);
     });
   }, [isLoaded, durationMs, positionMs, isPlaying, status, prayer.id]);

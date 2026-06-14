@@ -3,9 +3,9 @@ import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type PreferredLanguage = 'english' | 'hindi';
-export const PREFERRED_LANGUAGE_CHANGED_EVENT = 'gitaDaily.preferredLanguageChanged';
+export const PREFERRED_LANGUAGE_CHANGED_EVENT = 'omDaily.preferredLanguageChanged';
 
-const ONBOARDING_PROFILE_KEY = 'gitaDaily.onboardingProfile.v1';
+const ONBOARDING_PROFILE_KEY = 'omDaily.onboardingProfile.v1';
 
 const normalizePreferredLanguage = (value: unknown): PreferredLanguage | null => {
   if (typeof value !== 'string') return null;

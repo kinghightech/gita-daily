@@ -5,7 +5,7 @@ import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { refreshAndAwardUserBadges } from '@/lib/badges';
-import { awardDharmaCoins } from '@/lib/dharmaCoins';
+import { awardOmCoins } from '@/lib/omCoins';
 import {
   countQuestionBlocks,
   fetchWorldLotusLevel,
@@ -133,7 +133,7 @@ export default function WorldLevelScreen() {
     if (passed) {
       await updateCurrentWorldLotusLevel(levelNumber);
       const coinSource = isWisdomGate ? 'wisdom_gate' : 'world_level';
-      void awardDharmaCoins(coinSource, `world-${levelNumber}`).catch((err) => {
+      void awardOmCoins(coinSource, `world-${levelNumber}`).catch((err) => {
         console.warn('World lotus level coin award failed', err);
       });
       if (isWisdomGate) {

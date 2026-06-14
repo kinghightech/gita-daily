@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "Dharma",
-    "slug": "gita-daily",
+    "name": "Om Daily",
+    "slug": "om-daily",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "gitadaily",
+    "scheme": "omdaily",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "3",
+      "buildNumber": "5",
       "bundleIdentifier": "com.ashishkumarjain.dharmadaily"
     },
     "android": {

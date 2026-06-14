@@ -1,11 +1,11 @@
-import { awardDharmaCoins } from '@/lib/dharmaCoins';
+import { awardOmCoins } from '@/lib/omCoins';
 import { DAILY_WISDOM_NOTIFICATION_TIME } from '@/lib/notificationConfig';
 import { PREFERRED_LANGUAGE_CHANGED_EVENT } from '@/lib/preferredLanguage';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { DeviceEventEmitter } from 'react-native';
 
-export const STREAK_UPDATED_EVENT = 'gitaDaily.streakUpdated.v1';
+export const STREAK_UPDATED_EVENT = 'omDaily.streakUpdated.v1';
 
 export type ProfileRow = {
   id: string;
@@ -456,9 +456,9 @@ export const updateUserStreak = async (): Promise<number> => {
   const streak = typeof data === 'number' ? data : 0;
   DeviceEventEmitter.emit(STREAK_UPDATED_EVENT, streak);
 
-  // Award daily-streak Dharma Coin. The RPC enforces "once per day" so this is
+  // Award daily-streak Om Coin. The RPC enforces "once per day" so this is
   // safe to call on every streak update (app open, foreground, onboarding).
-  void awardDharmaCoins('streak').catch((error) => {
+  void awardOmCoins('streak').catch((error) => {
     console.warn('Streak coin award failed', error);
   });
 

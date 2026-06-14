@@ -87,7 +87,7 @@ export const setupDailyWisdomNotification = async () => {
     await Notifications.scheduleNotificationAsync({
       identifier: DAILY_WISDOM_NOTIFICATION_ID,
       content: {
-        title: 'Dharma Daily',
+        title: 'Om Daily',
         body: 'View today’s wisdom',
       },
       // Daily triggers use the device's local time, so this fires at 9:00 AM

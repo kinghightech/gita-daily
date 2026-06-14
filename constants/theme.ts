@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-// Gita Daily app theme — dark blue + gold/amber
+// Om Daily app theme — dark blue + gold/amber
 const tintColorLight = '#FBBF24';
 const tintColorDark = '#FBBF24';
 
@@ -23,7 +23,7 @@ export const Colors = {
   },
 };
 
-// Gita Daily specific palette
+// Om Daily specific palette
 export const GitaColors = {
   bg: '#0F172A',
   bgCard: '#1E293B',

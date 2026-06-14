@@ -1,6 +1,6 @@
 //
 //  AppIntent.swift
-//  DharmaDailyWidget
+//  OmDailyWidget
 //
 //  Created by Aahish Abbani on 5/31/26.
 //

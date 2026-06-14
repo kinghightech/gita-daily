@@ -1,13 +1,13 @@
 import LotusLoader from '@/components/ui/LotusLoader';
 import { useTheme } from '@/hooks/useTheme';
 import {
-    getCachedDharmaCoinBalance,
-    updateCachedDharmaCoinBalance,
-} from '@/lib/dharmaCoinOverview';
+    getCachedOmCoinBalance,
+    updateCachedOmCoinBalance,
+} from '@/lib/omCoinOverview';
 import {
-    DHARMA_COINS_UPDATED_EVENT,
-    fetchDharmaCoinBalance,
-} from '@/lib/dharmaCoins';
+    OM_COINS_UPDATED_EVENT,
+    fetchOmCoinBalance,
+} from '@/lib/omCoins';
 import { useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -24,9 +24,9 @@ type Props = {
   compact?: boolean;
 };
 
-export default function DharmaCoinPill({ compact = false }: Props) {
+export default function OmCoinPill({ compact = false }: Props) {
   const theme = useTheme();
-  const initialBalance = useRef(getCachedDharmaCoinBalance()).current;
+  const initialBalance = useRef(getCachedOmCoinBalance()).current;
   const skipNextFocusRefresh = useRef(true);
   const [balance, setBalance] = useState<number>(initialBalance ?? 0);
   const [isLoading, setIsLoading] = useState(initialBalance == null);
@@ -37,8 +37,8 @@ export default function DharmaCoinPill({ compact = false }: Props) {
       setIsLoading(true);
     }
 
-    const value = await fetchDharmaCoinBalance();
-    updateCachedDharmaCoinBalance(value);
+    const value = await fetchOmCoinBalance();
+    updateCachedOmCoinBalance(value);
     setBalance(value);
     setIsLoading(false);
   }, []);
@@ -60,8 +60,8 @@ export default function DharmaCoinPill({ compact = false }: Props) {
   );
 
   useEffect(() => {
-    const sub = DeviceEventEmitter.addListener(DHARMA_COINS_UPDATED_EVENT, (total: number) => {
-      updateCachedDharmaCoinBalance(total);
+    const sub = DeviceEventEmitter.addListener(OM_COINS_UPDATED_EVENT, (total: number) => {
+      updateCachedOmCoinBalance(total);
       setBalance(total);
       scale.value = withSequence(
         withTiming(1.18, { duration: 180 }),
@@ -79,7 +79,7 @@ export default function DharmaCoinPill({ compact = false }: Props) {
     <Animated.View style={animatedStyle}>
       <TouchableOpacity
         activeOpacity={0.75}
-        onPress={() => router.push('/dharma-coins')}
+        onPress={() => router.push('/om-coins')}
         style={[
           styles.pill,
           compact && styles.pillCompact,

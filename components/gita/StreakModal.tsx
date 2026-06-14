@@ -159,10 +159,10 @@ export default function StreakModal({ open, onClose, preferences }: StreakModalP
   const shareStreak = async () => {
     try {
       await Share.share({
-        title: 'My Gita Daily Streak',
+        title: 'My Om Daily Streak',
         message: streak > 0
-          ? `I am on a ${streak}-day Bhagavad Gita reading streak in Gita Daily.`
-          : 'I just started my Bhagavad Gita reading streak in Gita Daily.',
+          ? `I am on a ${streak}-day Bhagavad Gita reading streak in Om Daily.`
+          : 'I just started my Bhagavad Gita reading streak in Om Daily.',
       });
     } catch { /* canceled */ }
   };

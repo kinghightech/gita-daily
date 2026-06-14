@@ -2,15 +2,15 @@ import LotusLoader from '@/components/ui/LotusLoader';
 import { Fonts, GitaColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import {
-    fetchDharmaCoinOverview,
-    getCachedDharmaCoinOverview,
-    updateCachedDharmaCoinBalance,
-} from '@/lib/dharmaCoinOverview';
+    fetchOmCoinOverview,
+    getCachedOmCoinOverview,
+    updateCachedOmCoinBalance,
+} from '@/lib/omCoinOverview';
 import {
-    DHARMA_COINS_UPDATED_EVENT,
-    DharmaCoinTransaction,
+    OM_COINS_UPDATED_EVENT,
+    OmCoinTransaction,
     transactionDisplayName,
-} from '@/lib/dharmaCoins';
+} from '@/lib/omCoins';
 import type { Theme } from '@/theme/colors';
 import { useFocusEffect } from '@react-navigation/native';
 import { Image } from 'expo-image';
@@ -28,7 +28,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import DharmaCoinEarnMethods from '@/components/gita/DharmaCoinEarnMethods';
+import OmCoinEarnMethods from '@/components/gita/OmCoinEarnMethods';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -54,16 +54,16 @@ const formatRelative = (iso: string): string => {
   }
 };
 
-export default function DharmaCoinsScreen() {
+export default function OmCoinsScreen() {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const initialSnapshot = useRef(getCachedDharmaCoinOverview()).current;
+  const initialSnapshot = useRef(getCachedOmCoinOverview()).current;
   const hasInitialOverview = initialSnapshot?.hasFullOverview === true;
   const skipNextFocusRefresh = useRef(true);
 
   const [balance, setBalance] = useState(initialSnapshot?.balance ?? 0);
   const [streak, setStreak] = useState(hasInitialOverview ? initialSnapshot.streak : 0);
-  const [transactions, setTransactions] = useState<DharmaCoinTransaction[]>(
+  const [transactions, setTransactions] = useState<OmCoinTransaction[]>(
     hasInitialOverview ? initialSnapshot.transactions : []
   );
   const [isLoading, setIsLoading] = useState(!hasInitialOverview);
@@ -72,7 +72,7 @@ export default function DharmaCoinsScreen() {
   const applySnapshot = useCallback((snapshot: {
     balance: number;
     streak: number;
-    transactions: DharmaCoinTransaction[];
+    transactions: OmCoinTransaction[];
   }) => {
     setBalance(snapshot.balance);
     setStreak(snapshot.streak);
@@ -84,7 +84,7 @@ export default function DharmaCoinsScreen() {
       setIsLoading(true);
     }
 
-    const snapshot = await fetchDharmaCoinOverview(100);
+    const snapshot = await fetchOmCoinOverview(100);
     applySnapshot(snapshot);
     setIsLoading(false);
   }, [applySnapshot]);
@@ -106,9 +106,9 @@ export default function DharmaCoinsScreen() {
   );
 
   useEffect(() => {
-    const sub = DeviceEventEmitter.addListener(DHARMA_COINS_UPDATED_EVENT, (total?: number) => {
+    const sub = DeviceEventEmitter.addListener(OM_COINS_UPDATED_EVENT, (total?: number) => {
       if (typeof total === 'number') {
-        updateCachedDharmaCoinBalance(total);
+        updateCachedOmCoinBalance(total);
         setBalance(total);
       }
       void refresh();
@@ -130,7 +130,7 @@ export default function DharmaCoinsScreen() {
             transition={0}
           />
           <View style={styles.heroLabels}>
-            <Text style={styles.heroLabel}>TOTAL DHARMA COINS</Text>
+            <Text style={styles.heroLabel}>TOTAL OM COINS</Text>
             {isLoading ? (
               <View style={styles.heroLoader}>
                 <LotusLoader size={42} color={GitaColors.gold} strokeWidth={2.6} duration={1200} />
@@ -220,12 +220,12 @@ export default function DharmaCoinsScreen() {
           >
             <ArrowLeft size={22} color={theme.text} />
           </TouchableOpacity>
-          <Text style={styles.navTitle}>Dharma Coins</Text>
+          <Text style={styles.navTitle}>Om Coins</Text>
           <TouchableOpacity
             onPress={() => setShowEarnInfo(true)}
             style={styles.backBtn}
             activeOpacity={0.7}
-            accessibilityLabel="Ways to earn Dharma Coins"
+            accessibilityLabel="Ways to earn Om Coins"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Eye size={20} color={GitaColors.gold} />
@@ -303,7 +303,7 @@ export default function DharmaCoinsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.earnTitle}>Ways to Earn</Text>
                   <Text style={styles.earnSubtitle}>
-                    Collect Dharma Coins to unlock rewards (coming soon).
+                    Collect Om Coins to unlock rewards (coming soon).
                   </Text>
                 </View>
               </View>
@@ -322,7 +322,7 @@ export default function DharmaCoinsScreen() {
               showsVerticalScrollIndicator={false}
               bounces={false}
             >
-              <DharmaCoinEarnMethods tone="auto" />
+              <OmCoinEarnMethods tone="auto" />
             </ScrollView>
           </SafeAreaView>
         </View>

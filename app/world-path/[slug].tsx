@@ -1,4 +1,4 @@
-import DharmaCoinPill from '@/components/gita/DharmaCoinPill';
+import OmCoinPill from '@/components/gita/OmCoinPill';
 import LearnBackground from '@/components/LearnBackground';
 import LotusLevel from '@/components/learning/LotusLevel';
 import MountainShrine from '@/components/learning/MountainShrine';
@@ -373,7 +373,7 @@ function WorldLotusScreen() {
             <ArrowLeft size={22} color="#FEF3C7" />
           </TouchableOpacity>
           <Text style={wlStyles.navTitle}>The Lotus Path</Text>
-          <DharmaCoinPill compact />
+          <OmCoinPill compact />
         </View>
         <WorldLotusPathContent />
       </LearnBackground>
@@ -889,7 +889,7 @@ function GardenPathScreen() {
           <ArrowLeft size={22} color="#ECFDF5" />
         </TouchableOpacity>
         <Text style={gpStyles.navTitle}> </Text>
-        <DharmaCoinPill compact />
+        <OmCoinPill compact />
       </View>
       <GardenPathContent />
     </View>
@@ -1492,7 +1492,7 @@ function ForestPathScreen() {
           <ArrowLeft size={22} color="#ECFDF5" />
         </TouchableOpacity>
         <Text style={fpStyles.navTitle}> </Text>
-        <DharmaCoinPill compact />
+        <OmCoinPill compact />
       </View>
       <ForestPathContent />
     </View>
@@ -2860,7 +2860,7 @@ function MountainPathScreen() {
           <ArrowLeft size={22} color="#E2E8F0" />
         </TouchableOpacity>
         <Text style={mpStyles.navTitle}> </Text>
-        <DharmaCoinPill compact />
+        <OmCoinPill compact />
       </View>
       <MountainPathContent />
     </View>

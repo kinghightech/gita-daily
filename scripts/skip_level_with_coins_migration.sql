@@ -1,12 +1,12 @@
 -- =====================================================================
--- Skip-a-level with Dharma Coins
+-- Skip-a-level with Om Coins
 -- Spend a fixed number of coins to mark the current level complete and
 -- unlock the next, atomically. Works for every playable path.
--- Run against the same Supabase project as the rest of Gita Daily.
+-- Run against the same Supabase project as the rest of Om Daily.
 -- Idempotent: safe to re-run.
 -- =====================================================================
 
--- Cost is fixed at 5 coins (kept in sync with SKIP_LEVEL_COST in lib/dharmaCoins.ts).
+-- Cost is fixed at 5 coins (kept in sync with SKIP_LEVEL_COST in lib/omCoins.ts).
 --
 -- Returns a single row:
 --   ok          : true when coins were spent and the level advanced

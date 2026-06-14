@@ -17,7 +17,7 @@ export type UserNote = {
   };
 };
 
-export const NOTES_UPDATED_EVENT = 'gitaDaily.notesUpdated.v1';
+export const NOTES_UPDATED_EVENT = 'omDaily.notesUpdated.v1';
 
 /**
  * Fetches all notes for a user, with verse details joined.

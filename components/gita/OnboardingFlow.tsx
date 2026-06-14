@@ -1,5 +1,5 @@
 import BackgroundLayout from '@/components/BackgroundLayout';
-import DharmaCoinEarnMethods from '@/components/gita/DharmaCoinEarnMethods';
+import OmCoinEarnMethods from '@/components/gita/OmCoinEarnMethods';
 import DiyaStreak from '@/components/ui/DiyaStreak';
 import { HapticButton } from '@/components/ui/HapticButton';
 import { Fonts } from '@/constants/theme';
@@ -58,7 +58,7 @@ const TOTAL_STEPS = 12;
 const INTRO_HEADLINE = "Did you know connecting back to your roots doesn't have to feel...";
 const INTRO_WORDS = ['hard?', 'stressful?', 'complicated?'] as const;
 const WELCOME_TOP = 'Welcome to';
-const WELCOME_MAIN = 'Dharma Daily';
+const WELCOME_MAIN = 'Om Daily';
 const STEP_ONE_PROMPT_TOP = "Let’s personalize your journey";
 const STEP_ONE_PROMPT_BOTTOM = "What’s your full name?";
 
@@ -98,7 +98,7 @@ function OnboardingIntroHero({ startTyping }: { startTyping: boolean }) {
     return () => clearTimeout(timeout);
   }, [startTyping, titleTopLength]);
 
-  // 2) Then type "Dharma Daily".
+  // 2) Then type "Om Daily".
   useEffect(() => {
     if (!startTyping || !titleTopDone) return;
     if (titleMainLength >= WELCOME_MAIN.length) return;
@@ -611,7 +611,7 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
     if (authMode === 'signup' && !termsAccepted) {
       Alert.alert(
         'Terms Required',
-        'To use Dharma Daily you must accept the Terms and Conditions.',
+        'To use Om Daily you must accept the Terms and Conditions.',
         [{ text: 'OK' }]
       );
       return;
@@ -877,12 +877,12 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
             transition={0}
             recyclingKey="onboarding-coin"
           />
-          <Text style={styles.coinsTitle}>Unlock Dharma Coins</Text>
+          <Text style={styles.coinsTitle}>Unlock Om Coins</Text>
           <Text style={styles.coinsSubtitle}>
             Earn coins toward rewards — coming soon. Collect them by:
           </Text>
 
-          <DharmaCoinEarnMethods tone="dark" />
+          <OmCoinEarnMethods tone="dark" />
 
           <View style={styles.streakCoinNote}>
             <View style={styles.streakCoinNoteHeader}>
@@ -1080,14 +1080,14 @@ export default function OnboardingFlow({ onComplete, onReminderPreferenceChange 
                 {'I am 13 or older and agree to the '}
                 <Text
                   style={styles.checkboxLink}
-                  onPress={() => void Linking.openURL('https://dharmadailytermsofuse.notion.site/')}
+                  onPress={() => void Linking.openURL('https://omdailytermsofuse.notion.site/')}
                 >
                   Terms of Use
                 </Text>
                 {' and '}
                 <Text
                   style={styles.checkboxLink}
-                  onPress={() => void Linking.openURL('https://dharmadailyprivacypolicy.notion.site')}
+                  onPress={() => void Linking.openURL('https://omdailyprivacypolicy.notion.site')}
                 >
                   Privacy Policy
                 </Text>
@@ -1577,7 +1577,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
 
-  /* ── Dharma Coins: streak multiplier note ── */
+  /* ── Om Coins: streak multiplier note ── */
   streakCoinNote: {
     marginTop: 16,
     backgroundColor: 'rgba(251,191,36,0.08)',

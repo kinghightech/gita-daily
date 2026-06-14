@@ -4,12 +4,12 @@ import { showAppToast } from '@/lib/appToast';
 import { refreshAndAwardUserBadges } from '@/lib/badges';
 import {
   SKIP_LEVEL_COST,
-  fetchDharmaCoinBalance,
+  fetchOmCoinBalance,
   skipLevelWithCoins,
   type SkipLevelPath,
   type SkipLevelReason,
-} from '@/lib/dharmaCoins';
-import { getCachedDharmaCoinBalance } from '@/lib/dharmaCoinOverview';
+} from '@/lib/omCoins';
+import { getCachedOmCoinBalance } from '@/lib/omCoinOverview';
 import type { Theme } from '@/theme/colors';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
@@ -37,7 +37,7 @@ type Props = {
 const failureMessage = (reason: SkipLevelReason, cost: number): string => {
   switch (reason) {
     case 'insufficient_coins':
-      return `You don't have enough Dharma Coins. Skipping costs ${cost}.`;
+      return `You don't have enough Om Coins. Skipping costs ${cost}.`;
     case 'cannot_skip_gate':
       return "The Wisdom Gate can't be skipped — it has to be earned.";
     case 'not_current_level':
@@ -56,16 +56,16 @@ export default function SkipLevelButton({ path, level, onSkipped }: Props) {
 
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [balance, setBalance] = useState<number | null>(getCachedDharmaCoinBalance());
+  const [balance, setBalance] = useState<number | null>(getCachedOmCoinBalance());
 
   const canAfford = balance == null ? true : balance >= SKIP_LEVEL_COST;
 
   const openModal = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setBalance(getCachedDharmaCoinBalance());
+    setBalance(getCachedOmCoinBalance());
     setOpen(true);
     // Refresh the real balance so the sheet always shows the live number.
-    void fetchDharmaCoinBalance().then(setBalance).catch(() => {});
+    void fetchOmCoinBalance().then(setBalance).catch(() => {});
   };
 
   const close = () => {
@@ -81,7 +81,7 @@ export default function SkipLevelButton({ path, level, onSkipped }: Props) {
     if (result.ok) {
       setOpen(false);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      showAppToast({ title: 'Level skipped', message: `−${result.cost} Dharma Coins` });
+      showAppToast({ title: 'Level skipped', message: `−${result.cost} Om Coins` });
       void refreshAndAwardUserBadges().catch((error) => {
         console.warn('Badge refresh after level skip failed', error);
       });
@@ -127,7 +127,7 @@ export default function SkipLevelButton({ path, level, onSkipped }: Props) {
 
             <Text style={styles.title}>Skip this level?</Text>
             <Text style={styles.body}>
-              Spend {SKIP_LEVEL_COST} Dharma Coins to complete this level and unlock the next
+              Spend {SKIP_LEVEL_COST} Om Coins to complete this level and unlock the next
               one. You won&apos;t earn the level&apos;s reward coins.
             </Text>
 

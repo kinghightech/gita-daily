@@ -1,7 +1,7 @@
-# Dharma Daily — Widget Context Handoff
+# Om Daily — Widget Context Handoff
 
 ## What This App Is
-Dharma Daily is an Expo/React Native iOS app that delivers daily Bhagavad Gita wisdom. It shows a verse of the day, lets users explore all 716 verses, follow a 50-level learning path (Lotus Path), track streaks, earn badges, and browse a Hindu festival calendar.
+Om Daily is an Expo/React Native iOS app that delivers daily Bhagavad Gita wisdom. It shows a verse of the day, lets users explore all 716 verses, follow a 50-level learning path (Lotus Path), track streaks, earn badges, and browse a Hindu festival calendar.
 
 ## Tech Stack
 - **Expo 54** (bare workflow — has `ios/` directory with native code)
@@ -31,16 +31,16 @@ lib/
 assets/images/
   icon.png             # App icon (1254×1254, set as app icon)
 ios/
-  gitadaily/
+  omdaily/
     Images.xcassets/AppIcon.appiconset/   # Native app icon (resized to 1024×1024)
-  DharmaDailyWidget/
-    DharmaDailyWidget.swift               # ALL widget UI and logic
-    DharmaDailyWidgetBundle.swift         # Widget entry point
-    DharmaDailyWidgetControl.swift        # Unused boilerplate (@available iOS 18+)
-    DharmaDailyWidgetLiveActivity.swift   # Unused boilerplate
+  OmDailyWidget/
+    OmDailyWidget.swift               # ALL widget UI and logic
+    OmDailyWidgetBundle.swift         # Widget entry point
+    OmDailyWidgetControl.swift        # Unused boilerplate (@available iOS 18+)
+    OmDailyWidgetLiveActivity.swift   # Unused boilerplate
     Info.plist
-  gitadaily.xcodeproj/project.pbxproj    # Xcode project file
-  gitadaily.xcworkspace                  # Open THIS in Xcode (not .xcodeproj)
+  omdaily.xcodeproj/project.pbxproj    # Xcode project file
+  omdaily.xcworkspace                  # Open THIS in Xcode (not .xcodeproj)
   Podfile                                # CocoaPods config
 ```
 
@@ -63,7 +63,7 @@ Key RPC: `handle_daily_streak(user_timezone)`
 npx expo start
 
 # Xcode — Cmd+R to build and install on device
-# Open: ios/gitadaily.xcworkspace
+# Open: ios/omdaily.xcworkspace
 ```
 The app is a **development build** (uses expo-dev-client). You need Metro running AND the app installed via Xcode. The app connects to Metro over local network (scan QR if it doesn't auto-connect).
 
@@ -72,18 +72,18 @@ The app is a **development build** (uses expo-dev-client). You need Metro runnin
 ## iOS Widget — Current State
 
 ### What We've Done
-The widget is a native SwiftUI WidgetKit extension in `ios/DharmaDailyWidget/DharmaDailyWidget.swift`.
+The widget is a native SwiftUI WidgetKit extension in `ios/OmDailyWidget/OmDailyWidget.swift`.
 
 **Fixes applied this session:**
 1. Widget deployment target changed from `26.5` → `17.0` (was preventing widget from installing on device)
-2. `DharmaDailyWidgetControl` marked `@available(iOS 18.0, *)` and removed from bundle (was causing build error)
+2. `OmDailyWidgetControl` marked `@available(iOS 18.0, *)` and removed from bundle (was causing build error)
 3. `expo-gl` deadlock fixed in `node_modules/expo-gl/ios/EXGLContext.mm` — changed `dispatch_sync` → `dispatch_async` in `onApplicationWillResignActive:` (was causing watchdog crash on backgrounding)
 4. App icon set from `assets/images/icon.png` (resized to 1024×1024)
 5. CocoaPods xcodeproj gem patched to support object version 70 (Xcode 26 project format)
 6. Podfile updated with `GCC_WARN_INHIBIT_ALL_WARNINGS` and `SWIFT_SUPPRESS_WARNINGS` to suppress 196 third-party warnings
 
 ### Widget Architecture
-The widget lives entirely in `DharmaDailyWidget.swift`. It:
+The widget lives entirely in `OmDailyWidget.swift`. It:
 - Fetches the verse of the day from Supabase directly (same seeded random algorithm as the app)
 - Supports **small** and **medium** sizes
 - Refreshes daily at midnight
@@ -126,10 +126,10 @@ The verse text uses `font size 18, lineLimit 7, minimumScaleFactor 0.6` — for 
 ```bash
 cd ios
 # Build for device
-xcodebuild -workspace gitadaily.xcworkspace -scheme gitadaily -destination generic/platform=iOS
+xcodebuild -workspace omdaily.xcworkspace -scheme omdaily -destination generic/platform=iOS
 
 # Build for simulator
-xcodebuild -workspace gitadaily.xcworkspace -scheme gitadaily \
+xcodebuild -workspace omdaily.xcworkspace -scheme omdaily \
   -destination 'platform=iOS Simulator,id=11AB99CE-8342-48BF-BB26-B411299A1E49' \
   -configuration Debug build
 ```

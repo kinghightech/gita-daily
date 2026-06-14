@@ -1,6 +1,6 @@
 //
-//  DharmaDailyWidgetLiveActivity.swift
-//  DharmaDailyWidget
+//  OmDailyWidgetLiveActivity.swift
+//  OmDailyWidget
 //
 //  Created by Aahish Abbani on 5/31/26.
 //
@@ -9,7 +9,7 @@ import ActivityKit
 import WidgetKit
 import SwiftUI
 
-struct DharmaDailyWidgetAttributes: ActivityAttributes {
+struct OmDailyWidgetAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
         // Dynamic stateful properties about your activity go here!
         var emoji: String
@@ -19,9 +19,9 @@ struct DharmaDailyWidgetAttributes: ActivityAttributes {
     var name: String
 }
 
-struct DharmaDailyWidgetLiveActivity: Widget {
+struct OmDailyWidgetLiveActivity: Widget {
     var body: some WidgetConfiguration {
-        ActivityConfiguration(for: DharmaDailyWidgetAttributes.self) { context in
+        ActivityConfiguration(for: OmDailyWidgetAttributes.self) { context in
             // Lock screen/banner UI goes here
             VStack {
                 Text("Hello \(context.state.emoji)")
@@ -56,25 +56,25 @@ struct DharmaDailyWidgetLiveActivity: Widget {
     }
 }
 
-extension DharmaDailyWidgetAttributes {
-    fileprivate static var preview: DharmaDailyWidgetAttributes {
-        DharmaDailyWidgetAttributes(name: "World")
+extension OmDailyWidgetAttributes {
+    fileprivate static var preview: OmDailyWidgetAttributes {
+        OmDailyWidgetAttributes(name: "World")
     }
 }
 
-extension DharmaDailyWidgetAttributes.ContentState {
-    fileprivate static var smiley: DharmaDailyWidgetAttributes.ContentState {
-        DharmaDailyWidgetAttributes.ContentState(emoji: "😀")
+extension OmDailyWidgetAttributes.ContentState {
+    fileprivate static var smiley: OmDailyWidgetAttributes.ContentState {
+        OmDailyWidgetAttributes.ContentState(emoji: "😀")
      }
      
-     fileprivate static var starEyes: DharmaDailyWidgetAttributes.ContentState {
-         DharmaDailyWidgetAttributes.ContentState(emoji: "🤩")
+     fileprivate static var starEyes: OmDailyWidgetAttributes.ContentState {
+         OmDailyWidgetAttributes.ContentState(emoji: "🤩")
      }
 }
 
-#Preview("Notification", as: .content, using: DharmaDailyWidgetAttributes.preview) {
-   DharmaDailyWidgetLiveActivity()
+#Preview("Notification", as: .content, using: OmDailyWidgetAttributes.preview) {
+   OmDailyWidgetLiveActivity()
 } contentStates: {
-    DharmaDailyWidgetAttributes.ContentState.smiley
-    DharmaDailyWidgetAttributes.ContentState.starEyes
+    OmDailyWidgetAttributes.ContentState.smiley
+    OmDailyWidgetAttributes.ContentState.starEyes
 }

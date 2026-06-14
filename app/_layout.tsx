@@ -1,5 +1,5 @@
 import AnimatedSplash from '@/components/gita/AnimatedSplash';
-import DharmaCoinEarnedOverlay from '@/components/gita/DharmaCoinEarnedOverlay';
+import OmCoinEarnedOverlay from '@/components/gita/OmCoinEarnedOverlay';
 import OnboardingFlow from '@/components/gita/OnboardingFlow';
 import { DAILY_WISDOM_NOTIFICATION_TIME } from '@/lib/notificationConfig';
 import { cancelDailyReminderNotifications, setupDailyReminderNotifications } from '@/lib/notifications';
@@ -32,9 +32,9 @@ SplashScreen.preventAutoHideAsync().catch(() => {
   // Already hidden / not available (e.g. web) — safe to ignore.
 });
 
-const ONBOARDING_COMPLETE_KEY = 'gitaDaily.onboardingComplete.v1';
-const ONBOARDING_PROFILE_KEY = 'gitaDaily.onboardingProfile.v1';
-const ONBOARDING_REPLAY_EVENT = 'gitaDaily.replayOnboarding';
+const ONBOARDING_COMPLETE_KEY = 'omDaily.onboardingComplete.v1';
+const ONBOARDING_PROFILE_KEY = 'omDaily.onboardingProfile.v1';
+const ONBOARDING_REPLAY_EVENT = 'omDaily.replayOnboarding';
 
 type OnboardingPayload = {
   fullName: string;
@@ -376,7 +376,7 @@ export default function RootLayout() {
             <Stack.Screen name="prayer-list" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
             <Stack.Screen name="prayer-detail" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
             <Stack.Screen name="festival-detail" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
-            <Stack.Screen name="dharma-coins" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
+            <Stack.Screen name="om-coins" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
             <Stack.Screen name="saved" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
             <Stack.Screen name="world-path/[slug]" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
             <Stack.Screen name="world-level/[id]" options={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
@@ -385,7 +385,7 @@ export default function RootLayout() {
             <Stack.Screen name="guide" options={{ headerShown: false, animation: 'slide_from_bottom', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
             <Stack.Screen name="gita-intro" options={{ headerShown: false, animation: 'slide_from_bottom', contentStyle: { backgroundColor: colorScheme === 'dark' ? darkTheme.background : lightTheme.background } }} />
           </Stack>
-          <DharmaCoinEarnedOverlay />
+          <OmCoinEarnedOverlay />
           {Platform.OS === 'web' && <Toaster richColors position="top-center" />}
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         </ThemeProvider>

@@ -1,8 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { DeviceEventEmitter } from 'react-native';
 
-export const FAVORITES_UPDATED_EVENT = 'gitaDaily.favoritesUpdated.v1';
-export const FESTIVALS_UPDATED_EVENT = 'gitaDaily.festivalsUpdated.v1';
+export const FAVORITES_UPDATED_EVENT = 'omDaily.favoritesUpdated.v1';
+export const FESTIVALS_UPDATED_EVENT = 'omDaily.festivalsUpdated.v1';
 
 /**
  * Fetches all verse IDs favorited by the user.

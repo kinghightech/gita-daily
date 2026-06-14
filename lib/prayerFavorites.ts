@@ -2,7 +2,7 @@ import type { PrayerVerse } from '@/lib/prayerVerses';
 import { supabase } from '@/lib/supabase';
 import { DeviceEventEmitter } from 'react-native';
 
-export const PRAYER_VERSES_UPDATED_EVENT = 'gitaDaily.prayerVersesUpdated.v1';
+export const PRAYER_VERSES_UPDATED_EVENT = 'omDaily.prayerVersesUpdated.v1';
 
 /** A saved prayer verse as persisted in Supabase (denormalized snapshot). */
 export type SavedPrayerVerse = {

@@ -1,4 +1,4 @@
-import DharmaCoinPill from '@/components/gita/DharmaCoinPill';
+import OmCoinPill from '@/components/gita/OmCoinPill';
 import QuoteCard from '@/components/gita/QuoteCard';
 import StreakModal from '@/components/gita/StreakModal';
 import LotusLevel from '@/components/learning/LotusLevel';
@@ -239,7 +239,7 @@ export default function Home() {
                 <Text style={styles.userName}>{isIdentityLoading ? 'Loading...' : displayName || 'Your Name'}</Text>
               </View>
               <View style={styles.headerRight}>
-                <DharmaCoinPill />
+                <OmCoinPill />
                 <DiyaStreak
                   streak={currentStreak}
                   onPress={() => setIsStreakModalOpen(true)}
