@@ -47,7 +47,7 @@ import {
     TextInput,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -73,6 +73,10 @@ export default function ReadScreen() {
 
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
+
+  // Clear the floating tab bar (height 64, sits at bottom: max(insets.bottom - 5, 12)) plus a gap.
+  const popupPaddingBottom = Math.max(insets.bottom - 5, 12) + 64 + 16;
 
   const [userBookmark, setUserBookmark] = useState<{ chapter: number; verse: number } | null>(null);
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -705,6 +709,7 @@ export default function ReadScreen() {
             styles.popup,
             {
               transform: [{ translateY: popupTranslateY }],
+              paddingBottom: popupPaddingBottom,
             },
           ]}
         >
