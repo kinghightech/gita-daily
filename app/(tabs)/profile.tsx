@@ -439,7 +439,7 @@ export default function ProfileScreen() {
             <Text style={styles.footerDot}>·</Text>
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() => Linking.openURL('https://omdailysupportpage.notion.site/')}
+              onPress={() => Linking.openURL('https://omdailysupport.notion.site/')}
             >
               <Text style={styles.privacyButtonText}>Support</Text>
             </TouchableOpacity>
