@@ -481,7 +481,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   header: { paddingTop: 16, paddingBottom: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   headerTextWrap: { flex: 1, minWidth: 0 },
   eyebrow: { color: theme.subtext, fontSize: 11, fontWeight: '600', letterSpacing: 1.6, textTransform: 'uppercase', marginBottom: 10 },
-  name: { color: theme.text, fontSize: 32, fontWeight: '700', letterSpacing: -0.5, lineHeight: 38 },
+  name: { color: theme.text, fontSize: 32, fontWeight: '700', fontFamily: 'Georgia', letterSpacing: -0.5, lineHeight: 38 },
   email: { color: theme.subtext, fontSize: 14, fontWeight: '400', marginTop: 4 },
 
   glass: { borderRadius: 20, overflow: 'hidden', backgroundColor: theme.surface, borderWidth: 1, borderColor: theme.border, marginBottom: 20 },
